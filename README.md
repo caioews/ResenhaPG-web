@@ -414,7 +414,29 @@ ufw enable
 
 Pronto. Mande o link para o grupo.
 
-**Para atualizar depois de mexer no código:**
+---
+
+## Atualizar o jogo depois de mexer no código
+
+O caminho é sempre **seu PC → GitHub → servidor**. Editar arquivo direto na
+VPS parece atalho, mas quebra o `git pull` seguinte e você perde a alteração
+sem perceber.
+
+### No seu PC
+
+```bash
+git add -A
+```
+
+```bash
+git commit -m "descreva o que mudou"
+```
+
+```bash
+git push
+```
+
+### No servidor
 
 O usuário `resenha` não tem senha, então não dá para entrar nele direto por
 SSH — entre como `root` e troque de usuário:
@@ -427,12 +449,44 @@ ssh root@SEU_IP
 su - resenha
 ```
 
+E rode o script de atualização:
+
 ```bash
-cd jogo && git pull && npm ci --omit=dev && pm2 restart resenha
+~/jogo/scripts/atualizar.sh
 ```
 
-Se quiser entrar direto como `resenha` (mais prático no dia a dia), copie a
-sua chave pública para ele — **como `root`**, uma vez só:
+Ele busca o código novo, reinstala as dependências **só se** o
+`package.json` mudou, reinicia o processo e mostra as últimas linhas do log.
+Se não houver nada novo, ele avisa e sai sem reiniciar nada.
+
+Na mão, é o mesmo que:
+
+```bash
+cd ~/jogo && git pull && pm2 restart resenha
+```
+
+**O banco não é tocado.** `dados/` está no `.gitignore`, então as contas, os
+personagens e o histórico do chat vivem só no servidor — nenhum `git pull`
+passa por cima deles.
+
+### Se algo quebrar depois de uma atualização
+
+Veja o que o servidor está dizendo:
+
+```bash
+pm2 logs resenha --lines 40
+```
+
+E volte para a versão anterior enquanto investiga:
+
+```bash
+cd ~/jogo && git reset --hard HEAD~1 && pm2 restart resenha
+```
+
+### Entrar direto como `resenha` (opcional)
+
+Para não ter que passar pelo root toda vez, copie a sua chave pública para
+ele — **como `root`**, uma vez só:
 
 ```bash
 install -d -m 700 -o resenha -g resenha /home/resenha/.ssh && cp ~/.ssh/authorized_keys /home/resenha/.ssh/ && chown resenha:resenha /home/resenha/.ssh/authorized_keys
