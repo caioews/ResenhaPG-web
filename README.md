@@ -197,56 +197,121 @@ de `root`. Conecte pelo terminal (no Windows, o PowerShell já tem `ssh`):
 ssh root@SEU_IP
 ```
 
-**1. Atualize e instale o Node 22**
+> **Quem roda o quê.** Instalar programas, mexer no Nginx e no firewall é
+> trabalho de `root`. **O jogo em si nunca roda como root** — ele roda como o
+> usuário `resenha`, criado no passo 2. Cada bloco abaixo começa dizendo em
+> qual dos dois você deve estar. Para sair de `resenha` e voltar a `root`,
+> digite `exit`.
+
+**1. Atualize e instale o que é preciso** — *como `root`*
+
+Tudo que é instalação global entra aqui de uma vez, inclusive o PM2. Assim o
+usuário `resenha` não precisa de permissão para instalar nada.
 
 ```bash
 apt update && apt upgrade -y
+```
+
+```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+```
+
+```bash
 apt install -y nodejs git build-essential
 ```
 
-**2. Crie um usuário sem privilégio para o jogo**
+```bash
+npm install -g pm2
+```
 
-Rodar um servidor como `root` é pedir problema.
+**2. Crie um usuário sem privilégio para o jogo** — *como `root`*
+
+Um servidor exposto à internet rodando como `root` é pedir problema: qualquer
+falha no processo vira controle da máquina inteira.
 
 ```bash
 adduser --disabled-password --gecos "" resenha
 ```
 
-**3. Mande o código para o servidor**
+**3. Mande o código para o servidor** — *como `resenha`*
 
-O jeito mais prático é pelo Git: crie um repositório (pode ser privado) no
-GitHub com o conteúdo da pasta `ResenhaPG web` e clone lá.
+Entre no usuário do jogo:
 
 ```bash
 su - resenha
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git jogo
-cd jogo
-npm ci --omit=dev
 ```
 
-Se preferir sem Git, copie do seu PC com `scp`:
+E clone o repositório (troque pelo seu endereço):
 
 ```bash
-# rode isso no SEU computador, não na VPS
+git clone https://github.com/SEU_USUARIO/SEU_REPO.git jogo
+```
+
+```bash
+cd jogo && npm ci --omit=dev
+```
+
+Se preferir sem Git, copie do seu PC com `scp` — **este comando roda no seu
+computador**, não na VPS:
+
+```bash
 scp -r "C:\Users\caio\Desktop\ResenhaPG\ResenhaPG web" resenha@SEU_IP:/home/resenha/jogo
 ```
 
-**4. Suba com o PM2**
+**4. Suba com o PM2** — *como `resenha`, dentro de `~/jogo`*
 
-O PM2 mantém o processo no ar, reinicia se ele cair e volta sozinho depois de
-um reboot da máquina. O arquivo `ecosystem.config.cjs` já está pronto.
+O PM2 mantém o processo no ar e reinicia se ele cair. O arquivo
+`ecosystem.config.cjs` já está pronto.
+
+Isso precisa rodar como `resenha`: o PM2 lembra de qual usuário iniciou cada
+processo, e é esse usuário que vai ser o dono do arquivo do banco.
 
 ```bash
-npm install -g pm2          # como root: sudo npm install -g pm2
 pm2 start ecosystem.config.cjs
-pm2 save
-pm2 startup                 # mostra um comando para rodar como root; rode-o
 ```
 
-Confira: `pm2 logs resenha` deve mostrar `⚔️ Resenha RPG no ar`.
+```bash
+pm2 save
+```
 
-**5. Ponha o Nginx na frente**
+Confira antes de seguir — deve aparecer `⚔️ Resenha RPG no ar`:
+
+```bash
+pm2 logs resenha --lines 20
+```
+
+**5. Faça o PM2 voltar sozinho depois de um reboot** — *começa como `resenha`, termina como `root`*
+
+Ainda como `resenha`, rode:
+
+```bash
+pm2 startup
+```
+
+Ele **não faz nada** — só imprime um comando pronto, parecido com este:
+
+```
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u resenha --hp /home/resenha
+```
+
+Copie essa linha. O usuário `resenha` foi criado sem senha, então ele **não
+consegue usar `sudo`** — volte para o root e rode lá, **sem o `sudo` do
+começo**:
+
+```bash
+exit
+```
+
+Agora cole a linha que o PM2 imprimiu, tirando o `sudo`. Fica parecida com
+esta (confira contra a sua, os caminhos podem variar):
+
+```bash
+env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u resenha --hp /home/resenha
+```
+
+Pronto: o jogo sobe sozinho junto com a máquina.
+
+**6. Ponha o Nginx na frente** — *como `root`*
 
 Assim o jogo atende na porta 80/443 em vez de `:3000`, e o WebSocket do chat
 passa direto.
@@ -291,7 +356,7 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 ```
 
-**6. HTTPS de graça (se você tiver um domínio)**
+**7. HTTPS de graça (se você tiver um domínio)** — *como `root`*
 
 Aponte um subdomínio (`rpg.seudominio.com.br`) para o IP da VPS num registro
 `A`, espere alguns minutos e rode:
@@ -310,7 +375,7 @@ está marcado como `secure` em produção — ou seja, ele só viaja por HTTPS.
 > cookie viajando em texto aberto. Serve para testar; para jogar de verdade,
 > registre um domínio (uns R$ 40/ano) e use HTTPS.
 
-**7. Feche o resto das portas**
+**8. Feche o resto das portas** — *como `root`*
 
 ```bash
 ufw allow OpenSSH
@@ -322,10 +387,30 @@ Pronto. Mande o link para o grupo.
 
 **Para atualizar depois de mexer no código:**
 
+O usuário `resenha` não tem senha, então não dá para entrar nele direto por
+SSH — entre como `root` e troque de usuário:
+
 ```bash
-ssh resenha@SEU_IP
+ssh root@SEU_IP
+```
+
+```bash
+su - resenha
+```
+
+```bash
 cd jogo && git pull && npm ci --omit=dev && pm2 restart resenha
 ```
+
+Se quiser entrar direto como `resenha` (mais prático no dia a dia), copie a
+sua chave pública para ele — **como `root`**, uma vez só:
+
+```bash
+install -d -m 700 -o resenha -g resenha /home/resenha/.ssh && cp ~/.ssh/authorized_keys /home/resenha/.ssh/ && chown resenha:resenha /home/resenha/.ssh/authorized_keys
+```
+
+Isso reaproveita a mesma chave com que você já entra como `root`. Depois
+disso, `ssh resenha@SEU_IP` funciona.
 
 ---
 
