@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resenha RPG</title>
+    <meta name="description" content="O RPG da Resenha: cace, evolua, forje e desça o Abismo." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚔️</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/estilo.css" />
+  </head>
+
+  <body>
+    <!-- ====================================================== ENTRADA -->
+    <section id="tela-entrada" class="tela ativa">
+      <div class="centralizado">
+        <div class="marca">
+          <h1>Resenha RPG</h1>
+          <p>Sete classes, setenta e sete caminhos, um Abismo sem fundo.</p>
+        </div>
+
+        <div class="moldura caixa-entrada">
+          <div class="cantos"></div>
+          <div class="abas">
+            <button class="aba ativa" data-aba="entrar" type="button">Entrar</button>
+            <button class="aba" data-aba="criar" type="button">Criar conta</button>
+          </div>
+
+          <form id="form-entrada" autocomplete="on">
+            <label class="campo">
+              <span>Usuário</span>
+              <input id="campo-usuario" type="text" name="username" autocomplete="username" maxlength="20" required />
+            </label>
+            <label class="campo">
+              <span>Senha</span>
+              <input id="campo-senha" type="password" name="password" autocomplete="current-password" maxlength="200" required />
+            </label>
+            <label class="campo" id="campo-confirmar" hidden>
+              <span>Repetir a senha</span>
+              <input id="campo-senha2" type="password" autocomplete="new-password" maxlength="200" />
+            </label>
+            <button class="btn primario largo" type="submit" id="botao-entrada">Entrar</button>
+            <p class="aviso" id="aviso-entrada"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================= PERSONAGENS -->
+    <section id="tela-personagens" class="tela">
+      <div class="centralizado">
+        <div class="barra-conta">
+          <span id="rotulo-conta"></span>
+          <button class="btn pequeno" id="botao-sair" type="button">Sair da conta</button>
+        </div>
+
+        <div class="moldura painel-largo">
+          <div class="cantos"></div>
+          <div class="titulo-painel">Seus personagens</div>
+          <div class="grade-personagens" id="grade-personagens"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== JOGO -->
+    <section id="tela-jogo" class="tela">
+      <!-- Coluna 1: a aventura -->
+      <div class="coluna">
+        <div class="moldura" id="painel-aventura">
+          <div class="cantos"></div>
+          <div class="titulo-painel" id="titulo-cena">Ruínas de Valkhar</div>
+          <div class="cena" id="cena">
+            <div class="narrativa" id="narrativa"></div>
+          </div>
+          <div class="acoes" id="acoes"></div>
+        </div>
+      </div>
+
+      <!-- Coluna 2: ficha e acessos -->
+      <div class="coluna ficha-coluna">
+        <div class="moldura">
+          <div class="cantos"></div>
+          <div class="titulo-painel">Aventureiro</div>
+          <div class="ficha" id="ficha"></div>
+        </div>
+
+        <div class="moldura">
+          <div class="cantos"></div>
+          <div class="menu-lugares" id="menu-lugares"></div>
+        </div>
+      </div>
+
+      <!-- Coluna 3: chat -->
+      <div class="coluna chat" id="coluna-chat">
+        <div class="moldura" id="painel-chat">
+          <div class="cantos"></div>
+          <div class="titulo-painel">Chat</div>
+          <div class="chat-corpo" id="chat-corpo"></div>
+          <form class="chat-envio" id="form-chat">
+            <input id="campo-chat" type="text" placeholder="Digite uma mensagem..." maxlength="300" autocomplete="off" />
+            <button class="btn" type="submit" aria-label="Enviar">➤</button>
+          </form>
+        </div>
+
+        <div class="moldura" id="painel-online">
+          <div class="cantos"></div>
+          <div class="titulo-painel">Na taverna</div>
+          <div class="lista-online" id="lista-online"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== MODAIS -->
+    <div class="fundo-modal" id="fundo-modal">
+      <div class="moldura modal" id="modal">
+        <div class="cantos"></div>
+        <button class="fechar" id="fechar-modal" type="button" aria-label="Fechar">×</button>
+        <div class="titulo-painel" id="modal-titulo">Painel</div>
+        <div id="modal-abas"></div>
+        <div class="modal-corpo" id="modal-corpo"></div>
+      </div>
+    </div>
+
+    <div id="avisos"></div>
+    <div id="convites"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

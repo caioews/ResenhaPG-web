@@ -1,0 +1,20 @@
+# Subir com um comando só:  docker compose up -d
+#
+# O volume `dados` é o que faz os personagens sobreviverem a um deploy. Sem
+# ele, cada `docker compose up --build` recomeça o servidor do zero.
+services:
+  resenha:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOST: 0.0.0.0
+      DB_DIR: /dados
+    volumes:
+      - dados:/dados
+
+volumes:
+  dados:
