@@ -317,27 +317,37 @@ Assim o jogo atende na porta 80/443 em vez de `:3000`, e o WebSocket do chat
 passa direto.
 
 ```bash
-# como root
 apt install -y nginx
 ```
 
-Crie `/etc/nginx/sites-available/resenha`:
+Agora o Nginx precisa de um arquivo de configuração dizendo para onde mandar
+as visitas. O bloco abaixo **não é um comando**: é o conteúdo de um arquivo, e
+o comando serve justamente para escrevê-lo de uma vez.
 
-```nginx
+Antes de colar, troque `SEU_DOMINIO` na linha `server_name`:
+
+- **com domínio:** `server_name rpg.seudominio.com.br;`
+- **sem domínio** (vai jogar pelo IP): `server_name _;` — o `_` significa
+  "qualquer endereço"
+
+Cole tudo de uma vez, do `cat` até o `EOF` final:
+
+```bash
+cat > /etc/nginx/sites-available/resenha <<'EOF'
 server {
     listen 80;
-    server_name rpg.seudominio.com.br;   # ou só o IP, se não tiver domínio
+    server_name SEU_DOMINIO;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
 
-        # Estas três linhas são o que faz o chat funcionar: sem elas o
+        # Estas duas linhas são o que faz o chat funcionar: sem elas o
         # WebSocket não passa pelo proxy e o jogo fica sem tempo real.
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
 
+        proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -346,15 +356,34 @@ server {
         proxy_read_timeout 120s;
     }
 }
+EOF
 ```
 
-Ative e recarregue:
+As aspas em `<<'EOF'` importam: sem elas o shell tentaria trocar `$host` e
+`$http_upgrade` por variáveis dele, e o arquivo sairia quebrado.
+
+Confira que o arquivo ficou certo:
+
+```bash
+cat /etc/nginx/sites-available/resenha
+```
+
+Ative o site, tire o padrão do Nginx e recarregue:
 
 ```bash
 ln -s /etc/nginx/sites-available/resenha /etc/nginx/sites-enabled/
+```
+
+```bash
 rm -f /etc/nginx/sites-enabled/default
+```
+
+```bash
 nginx -t && systemctl reload nginx
 ```
+
+O `nginx -t` tem de responder `syntax is ok` e `test is successful`. Se
+reclamar, é erro de digitação no arquivo — refaça o `cat > ...` inteiro.
 
 **7. HTTPS de graça (se você tiver um domínio)** — *como `root`*
 
