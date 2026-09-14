@@ -275,6 +275,7 @@ export function resumir(resultado, limite = 6) {
 /** Uma linha de log virando texto. */
 export function descreverGolpe(l) {
   if (l.tipo === 'regenerou') return `💚 ${l.nome} se refez em *${l.cura}*`
+  if (l.tipo === 'curaGrupo') return `🙌 ${l.nome} curou o grupo em *${l.cura}*`
   if (l.tipo === 'preso') return `🪤 ${l.nome} está preso e perdeu a vez`
   if (l.esquivou) return `💨 ${l.alvo} desviou do golpe de ${l.nome}`
 
@@ -324,6 +325,22 @@ export function lutarEmGrupo(jogadores, chefeBase, sorte = Math.random) {
       if (jogador.caido || chefe.hp <= 0) continue
       acumularFuria(jogador)
       regenerar(jogador)
+
+      // Cura do grupo: so existe em luta de grupo. Numa luta sozinho o campo
+      // nao faz nada — quem tem a habilidade ja carrega regeneracao propria.
+      // Levanta quem esta de pe; quem caiu continua caido.
+      if (jogador.hab.curaDoGrupo) {
+        let total = 0
+        let curados = 0
+        for (const aliado of time) {
+          if (aliado.caido || aliado.hp >= aliado.hpMax) continue
+          const antes = aliado.hp
+          aliado.hp = Math.min(aliado.hpMax, aliado.hp + Math.round(aliado.hpMax * jogador.hab.curaDoGrupo))
+          total += aliado.hp - antes
+          curados++
+        }
+        if (curados) log.push({ rodada, tipo: 'curaGrupo', nome: jogador.nome, cura: total, curados })
+      }
 
       const golpes = [{ quem: jogador, marca: null }]
       if (jogador.hab.golpeDuplo && sorte() < jogador.hab.golpeDuplo) golpes.push({ quem: jogador, marca: 'duplo' })

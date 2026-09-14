@@ -1479,14 +1479,206 @@ select:focus {
   }
 }
 
-/* Só aparece no celular: abre o chat. */
-#botao-chat {
+/* Só aparecem quando o chat vira sobreposição: o botão que abre e o que fecha. */
+#botao-chat,
+#fechar-chat {
   display: none;
 }
 @media (max-width: 1180px) {
   #botao-chat {
     display: flex;
   }
+  #fechar-chat {
+    display: block;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 26px;
+    padding: 2px 10px;
+  }
+  /* Fundo escuro atrás do chat aberto: deixa claro que é uma camada por cima. */
+  .coluna.chat.visivel {
+    background: var(--fundo);
+    box-shadow: 0 0 0 100vmax rgba(4, 3, 8, 0.6);
+  }
+}
+
+/* ------------------------------------------------- menu: fileira e som */
+
+.fileira-lugares {
+  display: flex;
+  gap: 6px;
+}
+.fileira-lugares .lugar {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+  min-width: 0;
+}
+.lugar.desligado {
+  color: var(--texto-fraco);
+}
+#botao-chat .selo {
+  margin-left: 4px;
+  color: #1a1206;
+  background: var(--ouro);
+  border-color: var(--ouro);
+}
+
+/* O botão do evento com a chamada aberta: tem que chamar a atenção. */
+.lugar-evento {
+  border-color: var(--ouro);
+  color: var(--ouro-claro);
+  background: linear-gradient(180deg, #2c2213, #16110a);
+  animation: pulsar 1.8s ease-in-out infinite;
+}
+.lugar-evento .rotulo-evento {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes pulsar {
+  50% {
+    box-shadow: 0 0 14px rgba(201, 162, 39, 0.35);
+  }
+}
+
+/* ------------------------------------------------------------- mochila */
+
+.filtros-mochila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.chip {
+  padding: 4px 11px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: #100e16;
+  color: var(--texto-fraco);
+  font-family: var(--titulo);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chip:hover {
+  color: var(--ouro-claro);
+  border-color: var(--ouro-fraco);
+}
+.chip.ativo {
+  color: #1a1206;
+  background: var(--ouro);
+  border-color: var(--ouro);
+}
+.divisao-mochila + .divisao-mochila {
+  margin-top: 16px;
+}
+
+/* -------------------------------------------------------------- chat */
+
+.msg.privado {
+  color: #6a5520;
+}
+.msg.privado .autor {
+  color: #7a5a10;
+}
+
+/* ------------------------------------------------------------ evento */
+
+.fundo-evento {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  background: rgba(4, 3, 8, 0.78);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: aparecer 0.18s ease;
+}
+.evento-popup {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  animation: subir 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
+  box-shadow: 0 0 60px rgba(201, 162, 39, 0.18);
+}
+.evento-corpo {
+  overflow-y: auto;
+  padding: 16px 20px 18px;
+  text-align: center;
+}
+.evento-emoji {
+  font-size: 52px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.evento-corpo h3 {
+  margin: 0 0 10px;
+  font-family: var(--titulo);
+  font-size: 18px;
+  line-height: 1.35;
+  color: var(--ouro-claro);
+}
+.evento-etiquetas {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: var(--texto-fraco);
+  margin-bottom: 12px;
+}
+.etiqueta.dificuldade-normal {
+  color: #9cc4e4;
+}
+.etiqueta.dificuldade-raid {
+  color: #e39a92;
+}
+.evento-descricao {
+  margin: 0 0 10px;
+  font-size: 15.5px;
+  color: var(--pergaminho);
+}
+.evento-regras {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--texto-fraco);
+  font-style: italic;
+}
+.evento-lista {
+  padding: 9px 12px;
+  background: #100e16;
+  border: 1px solid #241f2e;
+  border-radius: 2px;
+  font-size: 13.5px;
+  margin-bottom: 10px;
+}
+.evento-lista .rotulo-secao {
+  display: block;
+  margin-bottom: 3px;
+}
+.evento-fecha {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.evento-dentro {
+  margin: 0 0 12px;
+  color: #b8dfb8;
+}
+.evento-corpo .botoes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.evento-corpo .botoes .btn {
+  min-width: 130px;
 }
 
 /* O atributo `hidden` precisa ganhar das classes que definem display. */

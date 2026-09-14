@@ -33,6 +33,7 @@ import {
 } from './nucleo.js'
 import {
   definirCena,
+  esperarNarracao,
   forte,
   limparNarrativa,
   linha,
@@ -58,6 +59,15 @@ import {
   narrarDuelo,
   narrarRaidCompleta,
 } from './paineis.js'
+import {
+  buscarEvento,
+  configurarEventos,
+  criarIndicador,
+  eventoNaTela,
+  fecharPopup,
+  ouvirEventos,
+} from './eventos.js'
+import { alternarSom, destravarSom, somLigado, tocar } from './som.js'
 
 // ------------------------------------------------------------- telas
 
@@ -335,10 +345,13 @@ async function entrarNoJogo(id, { novo = false } = {}) {
   conectarSocket()
   if (tickDeCooldown) clearInterval(tickDeCooldown)
   tickDeCooldown = setInterval(atualizarRelogios, 1000)
+  buscarEvento()
 }
 
 async function sairDoPersonagem() {
   if (tickDeCooldown) clearInterval(tickDeCooldown)
+  fecharPopup()
+  fecharChat()
   estado.socket?.disconnect()
   estado.socket = null
   await irParaPersonagens()
@@ -534,8 +547,13 @@ function desenharAcoes() {
 /** Teclas 1..9 disparam a ação da mesma posição, como no menu de texto. */
 function prepararTeclado() {
   window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      // Fecha o que está mais por cima: o pop-up de evento, o painel, o chat.
+      if (eventoNaTela()) return fecharPopup()
+      if (modalAberto()) return fecharModal()
+      if (chatAberto()) return fecharChat()
+    }
     if (ev.target.matches('input, textarea')) return
-    if (ev.key === 'Escape' && modalAberto()) return fecharModal()
     if (!/^[1-9]$/.test(ev.key)) return
     if (modalAberto() || narrando()) return
 
@@ -650,7 +668,28 @@ function montarMenuDeLugares() {
       selo ? el('span', { class: 'selo' }, selo) : null,
     )
 
+  const botaoDeSom = el(
+    'button',
+    {
+      class: 'lugar',
+      type: 'button',
+      title: 'Liga e desliga os alertas sonoros',
+      onClick: () => {
+        alternarSom()
+        desenharBotaoDeSom()
+      },
+    },
+    el('span', { class: 'icone' }),
+    el('span', {}, 'Som'),
+  )
+  const desenharBotaoDeSom = () => {
+    botaoDeSom.querySelector('.icone').textContent = somLigado() ? '🔊' : '🔇'
+    botaoDeSom.classList.toggle('desligado', !somLigado())
+  }
+  desenharBotaoDeSom()
+
   menu.append(
+    criarIndicador(),
     lugar('📜', 'Status do personagem', abrirFicha),
     lugar('🎒', 'Mochila', abrirMochila),
     lugar('💰', 'Loja', () => abrirLoja()),
@@ -667,13 +706,15 @@ function montarMenuDeLugares() {
     ),
     el(
       'div',
-      { class: 'dupla-lugares', style: 'margin-top:4px' },
+      { class: 'fileira-lugares', style: 'margin-top:4px' },
       el(
         'button',
-        { class: 'lugar', id: 'botao-chat', type: 'button', onClick: alternarChat },
+        { class: 'lugar', id: 'botao-chat', type: 'button', onClick: abrirChat },
         el('span', { class: 'icone' }, '💬'),
         el('span', {}, 'Chat'),
+        el('span', { class: 'selo', id: 'selo-chat', hidden: true }, ''),
       ),
+      botaoDeSom,
       el(
         'button',
         { class: 'lugar', type: 'button', onClick: sairDoPersonagem },
@@ -684,7 +725,38 @@ function montarMenuDeLugares() {
   )
 }
 
-const alternarChat = () => $('#coluna-chat').classList.toggle('visivel')
+// ------------------------------------------------ chat por cima (celular)
+
+/**
+ * Em tela estreita o chat não cabe ao lado do jogo: ele abre por cima, e o
+ * botão que o abriu fica escondido embaixo. Por isso o chat tem o próprio
+ * botão de fechar (e o Esc) — e o botão do menu conta as mensagens que
+ * chegaram enquanto ele estava fechado.
+ */
+let naoLidas = 0
+
+/** O chat está visível? Na tela larga ele sempre está, na estreita só aberto. */
+const chatVisivel = () => getComputedStyle($('#coluna-chat')).display !== 'none'
+const chatAberto = () => $('#coluna-chat').classList.contains('visivel')
+
+function marcarNaoLidas(n) {
+  naoLidas = n
+  const selo = $('#selo-chat')
+  if (!selo) return
+  selo.hidden = naoLidas === 0
+  selo.textContent = naoLidas > 99 ? '99+' : String(naoLidas)
+}
+
+function abrirChat() {
+  $('#coluna-chat').classList.add('visivel')
+  marcarNaoLidas(0)
+  const caixa = $('#chat-corpo')
+  caixa.scrollTop = caixa.scrollHeight
+}
+
+function fecharChat() {
+  $('#coluna-chat').classList.remove('visivel')
+}
 
 // ---------------------------------------------------------- relógios
 
@@ -807,6 +879,7 @@ function conectarSocket() {
     const perto = caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 80
     caixa.append(linhaDeChat(m))
     if (perto) caixa.scrollTop = caixa.scrollHeight
+    if (!chatVisivel() && m.autor !== estado.p?.nome) marcarNaoLidas(naoLidas + 1)
   })
 
   socket.on('jogadores:online', (lista) => {
@@ -826,36 +899,67 @@ function conectarSocket() {
   })
 
   socket.on('pvp:desafio', ({ desafio }) => {
+    tocar('pvp')
     mostrarConvite(desafio)
     recarregarPainel('pvp')
   })
 
   socket.on('pvp:recusado', ({ desafio }) => {
+    tocar('aviso')
     avisar(`${desafio.desafiado.nome} recusou o duelo.`)
     recarregarPainel('pvp')
   })
 
   socket.on('pvp:resultado', async ({ duelo }) => {
+    tocar('pvp')
     await atualizarFicha()
-    if (!narrando()) await narrarDuelo(duelo)
+    await esperarNarracao()
+    await narrarDuelo(duelo)
   })
 
   socket.on('raid:resultado', async ({ raid }) => {
-    await atualizarFicha()
     // Quem apertou "começar" já está vendo pela resposta da própria chamada.
-    if (!narrando()) await narrarRaidCompleta(raid)
+    if (estado.iniciandoRaid) return
+    tocar('raid')
+    await atualizarFicha()
+    await esperarNarracao()
+    await narrarRaidCompleta(raid)
   })
 
   // Alguém abriu, entrou ou saiu de uma sala: se o lobby está na tela,
   // ele se refaz. Sem isso a pessoa ficaria olhando uma lista velha.
   socket.on('raid:atualizou', () => recarregarPainel('raid'))
 
+  socket.on('raid:aberta', ({ sala }) => {
+    if (sala.criadorId === estado.p?.id) return
+    tocar('raid')
+    mostrarCartao({
+      titulo: 'Raid aberta',
+      texto: `${sala.criadorNome} abriu uma raid contra ${sala.chefe.emoji} ${sala.chefe.nome}.`,
+      // O cartão sai antes da sala: é um chamado, não um lembrete de dez minutos.
+      expiraEm: Math.min(sala.expiraEm, Date.now() + 60_000),
+      botoes: [
+        { rotulo: 'Ver a raid', classe: 'btn pequeno primario', acao: abrirRaid },
+        { rotulo: 'Fechar', acao: () => {} },
+      ],
+    })
+  })
+
+  socket.on('raid:entrou', ({ nome, sala }) => {
+    tocar('aviso')
+    avisar(`${nome} entrou na sua raid (${sala.participantes.length}/${sala.maxJogadores}).`)
+  })
+
+  ouvirEventos(socket)
+
   socket.on('mercado:oferta', ({ oferta }) => {
+    tocar('mercado')
     mostrarOferta(oferta)
     recarregarPainel('mercado')
   })
 
   socket.on('mercado:resposta', async ({ oferta, aceitou, cancelada, quem, negocio }) => {
+    tocar(aceitou ? 'mercado' : 'aviso')
     if (aceitou) {
       avisarBom(
         negocio?.preco
@@ -870,6 +974,7 @@ function conectarSocket() {
   })
 
   socket.on('mercado:pagamento', async ({ de, quanto }) => {
+    tocar('mercado')
     avisarBom(`${de} te enviou ${num(quanto)} de gold.`)
     await atualizarFicha()
   })
@@ -881,9 +986,9 @@ function linhaDeChat(m) {
   const sistema = !m.autor
   return el(
     'div',
-    { class: `msg${sistema ? ' sistema' : ''}` },
+    { class: `msg${sistema ? ' sistema' : ''}${m.privado ? ' privado' : ''}` },
     el('span', { class: 'hora' }, hora(m.criado_em)),
-    el('span', { class: 'autor' }, sistema ? '[Sistema] ' : `${m.autor}: `),
+    el('span', { class: 'autor' }, m.privado ? '[Só você vê] ' : sistema ? '[Sistema] ' : `${m.autor}: `),
     m.texto,
   )
 }
@@ -998,10 +1103,17 @@ async function iniciar() {
   prepararEntrada()
   prepararChat()
   prepararTeclado()
+  destravarSom()
+  configurarEventos({ mostrarEncontro, atualizarFicha })
 
   $('#fechar-modal').addEventListener('click', fecharModal)
   $('#fundo-modal').addEventListener('click', (ev) => {
     if (ev.target === $('#fundo-modal')) fecharModal()
+  })
+  $('#fechar-chat').addEventListener('click', fecharChat)
+  $('#fechar-evento').addEventListener('click', fecharPopup)
+  $('#fundo-evento').addEventListener('click', (ev) => {
+    if (ev.target === $('#fundo-evento')) fecharPopup()
   })
   $('#botao-sair').addEventListener('click', async () => {
     await mandar('/api/auth/sair')

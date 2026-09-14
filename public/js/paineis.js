@@ -171,6 +171,7 @@ const NOMES_DE_EFEITO = {
   critico: 'Crítico',
   danoExtra: 'Dano extra',
   regeneracao: 'Regeneração',
+  curaDoGrupo: 'Cura do grupo (raid e evento)',
   contraAtaque: 'Contra-ataque',
   iniciativa: 'Iniciativa',
   saqueGold: 'Gold extra',
@@ -200,11 +201,24 @@ function formatarEfeito(v) {
 
 // ================================================== M O C H I L A
 
-export async function abrirMochila() {
+/**
+ * As divisões da mochila, na ordem em que aparecem. `pega` decide se um item
+ * cai na divisão; o que não cair em nenhuma vai para "Outros".
+ */
+const DIVISOES_DA_MOCHILA = [
+  { id: 'usaveis', nome: 'Utilizáveis', pega: (i) => i.consumivel },
+  { id: 'arma', nome: 'Armas', pega: (i) => i.slot === 'arma' },
+  { id: 'secundario', nome: 'Secundárias', pega: (i) => i.slot === 'secundario' },
+  { id: 'elmo', nome: 'Elmos', pega: (i) => i.slot === 'elmo' },
+  { id: 'armadura', nome: 'Armaduras', pega: (i) => i.slot === 'armadura' },
+  { id: 'anel', nome: 'Anéis', pega: (i) => i.slot === 'anel' },
+]
+
+export async function abrirMochila(filtro = 'tudo') {
   const p = estado.p
   const equipados = new Set(Object.values(p.equipado).filter(Boolean).map((i) => i.uid))
 
-  const linhas = p.inventario.map((item) => {
+  const linha = (item) => {
     const acoes = []
 
     if (item.consumivel) {
@@ -218,7 +232,7 @@ export async function abrirMochila() {
               comBotao(ev.currentTarget, async () => {
                 const r = await mandar('/api/mochila/usar', { uid: item.uid })
                 avisarBom(r.texto)
-                abrirMochila()
+                abrirMochila(filtro)
               }),
           },
           'Usar',
@@ -234,7 +248,7 @@ export async function abrirMochila() {
             onClick: (ev) =>
               comBotao(ev.currentTarget, async () => {
                 await mandar('/api/mochila/desequipar', { slot: item.slot })
-                abrirMochila()
+                abrirMochila(filtro)
               }),
           },
           'Tirar',
@@ -253,7 +267,7 @@ export async function abrirMochila() {
               comBotao(ev.currentTarget, async () => {
                 const r = await mandar('/api/mochila/equipar', { uid: item.uid })
                 avisarBom(r.texto)
-                abrirMochila()
+                abrirMochila(filtro)
               }),
           },
           'Equipar',
@@ -275,7 +289,7 @@ export async function abrirMochila() {
               async () => {
                 await mandar('/api/mochila/soltar', { uid: item.uid, confirmar: true })
                 avisar('Item deixado para trás.')
-                abrirMochila()
+                abrirMochila(filtro)
               },
               'Soltar',
             ),
@@ -288,7 +302,42 @@ export async function abrirMochila() {
       acoes,
       detalhes: equipados.has(item.uid) ? [el('span', { class: 'reforco' }, 'equipado')] : [],
     })
-  })
+  }
+
+  // Em cada divisão o que está em uso vem primeiro; o resto na ordem em que
+  // entrou na mochila. O servidor já manda assim, mas a tela não depende disso.
+  const emUsoPrimeiro = (lista) =>
+    lista
+      .map((item, i) => ({ item, i }))
+      .sort((a, b) => Number(equipados.has(b.item.uid)) - Number(equipados.has(a.item.uid)) || a.i - b.i)
+      .map(({ item }) => item)
+
+  const sobra = p.inventario.filter((i) => !DIVISOES_DA_MOCHILA.some((d) => d.pega(i)))
+  const divisoes = [
+    ...DIVISOES_DA_MOCHILA.map((d) => ({ ...d, itens: emUsoPrimeiro(p.inventario.filter(d.pega)) })),
+    { id: 'outros', nome: 'Outros', itens: sobra },
+  ].filter((d) => d.itens.length)
+
+  if (filtro !== 'tudo' && !divisoes.some((d) => d.id === filtro)) filtro = 'tudo'
+
+  const chips = el(
+    'div',
+    { class: 'filtros-mochila' },
+    el(
+      'button',
+      { class: `chip${filtro === 'tudo' ? ' ativo' : ''}`, type: 'button', onClick: () => abrirMochila('tudo') },
+      `Tudo · ${p.inventario.length}`,
+    ),
+    ...divisoes.map((d) =>
+      el(
+        'button',
+        { class: `chip${filtro === d.id ? ' ativo' : ''}`, type: 'button', onClick: () => abrirMochila(d.id) },
+        `${d.nome} · ${d.itens.length}`,
+      ),
+    ),
+  )
+
+  const visiveis = filtro === 'tudo' ? divisoes : divisoes.filter((d) => d.id === filtro)
 
   const corpo = el(
     'div',
@@ -299,10 +348,20 @@ export async function abrirMochila() {
       el('span', {}, `${p.mochila.usado} de ${p.mochila.total} espaços`),
       el('span', { style: 'color:var(--ouro-claro)' }, `💰 ${num(p.gold)}`),
     ),
-    linhas.length ? el('div', { class: 'lista' }, ...linhas) : vazio('Mochila vazia. Cace alguma coisa.'),
+    p.inventario.length ? chips : null,
+    p.inventario.length
+      ? visiveis.map((d) =>
+          el(
+            'section',
+            { class: 'divisao-mochila' },
+            el('div', { class: 'rotulo-secao' }, `${d.nome} · ${d.itens.length}`),
+            el('div', { class: 'lista' }, ...d.itens.map(linha)),
+          ),
+        )
+      : vazio('Mochila vazia. Cace alguma coisa.'),
   )
 
-  abrirModal('Mochila', corpo, { nome: 'mochila', aoRecarregar: abrirMochila })
+  abrirModal('Mochila', corpo, { nome: 'mochila', aoRecarregar: () => abrirMochila(filtro) })
 }
 
 // ====================================================== L O J A
@@ -1084,8 +1143,15 @@ export async function abrirRaid() {
                 onClick: (ev) =>
                   comBotao(ev.currentTarget, async () => {
                     fecharModal()
-                    const r = await mandar('/api/raid/iniciar')
-                    await narrarRaidCompleta(r.raid)
+                    // O resultado chega duas vezes nesta aba: pelo socket (que
+                    // avisa todo o grupo) e pela resposta. Narra só a resposta.
+                    estado.iniciandoRaid = true
+                    try {
+                      const r = await mandar('/api/raid/iniciar')
+                      await narrarRaidCompleta(r.raid)
+                    } finally {
+                      estado.iniciandoRaid = false
+                    }
                   }),
               },
               'Começar a raid',
@@ -1160,12 +1226,17 @@ export async function abrirRaid() {
   abrirModal('Raides', corpo, { nome: 'raid', aoRecarregar: abrirRaid })
 }
 
-export async function narrarRaidCompleta(raid) {
+/**
+ * Narra uma luta de grupo inteira. Serve à raid e aos eventos de grupo, que
+ * chegam no mesmo formato; o evento só troca o nome da cena e a abertura.
+ */
+export async function narrarRaidCompleta(raid, { cena = 'Raid', abertura = null } = {}) {
   limparNarrativa()
-  definirCena('Raid')
+  definirCena(cena)
   tituloDeCena(`${raid.chefe.emoji} ${raid.chefe.nome}`)
+  if (abertura) rico(abertura)
   sussurro(
-    `${raid.participantes.length} aventureiros · nível médio ${raid.nivelMedio} · o chefe entra com ${num(raid.chefe.hpMax)} de vida e acerta o grupo inteiro a cada ${raid.chefe.areaCada} rodadas.`,
+    `${raid.participantes.length} ${raid.participantes.length > 1 ? 'aventureiros' : 'aventureiro'} · nível médio ${raid.nivelMedio} · o inimigo entra com ${num(raid.chefe.hpMax)} de vida e acerta o grupo inteiro a cada ${raid.chefe.areaCada} rodadas.`,
   )
 
   await narrarRaid({
@@ -1177,7 +1248,11 @@ export async function narrarRaidCompleta(raid) {
   if (!raid.venceu) {
     tituloDeCena('Derrota')
     rico(forte('O grupo foi derrotado.', 'perigo'), ` ${raid.chefe.nome} terminou com ${raid.hpRestanteDoChefe}% de vida.`)
-    sussurro('Todos ficaram feridos. Sem recompensa — voltem mais fortes.')
+    sussurro(
+      raid.feridos === false
+        ? 'Sem recompensa — voltem mais fortes.'
+        : 'Todos ficaram feridos. Sem recompensa — voltem mais fortes.',
+    )
     return
   }
 

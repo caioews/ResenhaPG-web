@@ -99,6 +99,44 @@ export const classesBase = () =>
     .filter((id) => CLASSES[id].tier === 1)
     .map(verClasse)
 
+/**
+ * Um encontro resolvido, no formato que a interface desenha.
+ *
+ * `hpInicial` é a vida com que o jogador ENTROU: caçar em sequência parte de
+ * onde a luta anterior terminou, e a barra da animação precisa começar daí.
+ */
+export const verEncontro = (monstro, saida, hpInicial) => ({
+  hpInicial,
+  monstro: {
+    nome: monstro.nome,
+    emoji: monstro.emoji,
+    nivel: monstro.nivel,
+    elite: monstro.elite,
+    boss: monstro.boss,
+    eco: Boolean(monstro.eco),
+    hpMax: monstro.hp,
+    atq: monstro.atq,
+    def: monstro.def,
+    agi: monstro.agi,
+  },
+  venceu: saida.venceu,
+  rodadas: saida.luta.rodadas,
+  porDecisao: saida.luta.porDecisao,
+  log: saida.luta.log,
+  hpFinal: saida.luta.hpA,
+  hpMax: saida.luta.hpMaxA,
+  xp: saida.xp,
+  gold: saida.gold,
+  goldDeSaque: saida.goldDeSaque,
+  goldPerdido: saida.goldPerdido,
+  subiuPara: saida.subiuPara,
+  bossVencido: saida.bossVencido,
+  drop: saida.drop ? verItem(saida.drop) : null,
+  mochilaCheia: saida.mochilaCheia,
+  titanita: saida.titanita,
+  feitico: saida.feitico,
+})
+
 /** A ficha inteira. É o payload de GET /api/estado. */
 export function verPersonagem(player) {
   const ficha = player.rpg
@@ -137,7 +175,13 @@ export function verPersonagem(player) {
     atributos: total,
 
     equipado: Object.fromEntries(SLOTS.map((slot) => [slot, verItem(itemEquipado(player, slot))])),
-    inventario: ficha.inventario.map(verItem),
+    // O que está em uso vem primeiro, em toda lista que parte da mochila
+    // (mochila, venda na loja). O resto mantém a ordem em que entrou. A
+    // `posicao` continua sendo a do array guardado, não a desta ordem.
+    inventario: ficha.inventario
+      .map((item, i) => ({ item, i, emUso: Object.values(ficha.equipado).includes(item.uid) }))
+      .sort((a, b) => Number(b.emUso) - Number(a.emUso) || a.i - b.i)
+      .map(({ item, i }) => verItem(item, i)),
     mochila: { usado: ficha.inventario.length, total: config.rpg.tamanhoMochila },
 
     titanitas: Object.fromEntries(

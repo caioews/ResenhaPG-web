@@ -75,6 +75,19 @@ export function anunciar(texto) {
 
 export const historico = () => historicoDoChat(CANAL, config.web.chatHistorico)
 
+/**
+ * Comandos de chat (mensagem começando com "/"). Quem trata é registrado de
+ * fora — index.js liga os de administrador — para este arquivo não precisar
+ * conhecer os eventos, que por sua vez já dependem daqui.
+ *
+ * O tratador recebe { usuario, player, texto } e devolve a resposta (só quem
+ * mandou vê) ou null, e aí a mensagem segue para o chat como qualquer outra.
+ */
+let tratarComando = null
+export const aoComando = (fn) => {
+  tratarComando = fn
+}
+
 export function iniciarRealtime(servidorHttp) {
   io = new Server(servidorHttp, { cors: { origin: false } })
 
@@ -125,6 +138,14 @@ export function iniciarRealtime(servidorHttp) {
       const agora = Date.now()
       if (agora - ultimaMensagem < config.web.chatCooldownSegundos * 1000) return
       ultimaMensagem = agora
+
+      if (limpo.startsWith('/') && tratarComando) {
+        const resposta = tratarComando({ usuario, player, texto: limpo })
+        if (resposta) {
+          socket.emit('chat:mensagem', { canal: CANAL, autor: '', texto: resposta, criado_em: agora, privado: true })
+          return
+        }
+      }
 
       publicar({ canal: CANAL, autor: player.name, texto: limpo, criado_em: agora })
     })

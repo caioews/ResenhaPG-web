@@ -132,6 +132,17 @@ function descrever(entrada, i) {
 
 /** Uma entrada de log de raid (o formato de grupo é diferente). */
 function descreverGrupo(entrada, i) {
+  if (entrada.tipo === 'curaGrupo') {
+    return el(
+      'p',
+      {},
+      forte(entrada.nome),
+      ' ergue as mãos e a luz cai sobre o grupo: ',
+      forte(`+${num(entrada.cura)}`, 'cura'),
+      ` de vida entre ${entrada.curados} ${entrada.curados > 1 ? 'aliados' : 'aliado'}.`,
+    )
+  }
+
   if (entrada.tipo === 'preso') {
     return el('p', { class: 'sussurro' }, `Rodada ${entrada.rodada}: ${entrada.nome} perdeu a vez.`)
   }
@@ -246,6 +257,7 @@ export async function narrarRaid({ nomeDoChefe, hpMaxDoChefe, log }) {
   )
 
   pulando = false
+  emCurso = true
   const pular = () => {
     pulando = true
   }
@@ -265,9 +277,15 @@ export async function narrarRaid({ nomeDoChefe, hpMaxDoChefe, log }) {
       await dormir(pulando ? 0 : log.length > 60 ? 20 : 90)
     }
   } finally {
+    emCurso = false
     cena().removeEventListener('click', pular)
     window.removeEventListener('keydown', pular)
   }
 }
 
 export const narrando = () => emCurso
+
+/** Espera a narração em curso terminar — para um aviso não atropelar a luta. */
+export async function esperarNarracao() {
+  while (emCurso) await dormir(250)
+}

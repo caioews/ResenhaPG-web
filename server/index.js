@@ -5,6 +5,7 @@
  * Não precisa de nginx, banco externo nem fila — dá para subir numa VPS de
  * 1 GB e deixar rodando.
  */
+import './ambiente.js'
 import http from 'node:http'
 import path from 'node:path'
 import express from 'express'
@@ -17,7 +18,10 @@ import { mochila } from './rotas/mochila.js'
 import { cidade } from './rotas/cidade.js'
 import { social } from './rotas/social.js'
 import { mercadoRotas } from './rotas/mercado.js'
-import { iniciarRealtime } from './realtime.js'
+import { eventosRotas } from './rotas/eventos.js'
+import { aoComando, iniciarRealtime } from './realtime.js'
+import { iniciarEventos } from './eventos.js'
+import { comandoDeAdmin } from './admin.js'
 
 const app = express()
 
@@ -34,6 +38,7 @@ app.use('/api/mochila', mochila)
 app.use('/api', cidade)
 app.use('/api', social)
 app.use('/api', mercadoRotas)
+app.use('/api', eventosRotas)
 
 app.use(
   express.static(path.join(raizDoProjeto, 'public'), {
@@ -57,6 +62,8 @@ app.use((err, _req, res, _next) => {
 
 const servidor = http.createServer(app)
 iniciarRealtime(servidor)
+aoComando(comandoDeAdmin)
+iniciarEventos()
 
 const porta = Number(process.env.PORT) || 3000
 const host = process.env.HOST || '0.0.0.0'

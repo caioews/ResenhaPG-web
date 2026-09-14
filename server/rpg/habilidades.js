@@ -29,6 +29,8 @@
  *   iniciativa        comeca a luta independente da agilidade
  *   precisao          quanto corta da esquiva do alvo
  *   critico           chance de critico somada a que a agilidade ja da
+ *   curaDoGrupo       fracao do HP maximo de cada aliado de pe curada a cada
+ *                     turno proprio — so em luta de grupo (raid, evento)
  *
  * Campos lidos fora do combate (encontro/abismo):
  *   saqueGold         gold extra sobre o premio
@@ -442,11 +444,14 @@ export const HABILIDADES = {
     resumo: 'Ignora 22% da defesa e cada acerto desfaz mais 4%, até −32%.',
     efeitos: { perfuracao: 0.22, maldicao: { porAcerto: 0.04, teto: 0.32 } },
   },
-  maoDivina: {
-    nome: 'Mão Viva',
+  // Os dois primeiros efeitos sao os da antiga Mao Viva, entao sozinho (caca,
+  // Abismo, PvP) nada muda. A cura do grupo so age em raid e evento em grupo.
+  milagre: {
+    nome: 'Milagre',
     emoji: '🙌',
-    resumo: 'Regenera 6% da vida máxima por turno e leva 9% menos dano.',
-    efeitos: { regeneracao: 0.06, reducaoDeDano: 0.09 },
+    resumo:
+      'Regenera 6% da vida máxima por turno e leva 9% menos dano. Em raid e evento em grupo, cura todos que estão de pé em 5% da vida deles, a cada turno seu.',
+    efeitos: { regeneracao: 0.06, reducaoDeDano: 0.09, curaDoGrupo: 0.05 },
   },
   julgamento: {
     nome: 'Julgamento',

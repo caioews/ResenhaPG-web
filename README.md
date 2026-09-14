@@ -51,6 +51,8 @@ são os mesmos.
 | --- | --- | --- |
 | **Fogueira** | a vida regenerava no ritmo normal e **saltava** para o máximo quando os minutos acabavam | a vida sobe **em rampa**, do que havia quando o fogo foi aceso até o máximo no instante do fim. Levantar antes da hora congela o que já subiu, em vez de perder |
 | **Presente de item** | `/daritem` entregava na hora | vira uma oferta de preço 0, que ainda precisa ser aceita — assim ninguém recebe item com a mochila cheia |
+| **Clérigo no fim da árvore** | Ministro da Luz → Mão Viva do Divino (habilidade Mão Viva) | **A Última Luz** → **O Homem Mais Próximo de Deus** (habilidade **Milagre**). Os ids internos continuam os antigos, então quem já evoluiu não perde nada |
+| **Milagre** | — | mantém a regeneração de 6% e a redução de 9% da Mão Viva (sozinho nada muda) e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
 
 A rampa da fogueira continua sem temporizador nenhum: o que existe é o par
 (vida, instante) gravado no acender e o horário de término, e a conta é feita
@@ -70,6 +72,16 @@ mesma conta a cada segundo só para a barra subir na tela.
   para quem está on-line (`server/salas.js`, `server/mercado.js`).
 - **Mercado**: oferecer uma peça a outro jogador por um preço, dar de
   presente (preço 0) e transferir gold.
+- **Eventos aleatórios** (`server/eventos.js`): de tempos em tempos o servidor
+  chama todo mundo on-line — horda de goblins, bandidos, alcateia, mortos-vivos,
+  um dragão, uma fenda, festa na taverna, estrela cadente. Aparece um pop-up e
+  cada um decide se vai. Os de grupo lutam como raid. Ver
+  [Eventos](#eventos-aleatórios).
+- **Alertas sonoros** para o que chega sem pedir: evento, raid aberta, desafio
+  de duelo, oferta e pagamento no mercado. Sintetizados no navegador, sem
+  arquivo de áudio; o botão **Som** no menu liga e desliga.
+- **Mochila em divisões** — utilizáveis, armas, secundárias, elmos, armaduras e
+  anéis, com filtro — e o que está equipado sempre no topo.
 - **Interface** sem framework nem build: HTML, CSS e módulos ES nativos
   (`public/`).
 
@@ -125,13 +137,17 @@ ResenhaPG web/
 │   ├── visao.js        A ficha como o navegador a enxerga
 │   ├── salas.js        Salas de raid e desafios de PvP (só em memória)
 │   ├── mercado.js      Ofertas de item entre jogadores (só em memória)
+│   ├── grupo.js        A luta de grupo que a raid e os eventos dividem
+│   ├── eventos.js      Catálogo, agenda e resolução dos eventos aleatórios
+│   ├── admin.js        Comandos de administrador no chat (/evento)
+│   ├── ambiente.js     Lê o .env da raiz, se houver
 │   ├── realtime.js     Chat, quem está on-line, avisos
-│   ├── rotas/          contas · combate · mochila · cidade · social · mercado
+│   ├── rotas/          contas · combate · mochila · cidade · social · mercado · eventos
 │   └── rpg/            O motor, portado do bot
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
-│   └── js/             nucleo · narrativa · paineis · app
+│   └── js/             nucleo · narrativa · paineis · eventos · som · app
 ├── scripts/            conformidade.js · simulador.js
 └── dados/              O banco (criado sozinho; não versione)
 ```
@@ -536,6 +552,22 @@ O `docker-compose.yml` já cria o volume `dados`. Para ver os logs:
 | `NODE_ENV` | — | Em `production`, o cookie de sessão exige HTTPS |
 | `DB_DIR` | `./dados` | Pasta do banco |
 | `DB_PATH` | `$DB_DIR/resenha.db` | Caminho completo do arquivo, se quiser mandar direto |
+| `ADMINS` | — | Usuários (da conta) que podem usar `/evento` no chat, separados por vírgula |
+
+O servidor lê sozinho um arquivo `.env` na raiz do projeto, se existir. É o
+lugar certo para o que é só daquele servidor: o `.env` não vai para o git, então
+o `git pull` da atualização nunca briga com ele. Variável que já vem do
+ambiente (PM2, Docker) ganha do arquivo.
+
+Para se tornar administrador no servidor (como o usuário `resenha`):
+
+```bash
+echo "ADMINS=seu_usuario" >> ~/jogo/.env
+```
+
+```bash
+pm2 restart resenha
+```
 
 ---
 
@@ -592,6 +624,10 @@ Alguns que você talvez queira mexer:
 | `rpg.evolucao.custoGold` | `5k / 80k / 400k` | Preço de cada degrau do Rito |
 | `web.maxPersonagens` | `10` | Personagens por conta |
 | `web.chatCooldownSegundos` | `1` | Espera entre duas mensagens no chat |
+| `eventos.ligado` | `true` | Liga e desliga os eventos aleatórios |
+| `eventos.horaInicio` / `horaFim` | `9` / `24` | Janela do dia em que eventos acontecem (fuso `eventos.fusoHorario`) |
+| `eventos.intervaloMinimo` / `Maximo` | `60` / `180` | Minutos sorteados entre um evento e o próximo |
+| `eventos.inscricaoMinutos` | `3` | Quanto tempo a chamada fica aberta |
 
 > `fogueiraMinutos` e `feridoMinutos` estão em 1 e 2 (no bot eram 2 e 5) —
 > foram baixados para testar sem esperar. Suba de volta quando o servidor
@@ -638,3 +674,57 @@ Gold avulso vai direto, sem aceite.
 **Estados que bloqueiam.** Ferido (5 min, ou uma bandagem), descansando na
 fogueira (2 min até a vida cheia), em expedição (não luta), travado por chefe
 (não sobe de nível). A vida regenera sozinha, 5% do máximo por minuto.
+
+---
+
+## Eventos aleatórios
+
+De tempos em tempos (entre 1 e 3 horas, das 9h à meia-noite no horário de
+Brasília) o servidor abre a chamada de um evento para todo mundo on-line.
+Aparece um pop-up com o que aconteceu e dois botões: **Participar** e **Agora
+não**. Quem fechar o pop-up ainda encontra o evento no topo do menu enquanto
+a chamada estiver aberta (3 minutos). Quando ela fecha, o evento se resolve
+sozinho para quem está na lista, e o resultado aparece na tela da aventura.
+
+| Evento | Tipo | Dificuldade |
+| --- | --- | --- |
+| 👺 Horda de Goblins | luta em grupo | fácil — dá para vencer sozinho |
+| 🏴‍☠️ Bando do Corvo Rubro | luta em grupo | fácil, paga mais gold |
+| 🐺 Alcateia da Lua de Sangue | luta em grupo | média, golpe em área frequente |
+| 🧟 Legião dos Mortos | luta em grupo | difícil — pede 3 pessoas |
+| 🐉 Dragão Errante | luta em grupo | **raid** — pede 4 ou 5, e é o que paga mais |
+| 🕳️ Fenda Sombria | cada um sozinho contra uma elite | média, vitória paga o dobro |
+| 🍺 Festa na Taverna | sem luta | cura a vida e o ferimento, dá gold |
+| ☄️ Estrela Cadente | sem luta | titanita, XP e chance de feitiço |
+
+Regras:
+
+- **Um personagem por conta** em cada evento — senão a conta com dez
+  personagens levaria dez vezes o espólio.
+- Ferido ou em expedição não entra em evento de luta. A condição é conferida
+  de novo quando a chamada fecha.
+- Luta de grupo funciona como a raid: todo mundo entra com a vida cheia, o
+  inimigo ganha vida com o tamanho do grupo, e derrota deixa todos feridos.
+  Não conta no cooldown nem no placar de raids.
+- Com ninguém on-line, o evento espera e tenta de novo mais tarde.
+- Como as salas de raid, nada fica retido: se o servidor reiniciar com a
+  chamada aberta, o evento só some.
+
+A dificuldade de cada inimigo saiu de simulação (time de classes sorteadas,
+equipamento raro); a tabela está no comentário do catálogo em
+[server/eventos.js](server/eventos.js), junto com os textos, pesos e
+recompensas — é lá que se cria um evento novo.
+
+### Chamar um evento na hora
+
+Quem está em `ADMINS` (ver [Variáveis de ambiente](#variáveis-de-ambiente))
+pode digitar no chat do jogo. A resposta aparece só para quem digitou.
+
+| Comando | O que faz |
+| --- | --- |
+| `/evento` | sorteia um evento e abre a chamada |
+| `/evento dragao` | abre um evento específico |
+| `/evento dragao 30` | abre com a chamada de 30 segundos (para testar) |
+| `/evento lista` | mostra os nomes dos eventos |
+| `/evento encerrar` | fecha a chamada aberta e resolve agora |
+| `/evento proximo` | quando sai o próximo evento sorteado |

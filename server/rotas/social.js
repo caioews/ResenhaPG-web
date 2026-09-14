@@ -7,16 +7,15 @@ import { exigirLogin } from '../auth.js'
 import { exigirClasse, exigirPersonagem, responder, rota } from '../contexto.js'
 import * as store from '../store.js'
 import { classe, rotuloClasse } from '../rpg/classes.js'
-import { lutar, lutarEmGrupo } from '../rpg/combate.js'
+import { lutar } from '../rpg/combate.js'
 import { comoLutador } from '../rpg/encontro.js'
-import { atributos, darGold, feridoRestante, ferir, ganharXp, guardarItem, mochilaCheia } from '../rpg/jogador.js'
+import { atributos, darGold, feridoRestante } from '../rpg/jogador.js'
 import { emExpedicao } from '../rpg/expedicao.js'
-import { criarChefeDeRaid, droparMateriais, droparRecompensas, TODOS_OS_CHEFES } from '../rpg/raid.js'
+import { criarChefeDeRaid, TODOS_OS_CHEFES } from '../rpg/raid.js'
 import { chanceEsperada, esperaEntreDuelos, ranking as rankingPvp, registrarResultado } from '../rpg/pvp.js'
-import { FEITICOS } from '../rpg/feiticos.js'
-import { TITANITAS } from '../rpg/ferreiro.js'
 import { verItem, verResumo } from '../visao.js'
 import * as salas from '../salas.js'
+import { nivelMedioDe, resolverLutaDeGrupo } from '../grupo.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from '../realtime.js'
 
 export const social = Router()
@@ -90,6 +89,9 @@ social.post(
 
     const sala = salas.abrirSala(player)
     avisarSala(sala)
+    // Separado de `raid:atualizou` (que dispara a cada entra e sai): este é o
+    // chamado, o que merece som e cartão na tela de todo mundo.
+    emitirParaTodos('raid:aberta', { sala: verSala(sala) })
     anunciar(`${player.name} abriu uma raid contra ${TODOS_OS_CHEFES[sala.chefeId].nome}. Entrem!`)
 
     res.json({ sala: verSala(sala) })
@@ -114,6 +116,9 @@ social.post(
     if (feito.erro) return res.status(409).json({ erro: feito.erro })
 
     avisarSala(sala)
+    for (const id of sala.participantes) {
+      if (id !== player.id) emitirPara(id, 'raid:entrou', { nome: player.name, sala: verSala(sala) })
+    }
     res.json({ sala: verSala(sala) })
   }),
 )
@@ -150,111 +155,28 @@ social.post(
     }
 
     const participantes = sala.participantes.map((id) => store.buscarPersonagem(id)).filter(Boolean)
-    const media = Math.round(participantes.reduce((s, p) => s + p.rpg.nivel, 0) / participantes.length)
-    const chefe = criarChefeDeRaid(sala.chefeId, media, participantes.length)
+    const chefe = criarChefeDeRaid(sala.chefeId, nivelMedioDe(participantes), participantes.length)
     salas.fecharSala(sala.id)
     avisarSala(null)
 
-    // Todo mundo entra inteiro: a raid é um evento marcado, não uma emboscada.
-    const time = participantes.map((p) => {
-      const lutador = comoLutador(p, p.name)
-      lutador.hp = atributos(p).hp
-      return lutador
-    })
-
-    const resultado = lutarEmGrupo(time, chefe)
+    // O cooldown e o placar são da raid; o resto é a luta de grupo comum.
     const agora = Date.now()
     for (const p of participantes) p.rpg.raid.ultimaRaid = agora
 
-    const cabecalho = {
-      chefe: {
-        nome: chefe.nome,
-        emoji: chefe.emoji,
-        nivel: chefe.nivel,
-        hpMax: chefe.hp,
-        duro: chefe.duro,
-        areaCada: chefe.areaCada,
-      },
-      nivelMedio: media,
-      participantes: participantes.map(verResumo),
-      rodadas: resultado.rodadas,
-      log: resultado.log,
-      venceu: resultado.venceu,
+    const raid = resolverLutaDeGrupo(participantes, chefe)
+    for (const p of participantes) {
+      if (raid.venceu) p.rpg.raid.vitorias++
+      else p.rpg.raid.derrotas++
     }
-
-    if (!resultado.venceu) {
-      for (const p of participantes) {
-        p.rpg.raid.derrotas++
-        ferir(p)
-      }
-      store.flush()
-
-      const saida = {
-        raid: {
-          ...cabecalho,
-          hpRestanteDoChefe: Math.round((resultado.chefe.hp / resultado.chefe.hpMax) * 100),
-          porJogador: [],
-          itens: [],
-          materiais: [],
-        },
-      }
-
-      for (const p of participantes) emitirPara(p.id, 'raid:resultado', saida)
-      anunciar(`${chefe.nome} derrotou o grupo de ${participantes.length} aventureiros.`)
-      return responder(res, player, saida)
-    }
-
-    // Vitória: XP e gold para todos, e quem caiu leva 60%.
-    const { xpBase, xpPorNivel, goldBase, goldPorNivel } = config.rpg.raid
-    const xpCheio = Math.round(xpBase + media * xpPorNivel)
-    const goldCheio = Math.round(goldBase + media * goldPorNivel)
-
-    const porJogador = participantes.map((p, i) => {
-      const estado = resultado.time[i]
-      const caiu = estado?.caido ?? false
-      const fracao = caiu ? 0.6 : 1
-      const xp = Math.round(xpCheio * fracao)
-      const gold = Math.round(goldCheio * fracao)
-
-      darGold(p, gold)
-      const subiu = ganharXp(p, xp)
-      p.rpg.raid.vitorias++
-
-      return {
-        personagem: verResumo(p),
-        caiu,
-        xp,
-        gold,
-        subiu,
-        hp: estado?.hp ?? 0,
-        hpMax: estado?.hpMax ?? 1,
-      }
-    })
-
-    // `droparMateriais` e `droparRecompensas` esperam { player } em cada
-    // participante — é assim que o motor do bot os recebe.
-    const embrulho = participantes.map((p) => ({ id: p.id, player: p }))
-    const materiais = droparMateriais(embrulho, media).map((m) => ({
-      personagem: verResumo(m.dono.player),
-      titanita: m.titanita
-        ? { ...m.titanita, nome: TITANITAS[m.titanita.grau].nome, emoji: TITANITAS[m.titanita.grau].emoji }
-        : null,
-      feitico: m.feitico
-        ? { id: m.feitico, nome: FEITICOS[m.feitico].nome, emoji: FEITICOS[m.feitico].emoji }
-        : null,
-    }))
-
-    const itens = droparRecompensas(embrulho).map(({ dono, item }) => {
-      const perdido = mochilaCheia(dono.player)
-      if (!perdido) guardarItem(dono.player, item)
-      return { personagem: verResumo(dono.player), item: verItem(item), perdido }
-    })
-
     store.flush()
 
-    const saida = { raid: { ...cabecalho, porJogador, itens, materiais } }
+    const saida = { raid }
     for (const p of participantes) emitirPara(p.id, 'raid:resultado', saida)
-    anunciar(`${chefe.nome} caiu diante de ${participantes.length} aventureiros!`)
+    anunciar(
+      raid.venceu
+        ? `${chefe.nome} caiu diante de ${participantes.length} aventureiros!`
+        : `${chefe.nome} derrotou o grupo de ${participantes.length} aventureiros.`,
+    )
 
     responder(res, player, saida)
   }),

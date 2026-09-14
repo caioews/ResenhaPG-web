@@ -455,11 +455,13 @@ const MAESTRIAS = {
   },
 
   // ------------------------------------------------------- clerigo/sacerdote
+  // O id continua `ministroDaLuz`: é o que está gravado na ficha de quem já
+  // evoluiu. Só o nome mudou.
   ministroDaLuz: {
-    nome: 'Ministro da Luz',
+    nome: 'A Última Luz',
     emoji: '☀️',
     evoluiDe: 'sacerdote',
-    resumo: 'Cura contínua e bênção que não sai. Difícil de derrubar, mais ainda de manter no chão.',
+    resumo: 'Quando tudo apaga, ela ainda brilha. Cura contínua e bênção que não sai — difícil de derrubar, mais ainda de manter no chão.',
     crescimento: { hp: 1.2, atq: 0.95, def: 1.15, agi: 0.95 },
     habilidade: 'graca',
   },
@@ -696,13 +698,14 @@ const APOTEOSES = {
     habilidade: 'nomeVerdadeiro',
   },
 
+  // Id antigo mantido pelo mesmo motivo de `ministroDaLuz`.
   maoVivaDoDivino: {
-    nome: 'Mão Viva do Divino',
+    nome: 'O Homem Mais Próximo de Deus',
     emoji: '🙌',
     evoluiDe: 'ministroDaLuz',
-    resumo: 'Canal direto do deus dele. Ergue o morto recente e fecha o que era fatal.',
+    resumo: 'Canal direto do deus dele. Numa luta em grupo, ninguém ao lado dele sangra sozinho.',
     crescimento: { hp: 1.25, atq: 1.0, def: 1.15, agi: 0.95 },
-    habilidade: 'maoDivina',
+    habilidade: 'milagre',
   },
   espadaDaVontade: {
     nome: 'Espada da Vontade Divina',

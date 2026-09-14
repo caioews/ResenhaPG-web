@@ -99,7 +99,11 @@
       <div class="coluna chat" id="coluna-chat">
         <div class="moldura" id="painel-chat">
           <div class="cantos"></div>
-          <div class="titulo-painel">Chat</div>
+          <div class="titulo-painel">
+            Chat
+            <!-- Só aparece quando o chat abre por cima do jogo (tela estreita). -->
+            <button class="fechar" id="fechar-chat" type="button" aria-label="Fechar o chat">×</button>
+          </div>
           <div class="chat-corpo" id="chat-corpo"></div>
           <form class="chat-envio" id="form-chat">
             <input id="campo-chat" type="text" placeholder="Digite uma mensagem..." maxlength="300" autocomplete="off" />
@@ -128,6 +132,16 @@
 
     <div id="avisos"></div>
     <div id="convites"></div>
+
+    <!-- ================================================ EVENTO -->
+    <div class="fundo-evento" id="fundo-evento" hidden>
+      <div class="moldura evento-popup" role="dialog" aria-modal="true" aria-labelledby="evento-chamada">
+        <div class="cantos"></div>
+        <button class="fechar" id="fechar-evento" type="button" aria-label="Fechar">×</button>
+        <div class="titulo-painel">Evento</div>
+        <div class="evento-corpo" id="evento-corpo"></div>
+      </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="/js/app.js"></script>

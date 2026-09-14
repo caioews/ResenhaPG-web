@@ -247,4 +247,28 @@ export const config = {
     // Tempo que uma sessao de login dura, em dias
     sessaoDias: 30,
   },
+
+  // Eventos aleatorios (server/eventos.js): de tempos em tempos o servidor
+  // chama todo mundo on-line para uma horda, um dragao, uma festa. O catalogo
+  // dos eventos fica no proprio eventos.js; aqui so o ritmo.
+  eventos: {
+    ligado: true,
+    // So acontecem dentro desta janela, no horario deste fuso. horaFim 24 =
+    // meia-noite. Fora dela o proximo fica marcado para depois que abrir.
+    fusoHorario: 'America/Sao_Paulo',
+    horaInicio: 9,
+    horaFim: 24,
+    // Intervalo sorteado entre um evento e o proximo, em minutos. Em 60-180
+    // sao uns sete por dia dentro da janela.
+    intervaloMinimo: 60,
+    intervaloMaximo: 180,
+    // Quanto tempo a chamada fica aberta esperando gente, em minutos
+    inscricaoMinutos: 3,
+    // Com menos gente on-line do que isto, o evento espera e tenta de novo
+    // em vez de disparar para uma taverna vazia.
+    minimoOnline: 1,
+    esperaSemGenteMinutos: 15,
+    // Teto de participantes num evento de luta em grupo
+    maxParticipantes: 10,
+  },
 }
