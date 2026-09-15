@@ -206,7 +206,7 @@ export const config = {
       quantidadeDrop: { min: 1, max: 3 },
     },
 
-    // Feiticeiro (/feiticeiro): grava um feitiço numa arma. Os feitiços caem
+    // Feiticeiro (/feiticeiro): grava um feitiço na arma ou no secundário. Os feitiços caem
     // no Abismo e de chefes — também são contadores no perfil.
     feiticeiro: {
       // Gold para gravar = goldPorNivel × nível da arma

@@ -8,7 +8,7 @@ import * as store from '../store.js'
 import { classe } from './classes.js'
 import { barraDeVida, lutar, resumir } from './combate.js'
 import { darTitanita, sortearTitanita } from './ferreiro.js'
-import { darFeitico, efeitosDoFeitico, juntarEfeitos, sortearFeitico } from './feiticos.js'
+import { SLOTS_COM_FEITICO, darFeitico, efeitosDosFeiticos, juntarEfeitos, sortearFeitico } from './feiticos.js'
 import { efeitosDaClasse } from './habilidades.js'
 import { sortearDrop } from './itens.js'
 import { recompensas } from './monstros.js'
@@ -27,21 +27,21 @@ import {
 } from './jogador.js'
 
 /**
- * Tudo que o jogador leva para a luta alem dos atributos: a habilidade da
- * especialidade mais o feitico gravado na arma equipada.
+ * Tudo que o jogador leva para a luta alem dos atributos: as habilidades da
+ * classe mais os feiticos gravados na arma e no secundario equipados.
  *
- * Os dois usam o mesmo vocabulario de efeitos, entao combinam em vez de
+ * Todos usam o mesmo vocabulario de efeitos, entao combinam em vez de
  * competir — um Pistoleiro com arma de Relampago perfura mais ainda.
  */
 export function efeitosDe(player) {
   const daClasse = efeitosDaClasse(classe(player.rpg.classe))
-  const daArma = efeitosDoFeitico(itemEquipado(player, 'arma'))
-  return juntarEfeitos(daClasse, daArma)
+  const dosFeiticos = efeitosDosFeiticos(SLOTS_COM_FEITICO.map((slot) => itemEquipado(player, slot)))
+  return juntarEfeitos(daClasse, dosFeiticos)
 }
 
 /**
  * O jogador como combatente: atributos totais, entrando com a vida atual e
- * carregando habilidade de classe e feitico da arma.
+ * carregando habilidades de classe e feiticos das pecas.
  */
 export function comoLutador(player, nome = 'Você') {
   const total = atributos(player)

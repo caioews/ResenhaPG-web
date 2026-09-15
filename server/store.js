@@ -16,7 +16,7 @@
  * — os campos de chat, aposta e Pokemon do bot nao existem aqui.
  */
 import { randomUUID } from 'node:crypto'
-import { db } from './db.js'
+import { db, fecharBanco } from './db.js'
 import { config } from './config.js'
 
 /** id do personagem -> objeto vivo */
@@ -221,7 +221,11 @@ export function tocar(player) {
 
 carregar()
 
-process.on('exit', flush)
+// Grava o pendente e só então fecha o banco, nessa ordem.
+process.on('exit', () => {
+  flush()
+  fecharBanco()
+})
 process.on('SIGINT', () => {
   flush()
   process.exit(0)

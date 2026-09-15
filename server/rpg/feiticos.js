@@ -1,5 +1,5 @@
 /**
- * Feiticos de infusao: o que o feiticeiro grava numa arma.
+ * Feiticos de infusao: o que o feiticeiro grava na arma ou no item secundario.
  *
  * Cada feitico e so um punhado de efeitos, do mesmo vocabulario que as
  * habilidades de especialidade usam (ver habilidades.js) — o motor de
@@ -8,7 +8,10 @@
  * Pistoleiro com arma de Relampago perfura mais ainda; um Espadachim com
  * arma de Vento encaixa o segundo golpe com mais frequencia.
  *
- * Uma arma carrega um feitico por vez. Gravar outro apaga o anterior.
+ * Cada peca carrega um feitico por vez. Gravar outro apaga o anterior. Os
+ * feiticos da arma e do secundario equipados valem juntos — mas o MESMO
+ * feitico nas duas pecas conta uma vez so: dois Relampagos ignorariam 44% da
+ * defesa, e a graca de ter duas pecas e combinar feiticos diferentes.
  *
  * `peso` e a chance relativa de o feitico cair; `nivelMinimo` e o nivel de
  * chefe/andar a partir do qual ele comeca a aparecer. Os mais fortes so
@@ -160,16 +163,19 @@ export const totalDeFeiticos = (player) =>
 
 // ------------------------------------------------------------- infusao
 
-/** Quanto custa gravar um feitico nesta arma. Regravar custa mais. */
+/** Os slots que aceitam feitico. */
+export const SLOTS_COM_FEITICO = ['arma', 'secundario']
+
+/** Quanto custa gravar um feitico nesta peca. Regravar custa mais. */
 export function custoDaInfusao(item) {
   const f = config.rpg.feiticeiro
   const base = f.goldPorNivel * item.nivel
   return Math.round(item.feitico ? base * f.multiplicadorDeRegravar : base)
 }
 
-/** Por que esta arma nao pode receber este feitico. null = pode. */
+/** Por que esta peca nao pode receber este feitico. null = pode. */
 export function motivoParaNaoInfundir(player, item, id) {
-  if (item?.slot !== 'arma') return { erro: 'naoEArma' }
+  if (!SLOTS_COM_FEITICO.includes(item?.slot)) return { erro: 'naoAceitaFeitico' }
   if (!FEITICOS[id]) return { erro: 'feiticoInexistente' }
   if (item.feitico === id) return { erro: 'jaTemEsse' }
   if (quantosFeiticos(player, id) < 1) return { erro: 'semFeitico' }
@@ -181,7 +187,7 @@ export function motivoParaNaoInfundir(player, item, id) {
 }
 
 /**
- * Grava o feitico na arma. Consome um feitico do estoque e o gold; o
+ * Grava o feitico na peca. Consome um feitico do estoque e o gold; o
  * feitico que estava gravado antes se perde — e por isso que regravar
  * custa mais caro.
  */
@@ -197,5 +203,20 @@ export function infundir(player, item, id) {
   return { gold, anterior, atual: id }
 }
 
-/** Os efeitos que o feitico da arma equipada entrega. Vazio se nao houver. */
+/** Os efeitos que o feitico de uma peca entrega. Vazio se nao houver. */
 export const efeitosDoFeitico = (item) => (item?.feitico ? (FEITICOS[item.feitico]?.efeitos ?? {}) : {})
+
+/**
+ * Os efeitos somados dos feiticos de varias pecas equipadas. Feitico repetido
+ * entra uma vez so (ver o comentario do topo).
+ */
+export function efeitosDosFeiticos(itens) {
+  const vistos = new Set()
+  let efeitos = {}
+  for (const item of itens) {
+    if (!item?.feitico || vistos.has(item.feitico)) continue
+    vistos.add(item.feitico)
+    efeitos = juntarEfeitos(efeitos, efeitosDoFeitico(item))
+  }
+  return efeitos
+}

@@ -586,31 +586,58 @@ export async function abrirFerreiro() {
 
 // ================================================ F E I T I C E I R O
 
-export async function abrirFeiticeiro(armaEscolhida = null) {
+export async function abrirFeiticeiro(pecaEscolhida = null) {
   const dados = await pegar('/api/feiticeiro')
-  const arma = dados.armas.find((a) => a.uid === armaEscolhida) ?? dados.armas.find((a) => a.equipado) ?? dados.armas[0]
+  const peca =
+    dados.pecas.find((a) => a.uid === pecaEscolhida) ?? dados.pecas.find((a) => a.equipado) ?? dados.pecas[0]
 
-  const listaDeArmas = el(
+  // A outra peça equipada: se ela já tem o feitiço, gravar o mesmo aqui não
+  // soma nada na luta (o servidor conta feitiço repetido uma vez só).
+  const outraEquipada = peca?.equipado
+    ? Object.values(estado.p.equipado).find(
+        (item) => item && item.uid !== peca.uid && ['arma', 'secundario'].includes(item.slot),
+      )
+    : null
+
+  const linhaDePeca = (a) =>
+    linhaDeItem(a, {
+      selecionada: peca?.uid === a.uid,
+      onClick: () => abrirFeiticeiro(a.uid),
+      detalhes: [
+        a.equipado ? el('span', { class: 'reforco' }, 'equipado') : null,
+        el('span', { class: 'sussurro' }, `gravar: ${num(a.custo)} 💰`),
+      ],
+    })
+
+  const grupos = [
+    { nome: 'Armas', pecas: dados.pecas.filter((a) => a.slot === 'arma') },
+    { nome: 'Secundárias', pecas: dados.pecas.filter((a) => a.slot === 'secundario') },
+  ].filter((g) => g.pecas.length)
+
+  const listaDePecas = el(
     'div',
-    { class: 'lista' },
-    ...dados.armas.map((a) =>
-      linhaDeItem(a, {
-        selecionada: arma?.uid === a.uid,
-        onClick: () => abrirFeiticeiro(a.uid),
-        detalhes: [
-          a.equipado ? el('span', { class: 'reforco' }, 'equipada') : null,
-          el('span', { class: 'sussurro' }, `gravar: ${num(a.custo)} 💰`),
-        ],
-      }),
+    {},
+    ...grupos.map((g, i) =>
+      el(
+        'div',
+        { style: i ? 'margin-top:14px' : '' },
+        el('div', { class: 'rotulo-secao' }, g.nome),
+        el('div', { class: 'lista' }, ...g.pecas.map(linhaDePeca)),
+      ),
     ),
   )
+
+  const emUso = ['arma', 'secundario']
+    .map((slot) => estado.p.equipado[slot])
+    .filter((item) => item?.feitico)
 
   const listaDeFeiticos = el(
     'div',
     { class: 'lista' },
     ...dados.feiticos.map((f) => {
       const temEstoque = f.quantidade > 0
-      const jaTem = arma?.feitico === f.id
+      const jaTem = peca?.feitico === f.id
+      const repetido = !jaTem && outraEquipada?.feitico === f.id
 
       return el(
         'div',
@@ -625,6 +652,9 @@ export async function abrirFeiticeiro(armaEscolhida = null) {
             { class: 'detalhe' },
             el('span', {}, f.resumo),
             el('span', { class: 'sussurro' }, `cai do nível ${f.nivelMinimo}`),
+            repetido
+              ? el('span', { style: 'color:var(--erro)' }, `${nomeDoItem(outraEquipada)} já tem — não soma`)
+              : null,
           ),
         ),
         el(
@@ -635,12 +665,12 @@ export async function abrirFeiticeiro(armaEscolhida = null) {
             {
               class: 'btn pequeno primario',
               type: 'button',
-              disabled: !temEstoque || !arma || jaTem || estado.p.gold < (arma?.custo ?? 0),
+              disabled: !temEstoque || !peca || jaTem || estado.p.gold < (peca?.custo ?? 0),
               onClick: (ev) =>
                 comBotao(ev.currentTarget, async () => {
-                  const r = await mandar('/api/feiticeiro/infundir', { uid: arma.uid, feitico: f.id })
+                  const r = await mandar('/api/feiticeiro/infundir', { uid: peca.uid, feitico: f.id })
                   avisarBom(r.texto)
-                  abrirFeiticeiro(arma.uid)
+                  abrirFeiticeiro(peca.uid)
                 }),
             },
             jaTem ? 'gravado' : 'Gravar',
@@ -656,24 +686,31 @@ export async function abrirFeiticeiro(armaEscolhida = null) {
     el(
       'p',
       { class: 'sussurro', style: 'margin-top:0' },
-      'Uma arma carrega um feitiço por vez — gravar outro apaga o anterior, e por isso regravar custa 80% a mais. O efeito soma com a habilidade da classe.',
+      'Arma e item secundário carregam um feitiço cada — gravar outro apaga o anterior, e por isso regravar custa 80% a mais. Os feitiços das duas peças equipadas valem juntos e somam com a habilidade da classe, mas o mesmo feitiço nas duas conta uma vez só.',
+    ),
+    el(
+      'p',
+      { style: 'margin-top:0' },
+      'Em uso agora: ',
+      emUso.length
+        ? emUso.map((item, i) => [
+            i ? ' + ' : '',
+            forte(`${item.feiticoEmoji} ${item.feiticoNome}`),
+            ` (${nomeDoSlot(item.slot).toLowerCase()})`,
+          ])
+        : el('span', { class: 'sussurro' }, 'nenhum feitiço nas peças equipadas.'),
     ),
     el(
       'div',
       { class: 'grade-dois' },
-      el(
-        'div',
-        {},
-        el('div', { class: 'rotulo-secao' }, 'Suas armas'),
-        dados.armas.length ? listaDeArmas : vazio('Nenhuma arma na mochila.'),
-      ),
+      el('div', {}, dados.pecas.length ? listaDePecas : vazio('Nenhuma arma ou item secundário na mochila.')),
       el(
         'div',
         {},
         el(
           'div',
           { class: 'rotulo-secao' },
-          arma ? `Gravar em ${nomeDoItem(arma)} — ${num(arma.custo)} 💰` : 'Feitiços conhecidos',
+          peca ? `Gravar em ${nomeDoItem(peca)} — ${num(peca.custo)} 💰` : 'Feitiços conhecidos',
         ),
         listaDeFeiticos,
       ),

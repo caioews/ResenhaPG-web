@@ -106,10 +106,16 @@ export function podarChat(canal, manter) {
   ).run(canal, canal, manter)
 }
 
-process.on('exit', () => {
+/**
+ * Fecha o banco. Quem chama é o store, na saída, DEPOIS de gravar o que está
+ * pendente — fechar aqui num `process.on('exit')` próprio rodava antes da
+ * última gravação (db.js carrega primeiro, então o ouvinte dele vinha antes)
+ * e ela quebrava com o banco já fechado.
+ */
+export function fecharBanco() {
   try {
     db.close()
   } catch {
     // nada a fazer no caminho de saida
   }
-})
+}

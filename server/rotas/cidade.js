@@ -26,7 +26,14 @@ import { lutar } from '../rpg/combate.js'
 import { criarItem, nomeCompleto, tiposDaClasse } from '../rpg/itens.js'
 import { itemDaLoja, limparOferta, prateleira, precoDeCompra } from '../rpg/loja.js'
 import { custoAteOMaximo, custoDoReforco, motivoParaNaoReforcar, quantasTitanitas, reforcar, TITANITAS } from '../rpg/ferreiro.js'
-import { FEITICOS, custoDaInfusao, motivoParaNaoInfundir, infundir, quantosFeiticos } from '../rpg/feiticos.js'
+import {
+  FEITICOS,
+  SLOTS_COM_FEITICO,
+  custoDaInfusao,
+  infundir,
+  motivoParaNaoInfundir,
+  quantosFeiticos,
+} from '../rpg/feiticos.js'
 import {
   custoDoRito,
   desafiosDo,
@@ -251,19 +258,22 @@ cidade.get(
   rota((req, res) => {
     const player = req.player
 
-    const armas = player.rpg.inventario
-      .map((item, i) => ({ item, i }))
-      .filter(({ item }) => item.slot === 'arma')
-      .map(({ item, i }) => ({
+    // Armas e secundários: o que aceita feitiço. Equipado primeiro, porque é
+    // o que vale na luta.
+    const pecas = player.rpg.inventario
+      .map((item, i) => ({ item, i, equipado: estaEquipado(player, item.uid) }))
+      .filter(({ item }) => SLOTS_COM_FEITICO.includes(item.slot))
+      .sort((a, b) => Number(b.equipado) - Number(a.equipado) || a.i - b.i)
+      .map(({ item, i, equipado }) => ({
         ...verItem(item, i),
-        equipado: estaEquipado(player, item.uid),
+        equipado,
         custo: custoDaInfusao(item),
       }))
 
     res.json({
       gold: player.rpg.gold,
       multiplicadorDeRegravar: config.rpg.feiticeiro.multiplicadorDeRegravar,
-      armas,
+      pecas,
       feiticos: Object.entries(FEITICOS).map(([id, f]) => ({
         id,
         nome: f.nome,
@@ -282,14 +292,14 @@ cidade.post(
     const player = req.player
     const item = player.rpg.inventario.find((it) => it.uid === String(req.body?.uid ?? ''))
     const id = String(req.body?.feitico ?? '')
-    if (!item) return res.status(404).json({ erro: 'Arma não encontrada na mochila.' })
+    if (!item) return res.status(404).json({ erro: 'Item não encontrado na mochila.' })
 
     const motivo = motivoParaNaoInfundir(player, item, id)
     if (motivo) {
       const texto = {
-        naoEArma: 'O feitiço só se grava em arma.',
+        naoAceitaFeitico: 'O feitiço só se grava em arma ou em item secundário.',
         feiticoInexistente: 'Esse feitiço não existe.',
-        jaTemEsse: 'Essa arma já carrega esse feitiço.',
+        jaTemEsse: `${item.nome} já carrega esse feitiço.`,
         semFeitico: 'Você não tem esse feitiço no estoque.',
         semGold: `Faltam ${custoDaInfusao(item) - player.rpg.gold} de gold.`,
       }[motivo.erro]
