@@ -97,7 +97,7 @@ export const verHabilidade = (id) => {
 export const classesBase = () =>
   Object.keys(CLASSES)
     .filter((id) => CLASSES[id].tier === 1)
-    .map(verClasse)
+    .map((id) => ({ ...verClasse(id), passiva: verHabilidade(CLASSES[id].habilidade) }))
 
 /**
  * Um encontro resolvido, no formato que a interface desenha.

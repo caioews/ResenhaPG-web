@@ -23,7 +23,7 @@ taxas de vitória sem ninguém perceber.
 | Sistema | Onde está |
 | --- | --- |
 | 77 classes em 4 degraus, com herança de base/armas/habilidades | `server/rpg/classes.js` |
-| 70 habilidades declarativas e a regra de fusão de efeitos | `server/rpg/habilidades.js` |
+| 75 habilidades declarativas (70 do bot + 5 passivas de classe base) e a regra de fusão de efeitos | `server/rpg/habilidades.js` |
 | Motor de combate (golpe, luta individual, luta em grupo) | `server/rpg/combate.js` |
 | 25 tipos de equipamento, raridades, materiais por nível, drop | `server/rpg/itens.js` |
 | 20 espécies, elites, 19 chefes de marco + rodízio infinito, escala de fim de jogo | `server/rpg/monstros.js` |
@@ -44,21 +44,58 @@ escopo aqui é só o RPG.
 
 ### Onde o jogo diverge do bot, de propósito
 
-Duas mudanças pedidas para a versão web. Fora estas, os números e as regras
-são os mesmos.
+Mudanças pedidas para a versão web. Fora estas, os números e as regras são os
+mesmos.
 
 | O que mudou | No bot | Aqui |
 | --- | --- | --- |
 | **Fogueira** | a vida regenerava no ritmo normal e **saltava** para o máximo quando os minutos acabavam | a vida sobe **em rampa**, do que havia quando o fogo foi aceso até o máximo no instante do fim. Levantar antes da hora congela o que já subiu, em vez de perder |
 | **Presente de item** | `/daritem` entregava na hora | vira uma oferta de preço 0, que ainda precisa ser aceita — assim ninguém recebe item com a mochila cheia |
 | **Clérigo no fim da árvore** | Ministro da Luz → Mão Viva do Divino (habilidade Mão Viva) | **A Última Luz** → **O Homem Mais Próximo de Deus** (habilidade **Milagre**). Os ids internos continuam os antigos, então quem já evoluiu não perde nada |
-| **Milagre** | — | mantém a regeneração de 6% e a redução de 9% da Mão Viva (sozinho nada muda) e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
+| **Milagre** | — | regenera 2% por turno, leva 9% menos dano e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
+| **Balanceamento das classes** | as habilidades do bot | recalibradas por simulação para as classes de um mesmo degrau terem força parecida. Ver [Balanceamento das classes](#balanceamento-das-classes) |
 
 A rampa da fogueira continua sem temporizador nenhum: o que existe é o par
 (vida, instante) gravado no acender e o horário de término, e a conta é feita
 na leitura (`vidaAtual`, em `server/rpg/jogador.js`). O servidor pode cair e
 voltar no meio do descanso sem perder nada, e o navegador refaz exatamente a
 mesma conta a cada segundo só para a barra subir na tela.
+
+### Balanceamento das classes
+
+Medido com `npm run classes`, que junta PvP (todas contra todas) e PvE (comum,
+elite e chefe) numa nota de força por classe. A faixa é da classe mais fraca à
+mais forte de cada degrau, com equipamento raro:
+
+| Degrau | Antes | Depois |
+| --- | --- | --- |
+| Classes base (nível 1–49) | 46–86 | 63–74 |
+| Especialidades (nível 50) | 37–80 | 57–69 |
+| Maestrias (nível 150) | 34–79 | 55–68 |
+| Apoteoses (nível 200) | 24–83 | 53–74 |
+
+O que mudou:
+
+- **Clérigo, linha do Sacerdote.** A Bênção recuperava 10% da vida por turno
+  e somava com a Graça e o Milagre: no fim da árvore eram 20% por turno, e ele
+  vencia 98% dos duelos e descia o dobro do Abismo. Agora são 4% + 2% + 2%.
+  Continua entre os que mais descem no Abismo, sem ser imortal.
+- **Passivas nas classes base.** Mago (Foco Arcano), Arqueiro (Olho de Águia),
+  Ladino (Instinto), Duelista (Guarda Alta) e Bardo (Cadência) nascem com uma
+  habilidade. Guerreiro e Clérigo não: a vida e a defesa deles já dominavam o
+  PvP. Como toda habilidade, a passiva vale para a linhagem inteira.
+- **Buffs nas habilidades fracas** de todos os degraus, no tema de cada uma
+  (mais dano, perfuração, crítico ou resistência). Nenhum inimigo mudou, nenhum
+  atributo de classe mudou — só habilidades.
+- **Três habilidades que não faziam nada.** Efeito que é objeto (Fúria,
+  Execução, Maldição) não soma com o do degrau de baixo: fica o mais forte. A
+  Fúria do Campeão da Arena e do Imperador do Combate e a Execução Sombria do
+  Ceifador Noturno eram mais fracas que as do Gladiador e do Assassino, e eram
+  descartadas. Agora superam as anteriores.
+
+Os atributos base continuam os da especificação (`npm run conformidade`
+passa). O que ainda fica acima da faixa é o Punho da Lei Divina, que não recebeu
+buff nenhum — só desceria com um nerf.
 
 ### O que é novo
 
@@ -121,6 +158,18 @@ elite e chefe, imprimindo a taxa de vitória de cada cruzamento. Use
 `RODADAS=400 npm run balance` para uma passada rápida. É a régua: se você
 mexer em algum número do `config.js`, rode isso antes de dar por encerrado.
 
+```bash
+npm run classes
+```
+
+Mede as classes umas contra as outras: para cada degrau da árvore, a vitória
+média em duelo contra todas as outras do mesmo nível e a vitória contra
+monstro comum, elite e chefe, somadas numa nota de força. Marca com ▼ quem
+ficou muito abaixo da mediana do degrau e com ▲ quem ficou muito acima. Rode
+depois de mexer em qualquer habilidade (`server/rpg/habilidades.js`). Use
+`N=60 npm run classes` para uma passada rápida e `TIERS=4` para medir um
+degrau só.
+
 ---
 
 ## Estrutura
@@ -148,7 +197,7 @@ ResenhaPG web/
 │   ├── index.html
 │   ├── css/estilo.css
 │   └── js/             nucleo · narrativa · paineis · eventos · som · app
-├── scripts/            conformidade.js · simulador.js
+├── scripts/            conformidade.js · simulador.js · classes.js · atualizar.sh
 └── dados/              O banco (criado sozinho; não versione)
 ```
 

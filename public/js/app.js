@@ -263,6 +263,13 @@ async function abrirCriacao() {
         el('span', {}, `AGI ${c.base.agi} (+${c.ganho.agi})`),
       ),
       el('div', { class: 'atributos-mini', style: 'margin-top:6px' }, el('span', {}, `Usa: ${c.usa.join(', ')}`)),
+      el(
+        'div',
+        { class: 'resumo', style: 'margin-top:8px;font-size:13px' },
+        c.passiva
+          ? [el('span', { style: 'color:var(--ouro-claro)' }, `${c.passiva.emoji} ${c.passiva.nome}: `), c.passiva.resumo]
+          : el('span', { class: 'sussurro' }, 'Sem passiva: compensa em vida e defesa.'),
+      ),
     ),
   )
 

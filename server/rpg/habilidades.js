@@ -6,10 +6,19 @@
  * habilidade poder ser mostrada no /perfil, testada isoladamente e ajustada
  * sem mexer no motor de combate.
  *
- * Elas ACUMULAM ao longo do caminho: um Ceifador Noturno carrega Execução
- * (Assassino) + Passo das Sombras (Sicário) + Execução Sombria. Por isso as
- * de nivel 150 e 200 sao individualmente mais modestas do que a descricao
- * sugere — quem chega la tem tres somadas, nao uma.
+ * Elas ACUMULAM ao longo do caminho: um Ceifador Noturno carrega Instinto
+ * (Ladino) + Execução (Assassino) + Passo das Sombras (Sicário) + Execução
+ * Sombria. Por isso as de nivel 150 e 200 sao individualmente mais modestas
+ * do que a descricao sugere — quem chega la tem varias somadas, nao uma.
+ *
+ * Cuidado com os efeitos que sao objeto (execucao, maldicao, furia): esses
+ * nao somam, fica o mais forte do caminho (ver juntarEfeitos). Uma habilidade
+ * de cima com o mesmo objeto mais fraco que o de baixo simplesmente nao faz
+ * nada — foi o que acontecia com a Fúria do Campeão e do Imperador e com a
+ * Execução Sombria, e por isso as delas agora superam a do degrau anterior.
+ *
+ * Os numeros sairam de simulacao (npm run classes): a meta e que toda classe
+ * de um mesmo degrau tenha forca parecida, somando PvP e PvE.
  *
  * Campos que o combate entende:
  *   perfuracao        fracao da DEF do alvo que o golpe ignora
@@ -40,13 +49,51 @@ import { CLASSES } from './classes.js'
 
 
 export const HABILIDADES = {
+  // ================================================== nivel 1 (classe base)
+  //
+  // Passivas das classes base que ficavam para tras. Guerreiro e Clerigo nao
+  // tem: a vida e a defesa deles ja fazem esse papel. Como toda habilidade,
+  // estas acumulam — valem para a linhagem inteira, e os numeros das
+  // habilidades de cima foram calibrados ja contando com elas.
+
+  instinto: {
+    nome: 'Instinto',
+    emoji: '👣',
+    resumo: 'Acha a brecha na guarda: +13% de crítico, ignora 16% da defesa e +13% de dano.',
+    efeitos: { critico: 0.13, perfuracao: 0.16, danoExtra: 0.13 },
+  },
+  olhoDeAguia: {
+    nome: 'Olho de Águia',
+    emoji: '🔭',
+    resumo: 'Mira no ponto certo: corta 10% da esquiva do alvo, ignora 14% da defesa e +8% de dano.',
+    efeitos: { precisao: 0.1, perfuracao: 0.14, danoExtra: 0.08 },
+  },
+  cadencia: {
+    nome: 'Cadência',
+    emoji: '🥁',
+    resumo: 'Luta no próprio ritmo: +11% de dano, +7% de esquiva e leva 4% menos dano.',
+    efeitos: { danoExtra: 0.11, esquivaExtra: 0.07, reducaoDeDano: 0.04 },
+  },
+  focoArcano: {
+    nome: 'Foco Arcano',
+    emoji: '🔷',
+    resumo: 'Magia concentrada atravessa armadura: ignora 16% da defesa e +13% de dano.',
+    efeitos: { perfuracao: 0.16, danoExtra: 0.13 },
+  },
+  guardaAlta: {
+    nome: 'Guarda Alta',
+    emoji: '⚜️',
+    resumo: 'Nunca baixa a guarda: 11% de chance de revidar, +6% de crítico e leva 4% menos dano.',
+    efeitos: { contraAtaque: 0.11, critico: 0.06, reducaoDeDano: 0.04 },
+  },
+
   // =================================================== nivel 50 (especialidade)
 
   luzSagrada: {
     nome: 'Luz Sagrada',
     emoji: '✨',
-    resumo: 'Recupera 8% do dano causado e leva 7% menos dano.',
-    efeitos: { vampirismo: 0.08, reducaoDeDano: 0.07 },
+    resumo: 'Recupera 8% do dano causado, leva 13% menos dano e bate 9% mais forte.',
+    efeitos: { vampirismo: 0.08, reducaoDeDano: 0.13, danoExtra: 0.09 },
   },
   furia: {
     nome: 'Fúria da Arena',
@@ -57,8 +104,9 @@ export const HABILIDADES = {
   maldicao: {
     nome: 'Maldição',
     emoji: '🧿',
-    resumo: 'Cada acerto tira 7% da defesa do alvo, até derreter metade dela.',
-    efeitos: { maldicao: { porAcerto: 0.07, teto: 0.5 } },
+    resumo:
+      'Cada acerto tira 7% da defesa do alvo, até derreter metade dela. Ignora 12% da defesa e +12% de dano.',
+    efeitos: { maldicao: { porAcerto: 0.07, teto: 0.5 }, perfuracao: 0.12, danoExtra: 0.12 },
   },
   servo: {
     nome: 'Servo',
@@ -69,14 +117,15 @@ export const HABILIDADES = {
   raizes: {
     nome: 'Raízes',
     emoji: '🌿',
-    resumo: '12% de chance de prender o alvo no lugar, e leva 6% menos dano.',
-    efeitos: { prender: 0.12, reducaoDeDano: 0.06 },
+    resumo: '12% de chance de prender o alvo no lugar, leva 10% menos dano e +8% de dano.',
+    efeitos: { prender: 0.12, reducaoDeDano: 0.1, danoExtra: 0.08 },
   },
   armadilha: {
     nome: 'Armadilha',
     emoji: '🪤',
-    resumo: '18% de chance por golpe de prender o alvo e fazê-lo perder a vez.',
-    efeitos: { prender: 0.18 },
+    resumo:
+      '18% de chance por golpe de prender o alvo e fazê-lo perder a vez. Ignora 9% da defesa e +9% de dano.',
+    efeitos: { prender: 0.18, perfuracao: 0.09, danoExtra: 0.09 },
   },
   execucao: {
     nome: 'Execução',
@@ -93,32 +142,32 @@ export const HABILIDADES = {
   golpeDuplo: {
     nome: 'Sequência',
     emoji: '🤺',
-    resumo: '30% de chance de encaixar um segundo golpe no mesmo turno.',
-    efeitos: { golpeDuplo: 0.3 },
+    resumo: '38% de chance de encaixar um segundo golpe no mesmo turno, e +5% de dano.',
+    efeitos: { golpeDuplo: 0.38, danoExtra: 0.05 },
   },
   contrato: {
     nome: 'Contrato',
     emoji: '🎯',
-    resumo: 'Bate até +60% mais forte conforme o alvo perde vida. +20% de gold.',
-    efeitos: { progressivo: 0.6, saqueGold: 0.2 },
+    resumo: 'Bate até +76% mais forte conforme o alvo perde vida, +5% de dano e +20% de gold.',
+    efeitos: { progressivo: 0.76, saqueGold: 0.2, danoExtra: 0.05 },
   },
   balada: {
     nome: 'Balada de Guerra',
     emoji: '🎵',
-    resumo: 'Recupera 3% da vida máxima por turno e leva 5% menos dano.',
-    efeitos: { regeneracao: 0.03, reducaoDeDano: 0.05 },
+    resumo: 'Recupera 3% da vida máxima por turno, leva 7% menos dano e +5% de dano.',
+    efeitos: { regeneracao: 0.03, reducaoDeDano: 0.07, danoExtra: 0.05 },
   },
   presciencia: {
     nome: 'Presciência',
     emoji: '🔯',
-    resumo: '+9% de esquiva e +8% de chance de crítico — já viu o golpe acontecer.',
-    efeitos: { esquivaExtra: 0.09, critico: 0.08 },
+    resumo: '+9% de esquiva, +15% de crítico e +9% de dano — já viu o golpe acontecer.',
+    efeitos: { esquivaExtra: 0.09, critico: 0.15, danoExtra: 0.09 },
   },
   bencao: {
     nome: 'Bênção',
     emoji: '🕊️',
-    resumo: 'Recupera 10% da vida máxima por turno.',
-    efeitos: { regeneracao: 0.10 },
+    resumo: 'Recupera 4% da vida máxima por turno e leva 5% menos dano.',
+    efeitos: { regeneracao: 0.04, reducaoDeDano: 0.05 },
   },
   ancestrais: {
     nome: 'Ancestrais',
@@ -132,26 +181,27 @@ export const HABILIDADES = {
   sombras: {
     nome: 'Passo das Sombras',
     emoji: '🌘',
-    resumo: 'Ignora 18% da defesa e +6% de esquiva — some antes do revide.',
-    efeitos: { perfuracao: 0.18, esquivaExtra: 0.06 },
+    resumo: 'Ignora 18% da defesa, +6% de esquiva, +9% de crítico e +12% de dano — some antes do revide.',
+    efeitos: { perfuracao: 0.18, esquivaExtra: 0.06, critico: 0.09, danoExtra: 0.12 },
   },
   toxina: {
     nome: 'Toxina',
     emoji: '🧪',
-    resumo: 'Cada acerto corrói 4% da defesa do alvo, até −30%.',
-    efeitos: { maldicao: { porAcerto: 0.04, teto: 0.3 } },
+    resumo:
+      'Cada acerto corrói 4% da defesa do alvo (até −30%). +9% de dano, leva 9% menos e recupera 6% do que causa.',
+    efeitos: { maldicao: { porAcerto: 0.04, teto: 0.3 }, danoExtra: 0.09, reducaoDeDano: 0.09, vampirismo: 0.06 },
   },
   duplicatas: {
     nome: 'Duplicatas',
     emoji: '🃏',
-    resumo: '+11% de esquiva: metade dos golpes acerta uma cópia.',
-    efeitos: { esquivaExtra: 0.11 },
+    resumo: '+17% de esquiva e +9% de dano: metade dos golpes acerta uma cópia.',
+    efeitos: { esquivaExtra: 0.17, danoExtra: 0.09 },
   },
   sabotagem: {
     nome: 'Sabotagem',
     emoji: '💣',
-    resumo: '+9% de dano, 8% de chance de prender e +15% de gold.',
-    efeitos: { danoExtra: 0.09, prender: 0.08, saqueGold: 0.15 },
+    resumo: '+18% de dano, 8% de chance de prender e +15% de gold.',
+    efeitos: { danoExtra: 0.18, prender: 0.08, saqueGold: 0.15 },
   },
   juramento: {
     nome: 'Juramento',
@@ -162,14 +212,14 @@ export const HABILIDADES = {
   chamaPurificadora: {
     nome: 'Chama Purificadora',
     emoji: '🕯️',
-    resumo: '+10% de dano e recupera 6% do que causa.',
-    efeitos: { danoExtra: 0.1, vampirismo: 0.06 },
+    resumo: '+19% de dano e recupera 12% do que causa.',
+    efeitos: { danoExtra: 0.19, vampirismo: 0.12 },
   },
   sedeDeVitoria: {
     nome: 'Sede de Vitória',
     emoji: '🏆',
-    resumo: '+3% de ataque por rodada (até +30%) e +7% de crítico.',
-    efeitos: { furia: { porRodada: 0.03, teto: 0.3 }, critico: 0.07 },
+    resumo: '+6% de ataque por rodada (até +55%), +16% de crítico e +9% de dano.',
+    efeitos: { furia: { porRodada: 0.06, teto: 0.55 }, critico: 0.16, danoExtra: 0.09 },
   },
   grilhoes: {
     nome: 'Grilhões',
@@ -186,14 +236,14 @@ export const HABILIDADES = {
   formaElemental: {
     nome: 'Forma Elemental',
     emoji: '🌊',
-    resumo: '+10% de dano e leva 7% menos — o corpo virou elemento.',
-    efeitos: { danoExtra: 0.1, reducaoDeDano: 0.07 },
+    resumo: '+12% de dano e leva 9% menos — o corpo virou elemento.',
+    efeitos: { danoExtra: 0.12, reducaoDeDano: 0.09 },
   },
   legiao: {
     nome: 'Legião de Ossos',
     emoji: '🦴',
-    resumo: 'Mais um morto na fila: +30% do seu ataque por turno.',
-    efeitos: { servo: 0.3 },
+    resumo: 'Mais mortos na fila: +42% do seu ataque por turno.',
+    efeitos: { servo: 0.42 },
   },
   tributoDeSangue: {
     nome: 'Tributo de Sangue',
@@ -204,8 +254,8 @@ export const HABILIDADES = {
   espinhos: {
     nome: 'Espinhos',
     emoji: '🌱',
-    resumo: '16% de chance de revidar quando é atingido, e leva 6% menos dano.',
-    efeitos: { contraAtaque: 0.16, reducaoDeDano: 0.06 },
+    resumo: '18% de chance de revidar quando é atingido, leva 6% menos dano e +2% de dano.',
+    efeitos: { contraAtaque: 0.18, reducaoDeDano: 0.06, danoExtra: 0.02 },
   },
   alcateia: {
     nome: 'Alcateia',
@@ -222,14 +272,14 @@ export const HABILIDADES = {
   trofeus: {
     nome: 'Troféus',
     emoji: '🦴',
-    resumo: 'Leva 8% menos dano e +10% de chance de drop — veste o que abateu.',
-    efeitos: { reducaoDeDano: 0.08, saqueDrop: 0.1 },
+    resumo: 'Leva 13% menos dano, +7% de dano e +10% de chance de drop — veste o que abateu.',
+    efeitos: { reducaoDeDano: 0.13, danoExtra: 0.07, saqueDrop: 0.1 },
   },
   contraGolpe: {
     nome: 'Contra-Golpe',
     emoji: '⚔️',
-    resumo: '20% de chance de revidar quando é atingido.',
-    efeitos: { contraAtaque: 0.2 },
+    resumo: '29% de chance de revidar quando é atingido, e +9% de dano.',
+    efeitos: { contraAtaque: 0.29, danoExtra: 0.09 },
   },
   postura: {
     nome: 'Postura Real',
@@ -240,14 +290,14 @@ export const HABILIDADES = {
   marcado: {
     nome: 'Alvo Marcado',
     emoji: '🎯',
-    resumo: 'Bate até +35% mais forte conforme o alvo perde vida.',
-    efeitos: { progressivo: 0.35 },
+    resumo: 'Bate até +35% mais forte conforme o alvo perde vida, +12% de dano e +6% de crítico.',
+    efeitos: { progressivo: 0.35, danoExtra: 0.12, critico: 0.06 },
   },
   arsenal: {
     nome: 'Arsenal',
     emoji: '🧰',
-    resumo: '9% de chance de prender, ignora 12% da defesa e +8% de drop.',
-    efeitos: { prender: 0.09, perfuracao: 0.12, saqueDrop: 0.08 },
+    resumo: '9% de chance de prender, ignora 18% da defesa, +6% de dano e +8% de drop.',
+    efeitos: { prender: 0.09, perfuracao: 0.18, danoExtra: 0.06, saqueDrop: 0.08 },
   },
   melodiaCurativa: {
     nome: 'Melodia Curativa',
@@ -258,32 +308,32 @@ export const HABILIDADES = {
   dissonancia: {
     nome: 'Dissonância',
     emoji: '📢',
-    resumo: '10% de chance de atordoar e corta 11% da esquiva do alvo.',
-    efeitos: { prender: 0.1, precisao: 0.11 },
+    resumo: '10% de chance de atordoar, corta 13% da esquiva do alvo e +2% de dano.',
+    efeitos: { prender: 0.1, precisao: 0.13, danoExtra: 0.02 },
   },
   fioDaSorte: {
     nome: 'Fio da Sorte',
     emoji: '🕯️',
-    resumo: '+10% de esquiva e +5% de crítico.',
-    efeitos: { esquivaExtra: 0.1, critico: 0.05 },
+    resumo: '+10% de esquiva, +9% de crítico e +4% de dano.',
+    efeitos: { esquivaExtra: 0.1, critico: 0.09, danoExtra: 0.04 },
   },
   segredos: {
     nome: 'Segredos Perdidos',
     emoji: '📖',
-    resumo: 'Ignora 16% da defesa e cada acerto derrete mais 3%, até −24%.',
-    efeitos: { perfuracao: 0.16, maldicao: { porAcerto: 0.03, teto: 0.24 } },
+    resumo: 'Ignora 24% da defesa, cada acerto derrete mais 3% (até −24%) e +8% de dano.',
+    efeitos: { perfuracao: 0.24, maldicao: { porAcerto: 0.03, teto: 0.24 }, danoExtra: 0.08 },
   },
   graca: {
     nome: 'Graça',
     emoji: '☀️',
-    resumo: 'Recupera 4% da vida máxima por turno e leva 6% menos dano.',
-    efeitos: { regeneracao: 0.04, reducaoDeDano: 0.06 },
+    resumo: 'Recupera 2% da vida máxima por turno e leva 6% menos dano.',
+    efeitos: { regeneracao: 0.02, reducaoDeDano: 0.06 },
   },
   furiaSagrada: {
     nome: 'Fúria Sagrada',
     emoji: '⚖️',
-    resumo: '+11% de dano e ignora 14% da defesa do alvo.',
-    efeitos: { danoExtra: 0.11, perfuracao: 0.14 },
+    resumo: '+23% de dano, ignora 14% da defesa e +9% de crítico.',
+    efeitos: { danoExtra: 0.23, perfuracao: 0.14, critico: 0.09 },
   },
   espiritosDeGuerra: {
     nome: 'Espíritos de Guerra',
@@ -303,26 +353,29 @@ export const HABILIDADES = {
   execucaoSombria: {
     nome: 'Execução Sombria',
     emoji: '🌑',
-    resumo: '9% de chance de executar pela própria sombra do alvo, ignorando 70% da defesa.',
-    efeitos: { execucao: { chance: 0.09, mult: 2.8, perfuracao: 0.7 }, esquivaExtra: 0.05 },
+    resumo:
+      '14% de chance de executar pela sombra do alvo: dano triplo ignorando 70% da defesa. +9% de dano, +5% de esquiva e leva 9% menos.',
+    efeitos: { execucao: { chance: 0.14, mult: 3, perfuracao: 0.7 }, danoExtra: 0.09, esquivaExtra: 0.05, reducaoDeDano: 0.09 },
   },
   praga: {
     nome: 'Praga',
     emoji: '☣️',
-    resumo: 'Cada acerto apodrece 5% da defesa (até −40%) e +8% de dano.',
-    efeitos: { maldicao: { porAcerto: 0.05, teto: 0.4 }, danoExtra: 0.08 },
+    resumo:
+      'Cada acerto apodrece 6% da defesa (até −45%). +17% de dano, leva 9% menos e recupera 6% do que causa.',
+    efeitos: { maldicao: { porAcerto: 0.06, teto: 0.45 }, danoExtra: 0.17, reducaoDeDano: 0.09, vampirismo: 0.06 },
   },
   miragem: {
     nome: 'Miragem',
     emoji: '🎭',
-    resumo: '+13% de esquiva e 12% de chance de revidar de onde não esperavam.',
-    efeitos: { esquivaExtra: 0.13, contraAtaque: 0.12 },
+    resumo: '+13% de esquiva, 17% de chance de revidar de onde não esperavam e +10% de dano.',
+    efeitos: { esquivaExtra: 0.13, contraAtaque: 0.17, danoExtra: 0.1 },
   },
   redeDeContatos: {
     nome: 'Rede de Contatos',
     emoji: '👑',
-    resumo: 'Capangas atacam junto (25% do ataque), +30% de gold e +12% de drop.',
-    efeitos: { servo: 0.25, saqueGold: 0.3, saqueDrop: 0.12 },
+    resumo:
+      'Capangas atacam junto (25% do ataque), +9% de dano, +6% de esquiva, +30% de gold e +12% de drop.',
+    efeitos: { servo: 0.25, danoExtra: 0.09, esquivaExtra: 0.06, saqueGold: 0.3, saqueDrop: 0.12 },
   },
   veredito: {
     nome: 'Veredito',
@@ -339,8 +392,9 @@ export const HABILIDADES = {
   imperioDaArena: {
     nome: 'Império da Arena',
     emoji: '🔥',
-    resumo: '+4% de ataque por rodada, até +50%. Quanto mais dura, pior para o outro.',
-    efeitos: { furia: { porRodada: 0.04, teto: 0.5 }, critico: 0.05 },
+    resumo:
+      '+7% de ataque por rodada, até +65%. +6% de dano, +5% de crítico, leva 9% menos e recupera 6% do que causa.',
+    efeitos: { furia: { porRodada: 0.07, teto: 0.65 }, danoExtra: 0.06, critico: 0.05, reducaoDeDano: 0.09, vampirismo: 0.06 },
   },
   correntesSemFim: {
     nome: 'Correntes Sem Fim',
@@ -351,8 +405,8 @@ export const HABILIDADES = {
   avatarDoPacto: {
     nome: 'Avatar do Pacto',
     emoji: '🌀',
-    resumo: 'Um avatar da entidade luta junto, com 38% do seu ataque.',
-    efeitos: { servo: 0.38 },
+    resumo: 'Um avatar da entidade luta junto, com 50% do seu ataque, e leva 6% menos dano.',
+    efeitos: { servo: 0.5, reducaoDeDano: 0.06 },
   },
   formaPrimordial: {
     nome: 'Forma Primordial',
@@ -363,14 +417,14 @@ export const HABILIDADES = {
   phylactery: {
     nome: 'Phylactery',
     emoji: '☠️',
-    resumo: 'A morte é temporária: regenera 5% por turno e leva 8% menos dano.',
-    efeitos: { regeneracao: 0.05, reducaoDeDano: 0.08 },
+    resumo: 'A morte é temporária: regenera 5% por turno, leva 14% menos dano e +9% de dano.',
+    efeitos: { regeneracao: 0.05, reducaoDeDano: 0.14, danoExtra: 0.09 },
   },
   sedeDeSangue: {
     nome: 'Sede de Sangue',
     emoji: '🍷',
-    resumo: 'Recupera 12% de todo dano causado e bate +10% mais forte.',
-    efeitos: { vampirismo: 0.12, danoExtra: 0.1 },
+    resumo: 'Recupera 12% de todo dano causado, bate +19% mais forte e +6% de crítico.',
+    efeitos: { vampirismo: 0.12, danoExtra: 0.19, critico: 0.06 },
   },
   dominioVerde: {
     nome: 'Domínio Verde',
@@ -393,14 +447,14 @@ export const HABILIDADES = {
   bestiario: {
     nome: 'Bestiário Vivo',
     emoji: '📕',
-    resumo: 'Veste qualquer fera já abatida: +10% de dano, 8% menos dano recebido, +12% de drop.',
-    efeitos: { danoExtra: 0.1, reducaoDeDano: 0.08, saqueDrop: 0.12 },
+    resumo: 'Veste qualquer fera já abatida: +14% de dano, 11% menos dano recebido, +12% de drop.',
+    efeitos: { danoExtra: 0.14, reducaoDeDano: 0.11, saqueDrop: 0.12 },
   },
   laminasEspectrais: {
     nome: 'Lâminas Espectrais',
     emoji: '🗡️',
-    resumo: '22% de chance de um golpe extra e ignora 18% da defesa.',
-    efeitos: { golpeDuplo: 0.22, perfuracao: 0.18 },
+    resumo: '34% de chance de um golpe extra, ignora 18% da defesa e +9% de dano.',
+    efeitos: { golpeDuplo: 0.34, perfuracao: 0.18, danoExtra: 0.09 },
   },
   dueloImposto: {
     nome: 'Duelo Imposto',
@@ -411,14 +465,15 @@ export const HABILIDADES = {
   apex: {
     nome: 'Predação Apex',
     emoji: '🦅',
-    resumo: 'Bate até +45% mais forte conforme o alvo cai, e +8% de crítico.',
-    efeitos: { progressivo: 0.45, critico: 0.08 },
+    resumo: 'Bate até +45% mais forte conforme o alvo cai, +14% de crítico, +9% de dano e leva 9% menos.',
+    efeitos: { progressivo: 0.45, critico: 0.14, danoExtra: 0.09, reducaoDeDano: 0.09 },
   },
   carrasco: {
     nome: 'Execução Solitária',
     emoji: '🪓',
-    resumo: '10% de chance de execução ignorando 60% da defesa. Sozinho é onde ele é pior.',
-    efeitos: { execucao: { chance: 0.1, mult: 2.6, perfuracao: 0.6 } },
+    resumo:
+      '10% de chance de execução ignorando 60% da defesa, +12% de dano e +6% de crítico. Sozinho é onde ele é pior.',
+    efeitos: { execucao: { chance: 0.1, mult: 2.6, perfuracao: 0.6 }, danoExtra: 0.12, critico: 0.06 },
   },
   versoQueCura: {
     nome: 'Verso que Cura',
@@ -435,29 +490,30 @@ export const HABILIDADES = {
   reescrever: {
     nome: 'Reescrever',
     emoji: '🧵',
-    resumo: '+14% de esquiva e +8% de crítico — o golpe fatal vira arranhão.',
-    efeitos: { esquivaExtra: 0.14, critico: 0.08 },
+    resumo: '+14% de esquiva, +13% de crítico e +9% de dano — o golpe fatal vira arranhão.',
+    efeitos: { esquivaExtra: 0.14, critico: 0.13, danoExtra: 0.09 },
   },
   nomeVerdadeiro: {
     nome: 'Nome Verdadeiro',
     emoji: '🔇',
-    resumo: 'Ignora 22% da defesa e cada acerto desfaz mais 4%, até −32%.',
-    efeitos: { perfuracao: 0.22, maldicao: { porAcerto: 0.04, teto: 0.32 } },
+    resumo: 'Ignora 22% da defesa, cada acerto desfaz mais 4% (até −32%), +12% de dano e +6% de crítico.',
+    efeitos: { perfuracao: 0.22, maldicao: { porAcerto: 0.04, teto: 0.32 }, danoExtra: 0.12, critico: 0.06 },
   },
-  // Os dois primeiros efeitos sao os da antiga Mao Viva, entao sozinho (caca,
-  // Abismo, PvP) nada muda. A cura do grupo so age em raid e evento em grupo.
+  // A cura do grupo so age em raid e evento em grupo. A regeneracao propria e
+  // pequena de proposito: somada a Bencao e a Graca, a linha do Sacerdote
+  // chegava a 20% da vida por turno e nao morria para nada.
   milagre: {
     nome: 'Milagre',
     emoji: '🙌',
     resumo:
-      'Regenera 6% da vida máxima por turno e leva 9% menos dano. Em raid e evento em grupo, cura todos que estão de pé em 5% da vida deles, a cada turno seu.',
-    efeitos: { regeneracao: 0.06, reducaoDeDano: 0.09, curaDoGrupo: 0.05 },
+      'Regenera 2% da vida máxima por turno e leva 9% menos dano. Em raid e evento em grupo, cura todos que estão de pé em 5% da vida deles, a cada turno seu.',
+    efeitos: { regeneracao: 0.02, reducaoDeDano: 0.09, curaDoGrupo: 0.05 },
   },
   julgamento: {
     nome: 'Julgamento',
     emoji: '⚔️',
-    resumo: '+13% de dano, ignora 20% da defesa — proteção impura não conta.',
-    efeitos: { danoExtra: 0.13, perfuracao: 0.2 },
+    resumo: '+22% de dano, ignora 20% da defesa e +6% de crítico — proteção impura não conta.',
+    efeitos: { danoExtra: 0.22, perfuracao: 0.2, critico: 0.06 },
   },
   milEspiritos: {
     nome: 'Mil Espíritos',

@@ -10,9 +10,13 @@
  *
  * Evoluir nunca troca o personagem de lugar: mantem a base do nivel 1 e
  * passa a crescer mais rapido, destrava armas e ACUMULA uma habilidade
- * nova. Um Ceifador Noturno carrega as tres habilidades do caminho dele
- * (Assassino + Sicario + Ceifador), nao so a ultima — e o que faz o
- * caminho inteiro importar, e nao apenas o ultimo degrau.
+ * nova. Um Ceifador Noturno carrega as quatro habilidades do caminho dele
+ * (Ladino + Assassino + Sicario + Ceifador), nao so a ultima — e o que faz
+ * o caminho inteiro importar, e nao apenas o ultimo degrau.
+ *
+ * Cinco das sete bases ja nascem com uma passiva (habilidades.js). Guerreiro
+ * e Clerigo nao: a vida e a defesa deles valiam, sozinhas, o que as passivas
+ * dos outros agora compensam.
  *
  * Os `ganho` das especialidades sairam de simulacao (npm run balance). Os
  * degraus de 150 e 200 nao repetem esses numeros: declaram `crescimento`,
@@ -40,6 +44,7 @@ const BASES = {
     base: { hp: 80, atq: 18, def: 5, agi: 8 },
     ganho: { hp: 8, atq: 3.2, def: 1.0, agi: 1.2 },
     usa: ['cajado', 'magia', 'grimorio', 'totem'],
+    habilidade: 'focoArcano',
   },
   arqueiro: {
     nome: 'Arqueiro',
@@ -48,6 +53,7 @@ const BASES = {
     base: { hp: 95, atq: 14, def: 6, agi: 12 },
     ganho: { hp: 10, atq: 2.6, def: 1.2, agi: 2.0 },
     usa: ['arco', 'aljava', 'capa'],
+    habilidade: 'olhoDeAguia',
   },
   ladino: {
     nome: 'Ladino',
@@ -56,6 +62,7 @@ const BASES = {
     base: { hp: 90, atq: 15, def: 6, agi: 14 },
     ganho: { hp: 9, atq: 2.8, def: 1.1, agi: 2.4 },
     usa: ['adaga', 'punhal', 'capa'],
+    habilidade: 'instinto',
   },
   duelista: {
     nome: 'Duelista',
@@ -64,6 +71,7 @@ const BASES = {
     base: { hp: 105, atq: 13, def: 8, agi: 10 },
     ganho: { hp: 11, atq: 2.4, def: 1.6, agi: 1.6 },
     usa: ['espada', 'rapieira', 'punhal', 'manopla'],
+    habilidade: 'guardaAlta',
   },
   bardo: {
     nome: 'Bardo',
@@ -72,6 +80,7 @@ const BASES = {
     base: { hp: 100, atq: 13, def: 6, agi: 13 },
     ganho: { hp: 10.5, atq: 2.5, def: 1.2, agi: 2.1 },
     usa: ['flauta', 'tambor', 'mascara', 'capa'],
+    habilidade: 'cadencia',
   },
   clerigo: {
     nome: 'Clérigo',

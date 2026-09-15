@@ -11,6 +11,7 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "balance": "node scripts/simulador.js",
+    "classes": "node scripts/classes.js",
     "conformidade": "node scripts/conformidade.js"
   },
   "dependencies": {

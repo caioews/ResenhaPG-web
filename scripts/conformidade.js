@@ -160,8 +160,10 @@ for (const id of Object.keys(CLASSES)) {
 
 erros += quebras
 ok(quebras === 0, 'nenhuma evolução reduz atributo, perde arma, troca a base ou repete habilidade')
+// 70 habilidades da especificação + 5 passivas de classe base que a versão
+// web acrescentou no balanceamento (Mago, Arqueiro, Ladino, Duelista, Bardo).
 ok(
-  Object.keys(CLASSES).length === 77 && new Set(habilidades).size === 70,
+  Object.keys(CLASSES).length === 77 && new Set(habilidades).size === 75,
   `${Object.keys(CLASSES).length} classes, ${new Set(habilidades).size} habilidades, ${ESPECIES.length} espécies`,
 )
 
