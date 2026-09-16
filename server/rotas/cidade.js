@@ -7,7 +7,15 @@ import { config } from '../config.js'
 import { exigirLogin } from '../auth.js'
 import { exigirClasse, exigirPersonagem, responder, rota } from '../contexto.js'
 import * as store from '../store.js'
-import { CLASSES, classe, especialidadesDe, ehEspecialidade, nivelDoProximoDegrau } from '../rpg/classes.js'
+import {
+  CLASSES,
+  classe,
+  classeRaiz,
+  especialidadesDe,
+  ehEspecialidade,
+  nivelDoProximoDegrau,
+} from '../rpg/classes.js'
+import { habilidadesDaClasse } from '../rpg/habilidades.js'
 import {
   atributos,
   darGold,
@@ -53,7 +61,16 @@ import {
   sortearRaridade,
   tempoRestante,
 } from '../rpg/expedicao.js'
+import {
+  escalaDeAtributos,
+  escalaDeXp,
+  motivoParaNaoPrestigiar,
+  prestigiar,
+  prestigioDe,
+  xpComPrestigio,
+} from '../rpg/prestigio.js'
 import { verClasse, verHabilidade, verItem } from '../visao.js'
+import { anunciar } from '../realtime.js'
 
 export const cidade = Router()
 
@@ -498,6 +515,88 @@ cidade.post(
   }),
 )
 
+// ================================================== P R E S T Í G I O
+
+/**
+ * O prestígio: recomeçar do nível 1 para ficar mais forte para sempre.
+ *
+ * O painel mostra o que se ganha e o que se perde antes de qualquer clique —
+ * é o botão mais irreversível do jogo, e a pessoa tem que saber disso.
+ */
+const MOTIVOS_DO_PRESTIGIO = {
+  semClasse: 'Escolha uma classe primeiro.',
+  emExpedicao: 'Seu personagem está em expedição. Traga ele de volta primeiro.',
+  nivelBaixo: null, // montado com o nível exigido
+}
+
+const verPrestigio = (player) => {
+  const n = prestigioDe(player)
+  const motivo = motivoParaNaoPrestigiar(player)
+  const c = classe(player.rpg.classe)
+  const raiz = classe(classeRaiz(player.rpg.classe))
+
+  return {
+    contador: n,
+    desde: player.rpg.prestigioEm ?? 0,
+    nivel: player.rpg.nivel,
+    nivelMinimo: config.rpg.prestigio.nivelMinimo,
+    pode: motivo === null,
+    motivo:
+      motivo?.erro === 'nivelBaixo'
+        ? `O prestígio abre no nível ${config.rpg.prestigio.nivelMinimo}. Faltam ${config.rpg.prestigio.nivelMinimo - player.rpg.nivel} níveis.`
+        : (MOTIVOS_DO_PRESTIGIO[motivo?.erro] ?? null),
+
+    agora: { atributos: escalaDeAtributos(n) - 1, xp: escalaDeXp(n) - 1 },
+    depois: { atributos: escalaDeAtributos(n + 1) - 1, xp: escalaDeXp(n + 1) - 1 },
+
+    classeAtual: c ? { nome: c.nome, emoji: c.emoji } : null,
+    classeDeVolta: raiz ? { nome: raiz.nome, emoji: raiz.emoji } : null,
+    // O que a pessoa perde: a linhagem acima da base e as habilidades dela.
+    habilidadesPerdidas: (classe(player.rpg.classe) ? habilidadesDaClasse(classe(player.rpg.classe)) : [])
+      .filter((id) => id !== CLASSES[classeRaiz(player.rpg.classe)]?.habilidade)
+      .map(verHabilidade),
+  }
+}
+
+cidade.get(
+  '/prestigio',
+  rota((req, res) => res.json({ prestigio: verPrestigio(req.player) })),
+)
+
+cidade.post(
+  '/prestigio',
+  rota((req, res) => {
+    const player = req.player
+    const motivo = motivoParaNaoPrestigiar(player)
+    if (motivo) {
+      const texto =
+        motivo.erro === 'nivelBaixo'
+          ? `O prestígio abre no nível ${config.rpg.prestigio.nivelMinimo}.`
+          : (MOTIVOS_DO_PRESTIGIO[motivo.erro] ?? 'Não dá para prestigiar agora.')
+      return res.status(409).json({ erro: texto })
+    }
+
+    const feito = prestigiar(player)
+    const nomeAntigo = classe(feito.classeAntiga)?.nome ?? ''
+
+    anunciar(
+      `${player.name} alcançou o Prestígio ${feito.prestigio} — deixou de ser ${nomeAntigo} e recomeçou do nível 1.`,
+    )
+
+    responder(res, player, {
+      texto: `Prestígio ${feito.prestigio}. Você recomeça do nível 1 com tudo o que juntou.`,
+      prestigiado: {
+        contador: feito.prestigio,
+        classeAntiga: nomeAntigo,
+        classe: classe(feito.classe)?.nome ?? '',
+        tirados: feito.tirados.map((item) => verItem(item)),
+        bonus: { atributos: feito.escalaDeAtributos - 1, xp: feito.escalaDeXp - 1 },
+      },
+      prestigio: verPrestigio(player),
+    })
+  }),
+)
+
 // ================================================== E X P E D I Ç Ã O
 
 cidade.get(
@@ -563,6 +662,7 @@ cidade.post(
 
     const premio = recompensasDe(expedicao, player.rpg.nivel)
     darGold(player, premio.gold)
+    premio.xp = xpComPrestigio(player, premio.xp)
     const subiu = ganharXp(player, premio.xp)
 
     let drop = null

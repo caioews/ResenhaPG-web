@@ -24,6 +24,7 @@ import { emExpedicao } from './rpg/expedicao.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
 import { nivelMedioDe, resolverLutaDeGrupo } from './grupo.js'
+import { xpComPrestigio } from './rpg/prestigio.js'
 import { verEncontro, verResumo } from './visao.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from './realtime.js'
 
@@ -479,7 +480,7 @@ function resolverIndividual(evento, def, presentes, visto, ausentes) {
     const bonus = { xp: 0, gold: 0, titanita: null }
     if (saida.venceu) {
       venceram++
-      bonus.xp = Math.round(saida.xp * def.bonus.xp)
+      bonus.xp = xpComPrestigio(p, Math.round(saida.xp * def.bonus.xp))
       bonus.gold = Math.round(saida.gold * def.bonus.gold)
       darGold(p, bonus.gold)
       saida.subiuPara.push(...ganharXp(p, bonus.xp))
@@ -537,7 +538,7 @@ function resolverBencao(evento, def, presentes, visto, ausentes) {
           ganhos.push(`um feitiço de ${FEITICOS[feitico].nome}`)
         }
       }
-      const xp = Math.round(60 + p.rpg.nivel * 20)
+      const xp = xpComPrestigio(p, Math.round(60 + p.rpg.nivel * 20))
       const subiu = ganharXp(p, xp)
       ganhos.push(`+${milhar(xp)} de XP`)
       if (subiu.length) ganhos.push(`subiu para o nível ${subiu.at(-1)}`)

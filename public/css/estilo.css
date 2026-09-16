@@ -1685,3 +1685,30 @@ select:focus {
 [hidden] {
   display: none !important;
 }
+
+/* ------------------------------------------------------------ prestígio */
+
+.estrela-prestigio {
+  color: var(--ouro-claro);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* O botão do recomeço: aparece só no nível do teto, e tem que saltar. */
+.lugar-prestigio {
+  border-color: var(--ouro);
+  color: var(--ouro-claro);
+  background: linear-gradient(180deg, #2c2213, #16110a);
+  animation: pulsar 1.8s ease-in-out infinite;
+}
+
+.lista-simples {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--texto-fraco);
+}
+.lista-simples li::marker {
+  color: var(--ouro-fraco);
+}

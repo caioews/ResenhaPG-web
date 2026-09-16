@@ -12,6 +12,7 @@ import { SLOTS_COM_FEITICO, darFeitico, efeitosDosFeiticos, juntarEfeitos, sorte
 import { efeitosDaClasse } from './habilidades.js'
 import { sortearDrop } from './itens.js'
 import { recompensas } from './monstros.js'
+import { xpComPrestigio } from './prestigio.js'
 import {
   atributos,
   darGold,
@@ -112,7 +113,9 @@ export function resolver(player, monstro, sorte = Math.random) {
   const premio = recompensas(monstro, sorte)
   const hab = efeitosDe(player)
 
-  saida.xp = premio.xp
+  // O prestigio soma no XP antes de qualquer coisa: o numero que entra na
+  // ficha e o mesmo que a tela mostra.
+  saida.xp = xpComPrestigio(player, premio.xp)
   saida.gold = Math.round(premio.gold * (1 + (hab.saqueGold ?? 0)))
   saida.goldDeSaque = saida.gold - premio.gold
 
@@ -123,7 +126,7 @@ export function resolver(player, monstro, sorte = Math.random) {
     saida.bossVencido = true
   }
 
-  saida.subiuPara = ganharXp(player, premio.xp)
+  saida.subiuPara = ganharXp(player, saida.xp)
 
   // Titanita: cai de bicho comum, de elite e sempre de chefe.
   const origem = monstro.boss ? 'boss' : monstro.elite ? 'elite' : 'comum'

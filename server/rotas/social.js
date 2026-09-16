@@ -13,6 +13,7 @@ import { atributos, darGold, feridoRestante } from '../rpg/jogador.js'
 import { emExpedicao } from '../rpg/expedicao.js'
 import { criarChefeDeRaid, TODOS_OS_CHEFES } from '../rpg/raid.js'
 import { chanceEsperada, esperaEntreDuelos, ranking as rankingPvp, registrarResultado } from '../rpg/pvp.js'
+import { ranking as rankingPrestigio } from '../rpg/prestigio.js'
 import { verItem, verResumo } from '../visao.js'
 import * as salas from '../salas.js'
 import { nivelMedioDe, resolverLutaDeGrupo } from '../grupo.js'
@@ -369,6 +370,7 @@ social.get(
         .slice(0, 20)
         .map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
       pvp: rankingPvp(20).map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
+      prestigio: rankingPrestigio(20).map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
       online: jogadoresOnline(),
     })
   }),

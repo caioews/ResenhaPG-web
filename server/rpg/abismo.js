@@ -18,6 +18,7 @@ import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { darFeitico, sortearFeitico } from './feiticos.js'
 import { RARIDADES, criarItem, tiposDaClasse } from './itens.js'
 import { atributos, darGold, definirVida, ferir, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
+import { xpComPrestigio } from './prestigio.js'
 import { atributosDeMonstro } from './monstros.js'
 
 const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
@@ -232,6 +233,7 @@ export function descer(player, sorte = Math.random) {
 
   // Sai do Abismo carregado nos bracos: ferido, como qualquer derrota.
   ferir(player)
+  premio.xp = xpComPrestigio(player, premio.xp)
   const subiu = ganharXp(player, premio.xp)
   store.save()
 

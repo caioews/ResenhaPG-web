@@ -13,6 +13,7 @@ import { lutarEmGrupo } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
 import { atributos, darGold, ferir, ganharXp, guardarItem, mochilaCheia } from './rpg/jogador.js'
 import { droparMateriais, droparRecompensas } from './rpg/raid.js'
+import { xpComPrestigio } from './rpg/prestigio.js'
 import { FEITICOS } from './rpg/feiticos.js'
 import { TITANITAS } from './rpg/ferreiro.js'
 import { verItem, verResumo } from './visao.js'
@@ -83,7 +84,8 @@ export function resolverLutaDeGrupo(
     const estado = resultado.time[i]
     const caiu = estado?.caido ?? false
     const fracao = caiu ? 0.6 : 1
-    const xp = Math.round(xpCheio * fracao)
+    // O prestigio e de cada um, entao o XP e calculado jogador a jogador.
+    const xp = xpComPrestigio(p, Math.round(xpCheio * fracao))
     const gold = Math.round(goldCheio * fracao)
 
     darGold(p, gold)

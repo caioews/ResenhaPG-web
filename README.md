@@ -54,6 +54,7 @@ mesmos.
 | **Clérigo no fim da árvore** | Ministro da Luz → Mão Viva do Divino (habilidade Mão Viva) | **A Última Luz** → **O Homem Mais Próximo de Deus** (habilidade **Milagre**). Os ids internos continuam os antigos, então quem já evoluiu não perde nada |
 | **Milagre** | — | regenera 2% por turno, leva 9% menos dano e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
 | **Feitiços** | só na arma | na arma **e** no item secundário. Os das duas peças equipadas valem juntos; o mesmo feitiço nas duas conta uma vez só |
+| **Prestígio** | — | no nível 250 dá para recomeçar do 1 mantendo tudo o que juntou, somando um contador que aumenta atributos e XP para sempre. Ver [Prestígio](#prestígio) |
 | **Balanceamento das classes** | as habilidades do bot | recalibradas por simulação para as classes de um mesmo degrau terem força parecida. Ver [Balanceamento das classes](#balanceamento-das-classes) |
 
 A rampa da fogueira continua sem temporizador nenhum: o que existe é o par
@@ -98,6 +99,37 @@ Os atributos base continuam os da especificação (`npm run conformidade`
 passa). O que ainda fica acima da faixa é o Punho da Lei Divina, que não recebeu
 buff nenhum — só desceria com um nerf.
 
+### Prestígio
+
+No nível **250** aparece no menu, acima de "Status do personagem", o botão
+**Prestígio**. Ele reinicia o personagem:
+
+| Continua | Vai embora |
+| --- | --- |
+| Todos os itens, equipados e na mochila | A árvore de evolução: volta para a classe base |
+| Gold, titanitas e feitiços | As habilidades da árvore (a passiva da classe base fica) |
+| Os chefes de marco já derrubados | O nível, que volta para 1 |
+| Ranking de PvP, recorde do Abismo e o histórico | |
+
+Em troca, o contador sobe, e cada ponto vale para sempre:
+
+- **+12% nos atributos que a classe dá** (`config.rpg.prestigio.bonusAtributos`).
+  O bônus do equipamento não muda — senão quem prestigia com peça de fim de
+  jogo viraria intocável.
+- **+30% em todo XP ganho** (`bonusXp`), em caçada, chefe, Abismo, raid,
+  evento e expedição.
+
+Como os marcos de chefe já vencidos continuam vencidos, a subida de volta não
+trava em nenhum deles. É por isso que o segundo ciclo é rápido: equipamento de
+fim de jogo, sem travas de marco e com XP aumentado.
+
+Quem prestigiou aparece com **⭐N** ao lado do nome na ficha, nos rankings e na
+tela de personagens, e o Ranking do servidor ganhou a aba **Prestígio**.
+
+O motor está em [server/rpg/prestigio.js](server/rpg/prestigio.js); as rotas
+`GET`/`POST /api/prestigio` ficam em
+[server/rotas/cidade.js](server/rotas/cidade.js).
+
 ### O que é novo
 
 - **Contas e personagens** (`server/auth.js`, `server/store.js`): usuário e
@@ -120,6 +152,8 @@ buff nenhum — só desceria com um nerf.
   arquivo de áudio; o botão **Som** no menu liga e desliga.
 - **Mochila em divisões** — utilizáveis, armas, secundárias, elmos, armaduras e
   anéis, com filtro — e o que está equipado sempre no topo.
+- **Prestígio** (`server/rpg/prestigio.js`): recomeçar no nível 250 em troca de
+  um bônus permanente de atributos e XP, com ranking próprio.
 - **Interface** sem framework nem build: HTML, CSS e módulos ES nativos
   (`public/`).
 
@@ -193,7 +227,7 @@ ResenhaPG web/
 │   ├── ambiente.js     Lê o .env da raiz, se houver
 │   ├── realtime.js     Chat, quem está on-line, avisos
 │   ├── rotas/          contas · combate · mochila · cidade · social · mercado · eventos
-│   └── rpg/            O motor, portado do bot
+│   └── rpg/            O motor, portado do bot (+ prestigio.js, novo aqui)
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
@@ -672,6 +706,9 @@ Alguns que você talvez queira mexer:
 | `rpg.raid.minJogadores` | `3` | Quantos precisa para começar uma raid |
 | `rpg.abismo.nivelMinimo` | `40` | Quando o Abismo abre |
 | `rpg.evolucao.custoGold` | `5k / 80k / 400k` | Preço de cada degrau do Rito |
+| `prestigio.nivelMinimo` | `250` | Nível em que o botão Prestígio aparece |
+| `prestigio.bonusAtributos` | `0.12` | Quanto cada prestígio soma nos atributos da classe |
+| `prestigio.bonusXp` | `0.3` | Quanto cada prestígio soma no XP ganho |
 | `web.maxPersonagens` | `10` | Personagens por conta |
 | `web.chatCooldownSegundos` | `1` | Espera entre duas mensagens no chat |
 | `eventos.ligado` | `true` | Liga e desliga os eventos aleatórios |

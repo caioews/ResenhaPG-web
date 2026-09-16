@@ -53,6 +53,7 @@ import {
   abrirLoja,
   abrirMercado,
   abrirMochila,
+  abrirPrestigio,
   abrirPvp,
   abrirRaid,
   abrirRanking,
@@ -152,7 +153,12 @@ function desenharPersonagens() {
         onClick: () => entrarNoJogo(p.id),
       },
       el('div', { class: 'nome' }, p.nome),
-      el('div', { class: 'sub' }, `${p.classe?.emoji ?? ''} ${p.classe?.nome ?? 'sem classe'} · nível ${p.nivel}`),
+      el(
+        'div',
+        { class: 'sub' },
+        `${p.classe?.emoji ?? ''} ${p.classe?.nome ?? 'sem classe'} · nível ${p.nivel}`,
+        p.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${p.prestigio}`) : null,
+      ),
       el(
         'div',
         { class: 'linha-dados' },
@@ -366,9 +372,15 @@ async function sairDoPersonagem() {
 
 // ------------------------------------------------------------- ficha
 
+/** Se o botão de Prestígio estava no menu da última vez que ele foi montado. */
+let menuComPrestigio = false
+
 function desenharFicha() {
   const p = estado.p
   if (!p) return
+
+  // O botão do Prestígio aparece no nível 250 e some depois do recomeço.
+  if (Boolean(p.prestigio?.podeAgora) !== menuComPrestigio) montarMenuDeLugares()
 
   const caixa = limpar($('#ficha'))
 
@@ -380,7 +392,14 @@ function desenharFicha() {
       el(
         'div',
         { style: 'min-width:0' },
-        el('div', { class: 'nome' }, p.nome),
+        el(
+          'div',
+          { class: 'nome' },
+          p.nome,
+          p.prestigio?.contador
+            ? el('span', { class: 'estrela-prestigio', title: `Prestígio ${p.prestigio.contador}` }, ` ⭐${p.prestigio.contador}`)
+            : null,
+        ),
         el('div', { class: 'classe' }, `Nível ${p.nivel} · ${p.classe?.nome ?? 'sem classe'}`),
       ),
     ),
@@ -695,8 +714,19 @@ function montarMenuDeLugares() {
   }
   desenharBotaoDeSom()
 
+  menuComPrestigio = Boolean(estado.p?.prestigio?.podeAgora)
+
   menu.append(
     criarIndicador(),
+    // Só existe quando o personagem chega ao teto: é o botão do recomeço.
+    menuComPrestigio
+      ? el(
+          'button',
+          { class: 'lugar lugar-prestigio', type: 'button', onClick: (ev) => comBotao(ev.currentTarget, abrirPrestigio) },
+          el('span', { class: 'icone' }, '⭐'),
+          el('span', {}, 'Prestígio'),
+        )
+      : null,
     lugar('📜', 'Status do personagem', abrirFicha),
     lugar('🎒', 'Mochila', abrirMochila),
     lugar('💰', 'Loja', () => abrirLoja()),

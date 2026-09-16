@@ -24,6 +24,7 @@ import { emExpedicao, tempoRestante, EXPEDICOES } from './rpg/expedicao.js'
 import { esperaDoAbismo } from './rpg/abismo.js'
 import { esperaEntreDuelos, posicaoNoRanking } from './rpg/pvp.js'
 import { esperaDoRito } from './rpg/evolucao.js'
+import { escalaDeAtributos, escalaDeXp, motivoParaNaoPrestigiar, prestigioDe } from './rpg/prestigio.js'
 
 /** Um item com tudo que a interface precisa mostrar sem recalcular nada. */
 export function verItem(item, index = null) {
@@ -248,6 +249,24 @@ export function verPersonagem(player) {
         : null,
     },
 
+    // O prestígio: o contador, o que ele já dá e o que o próximo daria.
+    prestigio: (() => {
+      const n = prestigioDe(player)
+      return {
+        contador: n,
+        desde: ficha.prestigioEm ?? 0,
+        nivelMinimo: config.rpg.prestigio.nivelMinimo,
+        podeAgora: motivoParaNaoPrestigiar(player) === null,
+        motivo: motivoParaNaoPrestigiar(player)?.erro ?? null,
+        bonusAtributos: escalaDeAtributos(n) - 1,
+        bonusXp: escalaDeXp(n) - 1,
+        proximo: {
+          bonusAtributos: escalaDeAtributos(n + 1) - 1,
+          bonusXp: escalaDeXp(n + 1) - 1,
+        },
+      }
+    })(),
+
     evolucao: {
       nivelExigido: nivelDoProximoDegrau(ficha.classe),
       opcoes: ficha.classe ? especialidadesDe(ficha.classe).length : 0,
@@ -269,6 +288,7 @@ export function verResumo(player) {
     id: player.id,
     nome: player.name,
     nivel: player.rpg.nivel,
+    prestigio: player.rpg.prestigio ?? 0,
     classe: c ? { id: player.rpg.classe, nome: c.nome, emoji: c.emoji, tier: c.tier } : null,
     gold: player.rpg.gold,
     hp: vidaAtual(player),

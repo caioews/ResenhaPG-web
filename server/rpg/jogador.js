@@ -28,16 +28,40 @@ export function bonusDoEquipamento(player) {
   return soma
 }
 
-/** Atributos finais: classe + nivel + equipamento. */
+/**
+ * O que o prestigio multiplica nos atributos de classe.
+ *
+ * A conta fica aqui, e nao em atributosBase (classes.js), por dois motivos:
+ * atributosBase e a tabela da especificacao e nao deve mudar, e o bonus vale
+ * so para o que a CLASSE da — equipamento continua valendo o que vale, senao
+ * quem prestigia com equipamento de fim de jogo viraria intocavel.
+ */
+const escalaDePrestigio = (player) =>
+  1 + Math.max(0, player.rpg.prestigio ?? 0) * config.rpg.prestigio.bonusAtributos
+
+/** Atributos finais: classe + nivel + prestigio + equipamento. */
 export function atributos(player) {
   const base = atributosBase(player.rpg.classe, player.rpg.nivel)
   const extra = bonusDoEquipamento(player)
+  const escala = escalaDePrestigio(player)
 
   return {
-    hp: base.hp + extra.hp,
-    atq: base.atq + extra.atq,
-    def: base.def + extra.def,
-    agi: base.agi + extra.agi,
+    hp: Math.round(base.hp * escala) + extra.hp,
+    atq: Math.round(base.atq * escala) + extra.atq,
+    def: Math.round(base.def * escala) + extra.def,
+    agi: Math.round(base.agi * escala) + extra.agi,
+  }
+}
+
+/** Os atributos que a classe da agora, ja com o prestigio — para a ficha. */
+export function atributosDaClasse(player) {
+  const base = atributosBase(player.rpg.classe, player.rpg.nivel)
+  const escala = escalaDePrestigio(player)
+  return {
+    hp: Math.round(base.hp * escala),
+    atq: Math.round(base.atq * escala),
+    def: Math.round(base.def * escala),
+    agi: Math.round(base.agi * escala),
   }
 }
 

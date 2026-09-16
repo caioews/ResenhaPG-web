@@ -64,6 +64,9 @@ export function fichaNova() {
     },
     ultimaLuta: 0,
     provaAte: 0,
+    // Quantas vezes este personagem ja recomecou do nivel 1 (rpg/prestigio.js)
+    prestigio: 0,
+    prestigioEm: 0,
     vitorias: 0,
     derrotas: 0,
   }

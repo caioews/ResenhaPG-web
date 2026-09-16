@@ -231,6 +231,19 @@ export const config = {
     },
     // Quanto tempo uma oferta de venda fica de pe, em minutos
     ofertaMinutos: 5,
+
+    // Prestigio: no nivel `nivelMinimo` o personagem pode recomecar do 1,
+    // voltando a classe base e perdendo a arvore de evolucao, mas somando um
+    // no contador. Cada ponto de prestigio vale para sempre:
+    //   bonusAtributos  fracao somada aos atributos que a CLASSE da (nao ao
+    //                   equipamento) — 0.12 = +12% por prestigio
+    //   bonusXp         fracao somada a todo XP ganho — 0.3 = +30% por prestigio
+    prestigio: {
+      nivelMinimo: 250,
+      bonusAtributos: 0.12,
+      bonusXp: 0.3,
+    },
+
   },
 
 

@@ -86,6 +86,13 @@ export async function abrirFicha() {
         linhaDeDado('🥾 Agilidade', num(a.agi)),
         linhaDeDado('💰 Gold', num(p.gold), 'ouro'),
         linhaDeDado('📈 XP no nível', `${num(p.xp)} / ${num(p.xpParaSubir)}`),
+        p.prestigio.contador
+          ? linhaDeDado(
+              '⭐ Prestígio',
+              `${p.prestigio.contador}× · +${porcento(p.prestigio.bonusAtributos)} atributos · +${porcento(p.prestigio.bonusXp)} XP`,
+              'ouro',
+            )
+          : null,
       ),
       el(
         'div',
@@ -152,7 +159,10 @@ export async function abrirFicha() {
     el('div', { class: 'bloco', style: 'margin-top:14px' }, el('h4', {}, 'Efeitos somados'), listaDeEfeitos),
   )
 
-  abrirModal(`${p.classe.emoji} ${p.nome} — nível ${p.nivel}`, corpo)
+  abrirModal(
+    `${p.classe.emoji} ${p.nome} — nível ${p.nivel}${p.prestigio.contador ? ` · ⭐${p.prestigio.contador}` : ''}`,
+    corpo,
+  )
 }
 
 const NOMES_DE_EFEITO = {
@@ -1534,7 +1544,9 @@ function tabelaDeRanking(lista, campo, sufixo, meuId) {
           'tr',
           { class: r.id === meuId ? 'eu' : '' },
           el('td', {}, `${r.posicao}.`),
-          el('td', {}, r.nome),
+          // A estrela acompanha o nome em todos os rankings: quem prestigiou
+          // está no nível 1 de novo, e sem ela a linha não faria sentido.
+          el('td', {}, r.nome, r.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${r.prestigio}`) : null),
           el('td', {}, `${r.classe?.emoji ?? ''} ${r.classe?.nome ?? '—'} nv ${r.nivel}`),
           el('td', { class: 'num' }, num(r[campo] ?? r.nivel)),
         ),
@@ -1553,6 +1565,7 @@ export async function abrirRanking(aba = 'nivel') {
       { id: 'gold', nome: 'Gold' },
       { id: 'abismo', nome: 'Abismo' },
       { id: 'pvp', nome: 'PvP' },
+      { id: 'prestigio', nome: 'Prestígio' },
     ],
     aba,
     (id) => abrirRanking(id),
@@ -1563,10 +1576,149 @@ export async function abrirRanking(aba = 'nivel') {
     gold: ['gold', 'gold'],
     abismo: ['melhorAndar', 'andar'],
     pvp: ['pontosPvp', 'pontos'],
+    prestigio: ['prestigio', '⭐'],
   }
 
   const [campo, sufixo] = campos[aba]
   abrirModal('Ranking do servidor', tabelaDeRanking(dados[aba], campo, sufixo, meuId), { abas })
+}
+
+// ================================================== P R E S T Í G I O
+
+/**
+ * O painel do prestígio: o que se ganha, o que se perde e o botão que não
+ * tem volta. Tudo fica na tela antes do clique, de propósito.
+ */
+export async function abrirPrestigio() {
+  const { prestigio: d } = await pegar('/api/prestigio')
+
+  const linhaDeBonus = (rotulo, agora, depois) =>
+    el(
+      'div',
+      { class: 'linha-dado' },
+      el('div', { class: 'rotulo' }, rotulo),
+      el(
+        'div',
+        { class: 'valor ouro' },
+        `+${porcento(agora)}`,
+        el('span', { class: 'sussurro' }, '  →  '),
+        forte(`+${porcento(depois)}`, 'cura'),
+      ),
+    )
+
+  const botao = el(
+    'button',
+    {
+      class: 'btn primario largo',
+      type: 'button',
+      disabled: !d.pode,
+      onClick: () =>
+        confirmar(
+          `Prestígio ${d.contador + 1}`,
+          (d.classeAtual?.nome === d.classeDeVolta?.nome
+            ? `Seu ${d.classeAtual?.nome ?? 'personagem'} volta ao nível 1. `
+            : `Seu ${d.classeAtual?.nome ?? 'personagem'} volta ao nível 1 como ${d.classeDeVolta?.nome ?? 'classe base'}, perdendo a árvore de evolução e as habilidades dela. `) +
+            'Itens, gold, titanitas, feitiços e os chefes já derrubados continuam com você — e o bônus de prestígio é ' +
+            'para sempre. Isso não tem desfazer.',
+          async () => {
+            const r = await mandar('/api/prestigio')
+            await narrarPrestigio(r.prestigiado)
+          },
+          'Prestigiar',
+        ),
+    },
+    d.pode ? `Prestigiar — virar Prestígio ${d.contador + 1}` : 'Ainda não dá para prestigiar',
+  )
+
+  const corpo = el(
+    'div',
+    {},
+    el(
+      'p',
+      { class: 'sussurro', style: 'margin-top:0' },
+      `No nível ${num(d.nivelMinimo)} o caminho se fecha e recomeça: o personagem volta ao nível 1 e à classe base, e o ` +
+        'contador de prestígio sobe. Cada ponto de prestígio vale para sempre, em todos os personagens que você prestigiar.',
+    ),
+    el(
+      'div',
+      { class: 'grade-dois' },
+      el(
+        'div',
+        { class: 'bloco' },
+        el('h4', {}, 'O que você mantém'),
+        el(
+          'ul',
+          { class: 'lista-simples' },
+          el('li', {}, 'Todos os itens, equipados e na mochila'),
+          el('li', {}, 'Gold, titanitas e feitiços'),
+          el('li', {}, 'Os chefes de marco já derrubados — a subida de volta não trava em nenhum'),
+          el('li', {}, 'Ranking de PvP, recorde do Abismo e o histórico de vitórias'),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'bloco' },
+        el('h4', {}, 'O que você perde'),
+        el(
+          'ul',
+          { class: 'lista-simples' },
+          // Quem chegou ao 250 sem evoluir não perde classe nenhuma.
+          d.classeAtual?.nome === d.classeDeVolta?.nome
+            ? el('li', {}, `Nada da árvore: você continua ${d.classeDeVolta?.nome ?? 'na classe base'}, porque nunca evoluiu`)
+            : el('li', {}, `A classe ${d.classeAtual?.nome ?? ''}: você volta a ser ${d.classeDeVolta?.nome ?? 'a classe base'}`),
+          el('li', {}, 'O nível, que volta para 1'),
+          ...d.habilidadesPerdidas.map((h) => el('li', {}, `${h.emoji} ${h.nome}`)),
+          el('li', { class: 'sussurro' }, 'Armas exclusivas da especialidade saem de uso, mas continuam na mochila'),
+        ),
+      ),
+    ),
+    el(
+      'div',
+      { class: 'bloco', style: 'margin-top:14px' },
+      el('h4', {}, `Prestígio ${d.contador} → ${d.contador + 1}`),
+      linhaDeBonus('Atributos da classe', d.agora.atributos, d.depois.atributos),
+      linhaDeBonus('XP de tudo que você fizer', d.agora.xp, d.depois.xp),
+      el(
+        'p',
+        { class: 'sussurro', style: 'margin-bottom:0' },
+        'O bônus de atributos vale sobre o que a classe dá por nível — o equipamento continua valendo o que vale.',
+      ),
+    ),
+    d.motivo ? el('p', { style: 'color:var(--erro)' }, d.motivo) : null,
+    el('div', { style: 'margin-top:14px' }, botao),
+  )
+
+  abrirModal(
+    d.contador ? `Prestígio ⭐${d.contador}` : 'Prestígio',
+    corpo,
+    { nome: 'prestigio', aoRecarregar: abrirPrestigio },
+  )
+}
+
+/** A cena do recomeço, na coluna da aventura. */
+export async function narrarPrestigio(feito) {
+  fecharModal()
+  limparNarrativa()
+  definirCena('O Recomeço')
+  tituloDeCena(`⭐ Prestígio ${feito.contador}`)
+  rico(
+    'O caminho de ',
+    forte(feito.classeAntiga),
+    ' chega ao fim. O que você aprendeu se desfaz, e o que você carrega continua nas suas mãos.',
+  )
+  rico(
+    'Você volta a ser ',
+    forte(feito.classe),
+    ' no nível 1 — agora com ',
+    forte(`+${porcento(feito.bonus.atributos)} de atributos`, 'cura'),
+    ' e ',
+    forte(`+${porcento(feito.bonus.xp)} de XP`, 'cura'),
+    ', para sempre.',
+  )
+  if (feito.tirados.length) {
+    sussurro(`Saiu de uso: ${feito.tirados.map((i) => i.nome).join(', ')} — a classe base não usa, mas continua na mochila.`)
+  }
+  sussurro('Os chefes que você já derrubou continuam derrubados: a subida de volta não trava em nenhum marco.')
 }
 
 // ==================================================== M E R C A D O
