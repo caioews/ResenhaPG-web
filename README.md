@@ -154,6 +154,8 @@ O motor está em [server/rpg/prestigio.js](server/rpg/prestigio.js); as rotas
   anéis, com filtro — e o que está equipado sempre no topo.
 - **Prestígio** (`server/rpg/prestigio.js`): recomeçar no nível 250 em troca de
   um bônus permanente de atributos e XP, com ranking próprio.
+- **Missões diárias, chefe mundial, masmorra em grupo e casa de leilões** —
+  ver [O dia a dia](#o-dia-a-dia).
 - **Interface** sem framework nem build: HTML, CSS e módulos ES nativos
   (`public/`).
 
@@ -223,15 +225,22 @@ ResenhaPG web/
 │   ├── mercado.js      Ofertas de item entre jogadores (só em memória)
 │   ├── grupo.js        A luta de grupo que a raid e os eventos dividem
 │   ├── eventos.js      Catálogo, agenda e resolução dos eventos aleatórios
-│   ├── admin.js        Comandos de administrador no chat (/evento)
+│   ├── admin.js        Comandos de administrador no chat (/evento, /chefe)
+│   ├── missoes.js      Missões diárias
+│   ├── chefeMundial.js O chefe do dia, com vida compartilhada
+│   ├── masmorra.js     O Abismo em grupo
+│   ├── leilao.js       Casa de leilões
+│   ├── entregas.js     Itens esperando o dono ir buscar
+│   ├── tempo.js        Hora e dia no fuso do jogo
 │   ├── ambiente.js     Lê o .env da raiz, se houver
 │   ├── realtime.js     Chat, quem está on-line, avisos
 │   ├── rotas/          contas · combate · mochila · cidade · social · mercado · eventos
+│   │                   · missoes · chefeMundial · masmorra · leilao
 │   └── rpg/            O motor, portado do bot (+ prestigio.js, novo aqui)
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
-│   └── js/             nucleo · narrativa · paineis · eventos · som · app
+│   └── js/             nucleo · narrativa · paineis · eventos · aventuras · som · app
 ├── scripts/            conformidade.js · simulador.js · classes.js · atualizar.sh
 └── dados/              O banco (criado sozinho; não versione)
 ```
@@ -706,6 +715,10 @@ Alguns que você talvez queira mexer:
 | `rpg.raid.minJogadores` | `3` | Quantos precisa para começar uma raid |
 | `rpg.abismo.nivelMinimo` | `40` | Quando o Abismo abre |
 | `rpg.evolucao.custoGold` | `5k / 80k / 400k` | Preço de cada degrau do Rito |
+| `chefeMundial.horaInicio` / `horaFim` | `12` / `21` | Janela em que o chefe mundial pode aparecer |
+| `chefeMundial.unidadesPorJogador` | `15` | Vida do chefe por conta ativa (mais = mais difícil) |
+| `masmorra.nivelMinimo` | `40` | Quando a masmorra em grupo abre |
+| `leilao.taxaDeVenda` | `0.05` | O que a casa de leilões fica da venda |
 | `prestigio.nivelMinimo` | `250` | Nível em que o botão Prestígio aparece |
 | `prestigio.bonusAtributos` | `0.12` | Quanto cada prestígio soma nos atributos da classe |
 | `prestigio.bonusXp` | `0.3` | Quanto cada prestígio soma no XP ganho |
@@ -761,6 +774,68 @@ Gold avulso vai direto, sem aceite.
 **Estados que bloqueiam.** Ferido (5 min, ou uma bandagem), descansando na
 fogueira (2 min até a vida cheia), em expedição (não luta), travado por chefe
 (não sobe de nível). A vida regenera sozinha, 5% do máximo por minuto.
+
+---
+
+## O dia a dia
+
+Quatro sistemas para ter motivo de entrar todo dia e de jogar junto. Os
+números de dificuldade saíram de simulação; os ajustes ficam em
+`config.rpg.missoes`, `chefeMundial`, `masmorra` e `leilao`.
+
+### Missões diárias
+
+Três tarefas sorteadas por personagem, trocando à meia-noite (horário de
+Brasília): vencer caçadas e elites, juntar gold, descer o Abismo ou a
+masmorra, participar de raid ou evento, vencer duelos, voltar de expedição,
+reforçar no ferreiro, atacar o chefe mundial, usar a casa de leilões. Cada uma
+paga gold, XP (um terço do nível) e titanita; fechar as três abre o **baú do
+dia**, com gold em dobro e um feitiço garantido. O botão do menu mostra quantas
+estão prontas para resgatar. Código em `server/missoes.js`.
+
+### Chefe mundial
+
+Aparece uma vez por dia, numa hora sorteada entre 12h e 21h, e fica 3 horas.
+A vida é compartilhada pelo servidor inteiro e cresce com o número de contas
+ativas. Cada ataque é uma investida contra uma projeção do chefe **no nível de
+quem ataca**, então iniciante e veterano contribuem na mesma régua; cair só
+encerra a investida, ninguém sai ferido. 10 minutos entre ataques.
+
+Quando ele cai, todo mundo que bateu leva XP e gold na proporção do dano — o
+maior dano leva um item lendário, o segundo e o terceiro, épicos, e quem passou
+de 3% do dano, um raro. Se o tempo acabar, ele foge e o espólio sai pela
+metade. O estado fica no banco: um reinício no meio não zera a vida dele.
+
+Administradores podem chamar na hora: `/chefe`, `/chefe kraken`,
+`/chefe lista` e `/chefe encerrar`. Código em `server/chefeMundial.js`.
+
+### Masmorra em grupo
+
+O Abismo descido junto: de 2 a 4 jogadores, **um por conta**, a partir do
+nível 40. Um monta o grupo, os outros entram, e quem montou decide a hora. Cada
+andar é uma luta de grupo; a vida de cada um carrega de um andar para o outro e
+quem cai fica caído. Todos recebem pelos andares que o grupo venceu.
+
+O nível da masmorra fica entre a média e o maior nível do grupo, para um
+personagem alto não carregar os baixos até o fundo: um grupo de 60, 60, 55 e
+210 descia 21 andares pela média, e com a regra desce 13 — um grupo de quatro
+de nível 60 continua nos mesmos 15. Tem ranking próprio. Código em
+`server/masmorra.js`.
+
+### Casa de leilões
+
+Anuncia uma peça (equipamento fora de uso) com lance mínimo, "compre já"
+opcional e duração de 1, 6 ou 24 horas. O item sai da mochila e fica guardado
+na casa; o gold de cada lance sai na hora de quem deu e volta na hora para quem
+foi coberto. Cada lance precisa superar o anterior em 5%, e lance nos últimos 2
+minutos estende o fim. A casa fica com **5%** da venda — um dos poucos ralos de
+gold do jogo. Sem lance, o item volta.
+
+Item que não cabe na mochila — arremate, anúncio vencido, prêmio do chefe
+mundial — vai para **Retirar**, dentro da casa, e espera lá até abrir espaço.
+Tudo isso mora no banco (tabelas `leiloes` e `entregas`), então reiniciar o
+servidor não perde item nem gold. Código em `server/leilao.js` e
+`server/entregas.js`.
 
 ---
 

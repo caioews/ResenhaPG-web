@@ -1712,3 +1712,38 @@ select:focus {
 .lista-simples li::marker {
   color: var(--ouro-fraco);
 }
+
+/* ------------------------------------------------ missões, chefe, leilão */
+
+.linha-item.missao .barra {
+  margin-top: 5px;
+  height: 14px;
+}
+.linha-item.missao.feita {
+  opacity: 0.6;
+}
+.bloco.bau {
+  border-color: var(--ouro-fraco);
+  background: linear-gradient(180deg, #1c1710, #100e16);
+}
+
+.chefe-emoji {
+  font-size: 56px;
+  text-align: center;
+  line-height: 1.1;
+}
+.chefe-nome {
+  text-align: center;
+  font-family: var(--titulo);
+  color: var(--ouro-claro);
+  margin: 4px 0 6px;
+}
+.chefe-dados {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--texto-fraco);
+  margin-top: 6px;
+}

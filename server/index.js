@@ -19,8 +19,14 @@ import { cidade } from './rotas/cidade.js'
 import { social } from './rotas/social.js'
 import { mercadoRotas } from './rotas/mercado.js'
 import { eventosRotas } from './rotas/eventos.js'
+import { missoesRotas } from './rotas/missoes.js'
+import { leilaoRotas } from './rotas/leilao.js'
+import { chefeMundialRotas } from './rotas/chefeMundial.js'
+import { masmorraRotas } from './rotas/masmorra.js'
 import { aoComando, iniciarRealtime } from './realtime.js'
 import { iniciarEventos } from './eventos.js'
+import { iniciarLeiloes } from './leilao.js'
+import { iniciarChefeMundial } from './chefeMundial.js'
 import { comandoDeAdmin } from './admin.js'
 
 const app = express()
@@ -39,6 +45,10 @@ app.use('/api', cidade)
 app.use('/api', social)
 app.use('/api', mercadoRotas)
 app.use('/api', eventosRotas)
+app.use('/api', missoesRotas)
+app.use('/api', leilaoRotas)
+app.use('/api', chefeMundialRotas)
+app.use('/api', masmorraRotas)
 
 app.use(
   express.static(path.join(raizDoProjeto, 'public'), {
@@ -64,6 +74,8 @@ const servidor = http.createServer(app)
 iniciarRealtime(servidor)
 aoComando(comandoDeAdmin)
 iniciarEventos()
+iniciarLeiloes()
+iniciarChefeMundial()
 
 const porta = Number(process.env.PORT) || 3000
 const host = process.env.HOST || '0.0.0.0'

@@ -71,6 +71,7 @@ import {
 } from '../rpg/prestigio.js'
 import { verClasse, verHabilidade, verItem } from '../visao.js'
 import { anunciar } from '../realtime.js'
+import { registrar } from '../missoes.js'
 
 export const cidade = Router()
 
@@ -260,6 +261,7 @@ cidade.post(
     }
 
     const feito = reforcar(player, item)
+    registrar(player, 'reforco')
 
     responder(res, player, {
       texto: `${item.nome} agora é +${feito.custo.para}.`,
@@ -664,6 +666,7 @@ cidade.post(
     darGold(player, premio.gold)
     premio.xp = xpComPrestigio(player, premio.xp)
     const subiu = ganharXp(player, premio.xp)
+    registrar(player, 'expedicao')
 
     let drop = null
     let perdido = false

@@ -14,10 +14,12 @@ import { emExpedicao } from '../rpg/expedicao.js'
 import { criarChefeDeRaid, TODOS_OS_CHEFES } from '../rpg/raid.js'
 import { chanceEsperada, esperaEntreDuelos, ranking as rankingPvp, registrarResultado } from '../rpg/pvp.js'
 import { ranking as rankingPrestigio } from '../rpg/prestigio.js'
+import { ranking as rankingMasmorra } from '../masmorra.js'
 import { verItem, verResumo } from '../visao.js'
 import * as salas from '../salas.js'
 import { nivelMedioDe, resolverLutaDeGrupo } from '../grupo.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from '../realtime.js'
+import { registrar } from '../missoes.js'
 
 export const social = Router()
 
@@ -162,7 +164,10 @@ social.post(
 
     // O cooldown e o placar são da raid; o resto é a luta de grupo comum.
     const agora = Date.now()
-    for (const p of participantes) p.rpg.raid.ultimaRaid = agora
+    for (const p of participantes) {
+      p.rpg.raid.ultimaRaid = agora
+      registrar(p, 'raid')
+    }
 
     const raid = resolverLutaDeGrupo(participantes, chefe)
     for (const p of participantes) {
@@ -303,6 +308,7 @@ social.post(
     const perdedor = venceuDesafiante ? player : desafiante
 
     const pontos = registrarResultado(vencedor, perdedor)
+    registrar(vencedor, 'pvp')
 
     if (desafio.aposta > 0) {
       darGold(perdedor, -desafio.aposta)
@@ -371,6 +377,7 @@ social.get(
         .map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
       pvp: rankingPvp(20).map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
       prestigio: rankingPrestigio(20).map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
+      masmorra: rankingMasmorra(20).map((p, i) => ({ ...verResumo(p), posicao: i + 1 })),
       online: jogadoresOnline(),
     })
   }),

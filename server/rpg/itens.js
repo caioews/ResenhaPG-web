@@ -188,12 +188,18 @@ export function bonusFinal(item) {
 
 export const ehEquipamento = (item) => Boolean(item?.slot)
 
+/**
+ * O nome de um item como aparece em texto: raridade, reforço, feitiço e nível.
+ *
+ * No bot isso saía com a marcação do WhatsApp (*+3*, _nv60_); na web a
+ * marcação aparecia crua no chat e nos avisos, então aqui é texto puro.
+ */
 export function nomeCompleto(item) {
   if (!ehEquipamento(item)) return `${item.emoji ?? '🧪'} ${item.nome}`
 
-  const reforco = item.reforco ? ` *+${item.reforco}*` : ''
+  const reforco = item.reforco ? ` +${item.reforco}` : ''
   const feitico = item.feitico ? ` ${FEITICOS[item.feitico]?.emoji ?? '✴️'}` : ''
-  return `${RARIDADES[item.raridade].emoji} ${item.nome}${reforco}${feitico} _nv${item.nivel}_`
+  return `${RARIDADES[item.raridade].emoji} ${item.nome}${reforco}${feitico} (nv ${item.nivel})`
 }
 
 export function descreverBonus(item) {

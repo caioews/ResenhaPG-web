@@ -67,6 +67,10 @@ export function fichaNova() {
     // Quantas vezes este personagem ja recomecou do nivel 1 (rpg/prestigio.js)
     prestigio: 0,
     prestigioEm: 0,
+    // Missoes do dia (server/missoes.js). `dia` e a chave: dia novo, lista nova.
+    missoes: { dia: '', lista: [], bauResgatado: false },
+    // Masmorra em grupo (server/masmorra.js)
+    masmorra: { ultimaDescida: 0, melhorAndar: 0, descidas: 0 },
     vitorias: 0,
     derrotas: 0,
   }
@@ -96,6 +100,8 @@ function migrar(rpg = {}) {
     feiticos: { ...base.feiticos, ...rpg.feiticos },
     abismo: { ...base.abismo, ...rpg.abismo },
     pvp: { ...base.pvp, ...rpg.pvp },
+    missoes: { ...base.missoes, ...rpg.missoes },
+    masmorra: { ...base.masmorra, ...rpg.masmorra },
   }
 }
 

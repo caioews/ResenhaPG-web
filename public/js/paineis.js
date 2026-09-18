@@ -1566,6 +1566,7 @@ export async function abrirRanking(aba = 'nivel') {
       { id: 'abismo', nome: 'Abismo' },
       { id: 'pvp', nome: 'PvP' },
       { id: 'prestigio', nome: 'Prestígio' },
+      { id: 'masmorra', nome: 'Masmorra' },
     ],
     aba,
     (id) => abrirRanking(id),
@@ -1577,6 +1578,7 @@ export async function abrirRanking(aba = 'nivel') {
     abismo: ['melhorAndar', 'andar'],
     pvp: ['pontosPvp', 'pontos'],
     prestigio: ['prestigio', '⭐'],
+    masmorra: ['melhorMasmorra', 'andar'],
   }
 
   const [campo, sufixo] = campos[aba]

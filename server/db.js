@@ -55,6 +55,46 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_personagens_usuario ON personagens(usuario_id);
 
+  -- Estado do servidor que precisa sobreviver a um reinício e não é de
+  -- personagem nenhum: o chefe mundial, a agenda dele.
+  CREATE TABLE IF NOT EXISTS estado (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+  );
+
+  -- Casa de leilões. O item anunciado sai da mochila e fica AQUI até o
+  -- leilão fechar: é o único lugar do jogo que retém um bem, e por isso vive
+  -- no banco e não em memória — um reinício não pode sumir com a peça.
+  CREATE TABLE IF NOT EXISTS leiloes (
+    id             TEXT PRIMARY KEY,
+    vendedor_id    TEXT NOT NULL,
+    vendedor_nome  TEXT NOT NULL,
+    vendedor_conta INTEGER NOT NULL,
+    item           TEXT NOT NULL,
+    lance_minimo   INTEGER NOT NULL,
+    compra_ja      INTEGER,
+    lance          INTEGER,
+    comprador_id   TEXT,
+    comprador_nome TEXT,
+    lances         INTEGER NOT NULL DEFAULT 0,
+    criado_em      INTEGER NOT NULL,
+    termina_em     INTEGER NOT NULL,
+    estado         TEXT NOT NULL DEFAULT 'aberto',
+    fechado_em     INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_leiloes_estado ON leiloes(estado, termina_em);
+
+  -- Itens esperando o dono ir buscar: arrematados, devolvidos, prêmios que
+  -- não couberam na mochila.
+  CREATE TABLE IF NOT EXISTS entregas (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    personagem_id TEXT NOT NULL,
+    item          TEXT NOT NULL,
+    motivo        TEXT NOT NULL,
+    criado_em     INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_entregas_personagem ON entregas(personagem_id);
+
   CREATE TABLE IF NOT EXISTS chat (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     canal     TEXT NOT NULL,

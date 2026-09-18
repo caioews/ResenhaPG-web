@@ -244,6 +244,78 @@ export const config = {
       bonusXp: 0.3,
     },
 
+    // Missoes diarias (server/missoes.js): sorteadas por personagem, trocam a
+    // meia-noite no fuso de config.eventos.fusoHorario. Cada uma paga gold,
+    // XP (uma fracao do que o nivel pede para subir) e titanita; fechar
+    // todas do dia abre o bau, que garante um feitico.
+    missoes: {
+      porDia: 3,
+      goldBase: 200,
+      goldPorNivel: 40,
+      fracaoDoNivelEmXp: 0.35,
+      bauMultiplicadorDeGold: 2,
+    },
+
+    // Chefe mundial (server/chefeMundial.js): aparece uma vez por dia, numa
+    // hora sorteada entre horaInicio e horaFim, e fica duracaoHoras. A vida e
+    // de todo o servidor; cada ataque e uma investida contra uma projecao
+    // dele no nivel de quem ataca, e o dano conta em "unidades" — a vida de
+    // um monstro comum daquele nivel. Assim iniciante e veterano contribuem
+    // em pe de igualdade, cada um na sua faixa.
+    //
+    // Medido por simulacao: uma investida tira ~3 unidades com equipamento
+    // raro e ~6 com lendario. Cair so encerra a investida (nao fere).
+    chefeMundial: {
+      ligado: true,
+      horaInicio: 12,
+      horaFim: 21,
+      duracaoHoras: 3,
+      esperaEntreAtaquesMinutos: 10,
+      // Vida total = unidadesPorJogador x contas ativas (com piso)
+      unidadesPorJogador: 15,
+      unidadesMinimas: 30,
+      // Conta como ativa quem jogou nos ultimos N dias
+      diasParaContarAtivo: 3,
+      projecao: { escudo: 8, atq: 0.65, def: 1.0, agi: 1.0 },
+      // Recompensa: a de uma raid do nivel do jogador, vezes
+      // (base + porFracao x fracao do dano que ele causou)
+      recompensa: { base: 0.6, porFracao: 3, seFugir: 0.5 },
+      // Fracao minima do dano total para entrar no sorteio de item
+      fracaoParaItem: 0.03,
+    },
+
+    // Masmorra em grupo (server/masmorra.js): o Abismo em grupo. De 2 a 4
+    // jogadores descem juntos; cada andar e uma luta de grupo contra o
+    // habitante do Abismo com a vida multiplicada pelo tamanho do grupo.
+    // Por simulacao (equipamento raro), o grupo desce 2 a 5 andares a mais
+    // que o Abismo solo: 2 pessoas +2 a 3, 3 pessoas +3 a 5, 4 pessoas +4 a 6.
+    masmorra: {
+      nivelMinimo: 40,
+      minJogadores: 2,
+      maxJogadores: 4,
+      salaMinutos: 10,
+      cooldownMinutos: 30,
+      vidaPorJogador: 1.0,
+      ataque: 1.12,
+      areaCada: 3,
+      areaMultiplicador: 0.55,
+      // Fracao da recompensa do Abismo que cada membro recebe por andar
+      recompensa: 0.85,
+    },
+
+    // Casa de leiloes (server/leilao.js)
+    leilao: {
+      duracoesHoras: [1, 6, 24],
+      maxAnunciosPorPersonagem: 5,
+      // Um lance precisa superar o anterior em pelo menos esta fracao
+      incrementoMinimo: 0.05,
+      // O que a casa cobra do vendedor sobre o valor final. Some do jogo:
+      // e um dos poucos ralos de gold que existem.
+      taxaDeVenda: 0.05,
+      // Lance nos ultimos N minutos empurra o fim para N minutos adiante
+      prorrogacaoMinutos: 2,
+    },
+
   },
 
 

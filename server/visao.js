@@ -25,6 +25,8 @@ import { esperaDoAbismo } from './rpg/abismo.js'
 import { esperaEntreDuelos, posicaoNoRanking } from './rpg/pvp.js'
 import { esperaDoRito } from './rpg/evolucao.js'
 import { escalaDeAtributos, escalaDeXp, motivoParaNaoPrestigiar, prestigioDe } from './rpg/prestigio.js'
+import { resumoDasMissoes } from './missoes.js'
+import { quantasEntregas } from './entregas.js'
 
 /** Um item com tudo que a interface precisa mostrar sem recalcular nada. */
 export function verItem(item, index = null) {
@@ -267,6 +269,18 @@ export function verPersonagem(player) {
       }
     })(),
 
+    // Para os selos do menu: missões prontas para resgatar e itens esperando
+    // em "Retirar" na Casa de Leilões.
+    missoes: ficha.classe ? resumoDasMissoes(player) : null,
+    entregas: quantasEntregas(player.id),
+    masmorra: {
+      melhorAndar: ficha.masmorra?.melhorAndar ?? 0,
+      espera: Math.max(
+        0,
+        (ficha.masmorra?.ultimaDescida ?? 0) + config.rpg.masmorra.cooldownMinutos * 60_000 - Date.now(),
+      ),
+    },
+
     evolucao: {
       nivelExigido: nivelDoProximoDegrau(ficha.classe),
       opcoes: ficha.classe ? especialidadesDe(ficha.classe).length : 0,
@@ -298,6 +312,7 @@ export function verResumo(player) {
     vitorias: player.rpg.vitorias,
     derrotas: player.rpg.derrotas,
     melhorAndar: player.rpg.abismo?.melhorAndar ?? 0,
+    melhorMasmorra: player.rpg.masmorra?.melhorAndar ?? 0,
     pontosPvp: player.rpg.pvp?.pontos ?? 0,
   }
 }

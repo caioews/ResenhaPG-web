@@ -12,8 +12,13 @@
  *   /evento lista               mostra os nomes dos eventos
  *   /evento encerrar            fecha a chamada aberta e resolve agora
  *   /evento proximo             diz quando sai o próximo evento sorteado
+ *   /chefe                      faz o chefe mundial aparecer agora
+ *   /chefe <nome>               um chefe específico (ex.: /chefe kraken)
+ *   /chefe lista                mostra os nomes dos chefes
+ *   /chefe encerrar             o chefe no ar foge agora (espólio pela metade)
  */
 import { EVENTOS, dispararEvento, encerrarEvento, proximoEvento } from './eventos.js'
+import { CHEFES_MUNDIAIS, encerrar as encerrarChefe, surgir } from './chefeMundial.js'
 
 // Lido na hora, e não quando o arquivo carrega: assim o .env (ambiente.js)
 // já está aplicado, qualquer que seja a ordem dos imports.
@@ -27,10 +32,27 @@ export function ehAdmin(usuario) {
   )
 }
 
+function comandoDoChefe(args) {
+  const alvo = (args[0] ?? '').trim()
+  if (alvo === 'lista') {
+    return `Chefes: ${Object.entries(CHEFES_MUNDIAIS)
+      .map(([chave, c]) => `${chave} (${c.emoji} ${c.nome})`)
+      .join(' · ')}`
+  }
+  if (alvo === 'encerrar') {
+    const feito = encerrarChefe('fugiu')
+    return feito.erro ?? 'O chefe fugiu.'
+  }
+  const feito = surgir(alvo || null)
+  return feito.erro ?? `${feito.chefe.chefe.emoji} ${feito.chefe.chefe.nome} apareceu.`
+}
+
 export function comandoDeAdmin({ usuario, texto }) {
   const [comando, ...args] = texto.slice(1).split(' ')
-  if (comando.toLowerCase() !== 'evento') return null
-  if (!ehAdmin(usuario)) return 'Só administradores chamam eventos.'
+  const qual = comando.toLowerCase()
+  if (qual !== 'evento' && qual !== 'chefe') return null
+  if (!ehAdmin(usuario)) return 'Só administradores usam esse comando.'
+  if (qual === 'chefe') return comandoDoChefe(args)
 
   const alvo = (args[0] ?? '').trim()
 

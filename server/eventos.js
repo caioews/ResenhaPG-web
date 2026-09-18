@@ -27,6 +27,8 @@ import { nivelMedioDe, resolverLutaDeGrupo } from './grupo.js'
 import { xpComPrestigio } from './rpg/prestigio.js'
 import { verEncontro, verResumo } from './visao.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from './realtime.js'
+import { horaLocal } from './tempo.js'
+import { registrar } from './missoes.js'
 
 // ============================================================ catálogo
 
@@ -246,18 +248,6 @@ const avisarMudanca = () => emitirParaTodos('evento:atualizou', { evento: evento
 const minutos = (n) => n * 60_000
 const sortearEntre = (min, max) => min + Math.random() * (max - min)
 
-/** A hora do dia, com fração, no fuso configurado. 14h30 = 14.5 */
-function horaLocal(agora = new Date()) {
-  const partes = new Intl.DateTimeFormat('en-US', {
-    timeZone: config.eventos.fusoHorario,
-    hour: 'numeric',
-    minute: 'numeric',
-    hourCycle: 'h23',
-  }).formatToParts(agora)
-  const pegar = (tipo) => Number(partes.find((p) => p.type === tipo)?.value ?? 0)
-  return pegar('hour') + pegar('minute') / 60
-}
-
 function dentroDaJanela() {
   const { horaInicio, horaFim } = config.eventos
   const h = horaLocal()
@@ -415,6 +405,7 @@ export function encerrarEvento() {
   // expedição entre atender e a chamada fechar.
   const inscritos = evento.participantes.map((x) => store.buscarPersonagem(x.personagemId)).filter(Boolean)
   const presentes = inscritos.filter((p) => !impedimento(p, def))
+  for (const p of presentes) registrar(p, 'evento')
   const ausentes = inscritos.filter((p) => impedimento(p, def)).map((p) => p.name)
 
   let texto

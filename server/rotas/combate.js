@@ -29,6 +29,7 @@ import {
 import { emExpedicao } from '../rpg/expedicao.js'
 import { verEncontro, verItem, verResumo } from '../visao.js'
 import { anunciar } from '../realtime.js'
+import { registrar } from '../missoes.js'
 import { nomeCompleto } from '../rpg/itens.js'
 
 export const combate = Router()
@@ -76,6 +77,14 @@ function anunciarFeitos(player, monstro, saida) {
   }
 }
 
+/** O que uma luta vencida move nas missões do dia. */
+function missoesDaLuta(player, monstro, saida) {
+  if (!saida.venceu) return
+  registrar(player, 'cacar')
+  if (monstro.elite) registrar(player, 'elite')
+  registrar(player, 'gold', saida.gold)
+}
+
 // ------------------------------------------------------------------ caçar
 
 combate.post(
@@ -90,6 +99,7 @@ combate.post(
     const hpInicial = vidaAtual(player)
     const saida = resolver(player, monstro)
     anunciarFeitos(player, monstro, saida)
+    missoesDaLuta(player, monstro, saida)
 
     responder(res, player, {
       encontro: verEncontro(monstro, saida, hpInicial),
@@ -119,6 +129,7 @@ combate.post(
     const hpInicial = vidaAtual(player)
     const saida = resolver(player, boss)
     anunciarFeitos(player, boss, saida)
+    missoesDaLuta(player, boss, saida)
 
     responder(res, player, { encontro: verEncontro(boss, saida, hpInicial) })
   }),
@@ -196,6 +207,7 @@ combate.post(
 
     levantarDaFogueira(player)
     const descida = descer(player)
+    registrar(player, 'abismo', descida.vencidos)
 
     if (descida.recorde && descida.vencidos > 0) {
       anunciar(

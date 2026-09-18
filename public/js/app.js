@@ -69,6 +69,16 @@ import {
   ouvirEventos,
 } from './eventos.js'
 import { alternarSom, destravarSom, somLigado, tocar } from './som.js'
+import {
+  abrirChefeMundial,
+  abrirLeiloes,
+  abrirMasmorra,
+  abrirMissoes,
+  buscarChefe,
+  chefeAtual,
+  configurarAventuras,
+  ouvirAventuras,
+} from './aventuras.js'
 
 // ------------------------------------------------------------- telas
 
@@ -359,6 +369,7 @@ async function entrarNoJogo(id, { novo = false } = {}) {
   if (tickDeCooldown) clearInterval(tickDeCooldown)
   tickDeCooldown = setInterval(atualizarRelogios, 1000)
   buscarEvento()
+  buscarChefe()
 }
 
 async function sairDoPersonagem() {
@@ -381,6 +392,7 @@ function desenharFicha() {
 
   // O botão do Prestígio aparece no nível 250 e some depois do recomeço.
   if (Boolean(p.prestigio?.podeAgora) !== menuComPrestigio) montarMenuDeLugares()
+  desenharSelos()
 
   const caixa = limpar($('#ficha'))
 
@@ -682,6 +694,55 @@ async function usarConsumivel(item) {
 
 // ------------------------------------------------------ menu de lugares
 
+/** Acrescenta um selo (contador) vazio a um botão do menu. */
+function comSelo(botao, id) {
+  botao.append(el('span', { class: 'selo', id, hidden: true }, ''))
+  return botao
+}
+
+/**
+ * O botão do chefe mundial: sempre no menu, e aceso (com a vida que falta)
+ * enquanto ele está no ar.
+ */
+function botaoDoChefe() {
+  const botao = el(
+    'button',
+    { class: 'lugar', id: 'botao-chefe', type: 'button', onClick: (ev) => comBotao(ev.currentTarget, abrirChefeMundial) },
+    el('span', { class: 'icone' }, '👹'),
+    el('span', { class: 'rotulo-chefe' }, 'Chefe Mundial'),
+    el('span', { class: 'selo', hidden: true }, ''),
+  )
+  queueMicrotask(() => desenharBotaoDoChefe(chefeAtual()))
+  return botao
+}
+
+function desenharBotaoDoChefe(c) {
+  const botao = $('#botao-chefe')
+  if (!botao) return
+  const ativo = Boolean(c?.ativo)
+  botao.classList.toggle('lugar-evento', ativo)
+  botao.querySelector('.rotulo-chefe').textContent = ativo ? `${c.chefe.emoji} ${c.chefe.nome}` : 'Chefe Mundial'
+  const selo = botao.querySelector('.selo')
+  selo.hidden = !ativo
+  if (ativo) selo.textContent = `${Math.ceil((c.vida / c.vidaMax) * 100)}%`
+}
+
+/** Os contadores do menu que dependem da ficha. */
+function desenharSelos() {
+  const p = estado.p
+  const missoes = $('#selo-missoes')
+  if (missoes) {
+    missoes.hidden = !p?.missoes?.prontas
+    missoes.textContent = String(p?.missoes?.prontas ?? '')
+  }
+  const leilao = $('#selo-leilao')
+  if (leilao) {
+    leilao.hidden = !p?.entregas
+    leilao.textContent = String(p?.entregas ?? '')
+    leilao.title = 'Itens esperando para retirar'
+  }
+}
+
 function montarMenuDeLugares() {
   const menu = limpar($('#menu-lugares'))
 
@@ -728,9 +789,16 @@ function montarMenuDeLugares() {
         )
       : null,
     lugar('📜', 'Status do personagem', abrirFicha),
+    comSelo(lugar('📋', 'Missões do dia', abrirMissoes), 'selo-missoes'),
+    botaoDoChefe(),
     lugar('🎒', 'Mochila', abrirMochila),
     lugar('💰', 'Loja', () => abrirLoja()),
-    lugar('🤝', 'Mercado', () => abrirMercado()),
+    el(
+      'div',
+      { class: 'dupla-lugares' },
+      lugar('🤝', 'Mercado', () => abrirMercado()),
+      comSelo(lugar('⚖️', 'Leilões', () => abrirLeiloes()), 'selo-leilao'),
+    ),
     lugar('⚒️', 'Ferreiro', abrirFerreiro),
     lugar('🔮', 'Feiticeiro', () => abrirFeiticeiro()),
     lugar('✨', 'O Rito', () => abrirEvolucao()),
@@ -741,6 +809,7 @@ function montarMenuDeLugares() {
       lugar('💀', 'Raid', abrirRaid),
       lugar('⚔️', 'PvP', () => abrirPvp()),
     ),
+    lugar('🏰', 'Masmorra em grupo', abrirMasmorra),
     el(
       'div',
       { class: 'fileira-lugares', style: 'margin-top:4px' },
@@ -988,6 +1057,7 @@ function conectarSocket() {
   })
 
   ouvirEventos(socket)
+  ouvirAventuras(socket)
 
   socket.on('mercado:oferta', ({ oferta }) => {
     tocar('mercado')
@@ -1142,6 +1212,7 @@ async function iniciar() {
   prepararTeclado()
   destravarSom()
   configurarEventos({ mostrarEncontro, atualizarFicha })
+  configurarAventuras({ atualizarFicha, mostrarCartao, aoMudarChefe: desenharBotaoDoChefe })
 
   $('#fechar-modal').addEventListener('click', fecharModal)
   $('#fundo-modal').addEventListener('click', (ev) => {
