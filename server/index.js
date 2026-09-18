@@ -13,6 +13,7 @@ import cookieParser from 'cookie-parser'
 import { raizDoProjeto } from './db.js'
 import { config } from './config.js'
 import { contas } from './rotas/contas.js'
+import { fotosRotas } from './rotas/fotos.js'
 import { combate } from './rotas/combate.js'
 import { mochila } from './rotas/mochila.js'
 import { cidade } from './rotas/cidade.js'
@@ -39,6 +40,9 @@ app.use(express.json({ limit: '64kb' }))
 app.use(cookieParser())
 
 app.use('/api', contas)
+// Antes dos outros: eles barram quem não manda X-Personagem, e a <img> da
+// foto não manda (ver rotas/fotos.js).
+app.use('/api', fotosRotas)
 app.use('/api/combate', combate)
 app.use('/api/mochila', mochila)
 app.use('/api', cidade)

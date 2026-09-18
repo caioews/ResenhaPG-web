@@ -331,6 +331,13 @@ export const config = {
     chatCooldownSegundos: 1,
     // Tempo que uma sessao de login dura, em dias
     sessaoDias: 30,
+    // Foto do personagem (server/fotos.js). O navegador já recorta e reduz
+    // para fotoLargura x fotoAltura antes de mandar; o limite em KB é só a
+    // trava do servidor para quem mandar outra coisa.
+    fotoLargura: 480,
+    fotoAltura: 640,
+    fotoMaxKb: 400,
+    fotoEsperaSegundos: 10,
   },
 
   // Eventos aleatorios (server/eventos.js): de tempos em tempos o servidor

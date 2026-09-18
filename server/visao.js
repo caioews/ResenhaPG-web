@@ -27,6 +27,7 @@ import { esperaDoRito } from './rpg/evolucao.js'
 import { escalaDeAtributos, escalaDeXp, motivoParaNaoPrestigiar, prestigioDe } from './rpg/prestigio.js'
 import { resumoDasMissoes } from './missoes.js'
 import { quantasEntregas } from './entregas.js'
+import { urlDaFoto } from './fotos.js'
 
 /** Um item com tudo que a interface precisa mostrar sem recalcular nada. */
 export function verItem(item, index = null) {
@@ -162,6 +163,7 @@ export function verPersonagem(player) {
     id: player.id,
     nome: player.name,
     criadoEm: player.criadoEm,
+    foto: urlDaFoto(player),
 
     classe: c ? verClasse(ficha.classe) : null,
     linhagem,
@@ -255,13 +257,11 @@ export function verPersonagem(player) {
     prestigio: (() => {
       const n = prestigioDe(player)
       return {
-        contador: n,
+        ...verPrestigio(player),
         desde: ficha.prestigioEm ?? 0,
         nivelMinimo: config.rpg.prestigio.nivelMinimo,
         podeAgora: motivoParaNaoPrestigiar(player) === null,
         motivo: motivoParaNaoPrestigiar(player)?.erro ?? null,
-        bonusAtributos: escalaDeAtributos(n) - 1,
-        bonusXp: escalaDeXp(n) - 1,
         proximo: {
           bonusAtributos: escalaDeAtributos(n + 1) - 1,
           bonusXp: escalaDeXp(n + 1) - 1,
@@ -295,12 +295,69 @@ export function verPersonagem(player) {
   }
 }
 
+/** O contador de prestígio e o bônus que ele já dá. */
+function verPrestigio(player) {
+  const n = prestigioDe(player)
+  return { contador: n, bonusAtributos: escalaDeAtributos(n) - 1, bonusXp: escalaDeXp(n) - 1 }
+}
+
+/**
+ * O perfil de outro jogador — o que se vê clicando no nome dele no ranking.
+ *
+ * Tem o mesmo formato da ficha (verPersonagem) nos campos que a tela de
+ * status usa, para o cliente desenhar as duas com o mesmo código. O que é
+ * só do dono fica de fora: mochila, materiais, cooldowns, missões.
+ */
+export function verPerfil(player) {
+  const ficha = player.rpg
+  const c = classe(ficha.classe)
+  const total = atributos(player)
+
+  return {
+    id: player.id,
+    nome: player.name,
+    foto: urlDaFoto(player),
+    criadoEm: player.criadoEm,
+    jogadoEm: player.jogadoEm,
+
+    classe: c ? verClasse(ficha.classe) : null,
+    linhagem: ficha.classe ? linhagemDe(ficha.classe).map(verClasse) : [],
+    habilidades: c ? habilidadesDaClasse(c).map(verHabilidade) : [],
+    efeitos: c ? efeitosDaClasse(c) : {},
+
+    nivel: ficha.nivel,
+    xp: ficha.xp,
+    xpParaSubir: xpParaSubir(ficha.nivel),
+    gold: ficha.gold,
+    hp: vidaAtual(player),
+    hpMax: total.hp,
+    atributos: total,
+
+    equipado: Object.fromEntries(SLOTS.map((slot) => [slot, verItem(itemEquipado(player, slot))])),
+    prestigio: verPrestigio(player),
+
+    boss: { vencidos: ficha.bossesVencidos },
+    abismo: { melhorAndar: ficha.abismo?.melhorAndar ?? 0 },
+    masmorra: { melhorAndar: ficha.masmorra?.melhorAndar ?? 0 },
+    raid: { vitorias: ficha.raid?.vitorias ?? 0, derrotas: ficha.raid?.derrotas ?? 0 },
+    pvp: {
+      pontos: ficha.pvp?.pontos ?? 0,
+      vitorias: ficha.pvp?.vitorias ?? 0,
+      derrotas: ficha.pvp?.derrotas ?? 0,
+      posicao: posicaoNoRanking(player),
+    },
+    vitorias: ficha.vitorias,
+    derrotas: ficha.derrotas,
+  }
+}
+
 /** Resumo curto — a lista de personagens da conta e o ranking do servidor. */
 export function verResumo(player) {
   const c = classe(player.rpg.classe)
   return {
     id: player.id,
     nome: player.name,
+    foto: urlDaFoto(player),
     nivel: player.rpg.nivel,
     prestigio: player.rpg.prestigio ?? 0,
     classe: c ? { id: player.rpg.classe, nome: c.nome, emoji: c.emoji, tier: c.tier } : null,

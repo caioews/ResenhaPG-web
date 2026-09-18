@@ -6,7 +6,7 @@ import { config } from '../config.js'
 import { exigirLogin } from '../auth.js'
 import { exigirClasse, exigirPersonagem, responder, rota } from '../contexto.js'
 import * as store from '../store.js'
-import { classe, rotuloClasse } from '../rpg/classes.js'
+import { rotuloClasse } from '../rpg/classes.js'
 import { lutar } from '../rpg/combate.js'
 import { comoLutador } from '../rpg/encontro.js'
 import { atributos, darGold, feridoRestante } from '../rpg/jogador.js'
@@ -15,7 +15,7 @@ import { criarChefeDeRaid, TODOS_OS_CHEFES } from '../rpg/raid.js'
 import { chanceEsperada, esperaEntreDuelos, ranking as rankingPvp, registrarResultado } from '../rpg/pvp.js'
 import { ranking as rankingPrestigio } from '../rpg/prestigio.js'
 import { ranking as rankingMasmorra } from '../masmorra.js'
-import { verItem, verResumo } from '../visao.js'
+import { verPerfil, verResumo } from '../visao.js'
 import * as salas from '../salas.js'
 import { nivelMedioDe, resolverLutaDeGrupo } from '../grupo.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from '../realtime.js'
@@ -383,28 +383,24 @@ social.get(
   }),
 )
 
-/** A ficha pública de outro jogador — o que se vê antes de desafiar. */
+/**
+ * O perfil de um jogador: a ficha dele sem o que é só do dono. É o que abre
+ * clicando no nome no ranking ou na taverna.
+ */
 social.get(
   '/jogadores/:id',
   rota((req, res) => {
-    const alvo = store.buscarPersonagem(req.params.id)
+    const alvo = store.buscarPersonagem(String(req.params.id))
     if (!alvo || !alvo.rpg.classe) return res.status(404).json({ erro: 'Jogador não encontrado.' })
 
-    const c = classe(alvo.rpg.classe)
     res.json({
-      ...verResumo(alvo),
-      atributos: atributos(alvo),
-      classeRotulo: rotuloClasse(alvo.rpg.classe),
-      resumoDaClasse: c?.resumo ?? '',
-      equipado: Object.fromEntries(
-        Object.entries(alvo.rpg.equipado).map(([slot, uid]) => [
-          slot,
-          verItem(alvo.rpg.inventario.find((it) => it.uid === uid) ?? null),
-        ]),
-      ),
-      pvp: alvo.rpg.pvp,
-      abismo: alvo.rpg.abismo,
-      chance: Math.round(chanceEsperada(req.player.rpg.pvp.pontos, alvo.rpg.pvp.pontos) * 100),
+      perfil: {
+        ...verPerfil(alvo),
+        online: jogadoresOnline().some((j) => j.id === alvo.id),
+        meu: alvo.id === req.player.id,
+        // Chance de vencer um duelo contra ele, pela conta dos pontos de PvP.
+        chance: Math.round(chanceEsperada(req.player.rpg.pvp.pontos, alvo.rpg.pvp.pontos) * 100),
+      },
     })
   }),
 )

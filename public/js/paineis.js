@@ -38,176 +38,9 @@ import {
   sussurro,
   tituloDeCena,
 } from './narrativa.js'
-
-// ==================================================== F I C H A
-
-export async function abrirFicha() {
-  const p = estado.p
-  const a = p.atributos
-
-  const linhagem = el(
-    'div',
-    { class: 'trilha' },
-    ...p.linhagem.flatMap((c, i) => [
-      i > 0 ? el('span', { class: 'seta' }, '→') : null,
-      el(
-        'span',
-        { class: `degrau${c.id === p.classe.id ? ' atual' : ''}` },
-        `${c.emoji} ${c.nome}`,
-      ),
-    ]),
-  )
-
-  const efeitos = Object.entries(p.efeitos ?? {})
-  const listaDeEfeitos = efeitos.length
-    ? el(
-        'div',
-        { class: 'lista' },
-        ...efeitos.map(([chave, valor]) =>
-          linhaDeDado(NOMES_DE_EFEITO[chave] ?? chave, formatarEfeito(valor)),
-        ),
-      )
-    : vazio('Nenhum efeito ainda — as habilidades chegam com o Rito, no nível 50.')
-
-  const corpo = el(
-    'div',
-    {},
-    linhagem,
-    el(
-      'div',
-      { class: 'grade-dois' },
-      el(
-        'div',
-        { class: 'bloco' },
-        el('h4', {}, 'Atributos'),
-        linhaDeDado('❤️ Vida', `${num(p.hp)} / ${num(p.hpMax)}`),
-        linhaDeDado('⚔️ Ataque', num(a.atq)),
-        linhaDeDado('🛡️ Defesa', num(a.def)),
-        linhaDeDado('🥾 Agilidade', num(a.agi)),
-        linhaDeDado('💰 Gold', num(p.gold), 'ouro'),
-        linhaDeDado('📈 XP no nível', `${num(p.xp)} / ${num(p.xpParaSubir)}`),
-        p.prestigio.contador
-          ? linhaDeDado(
-              '⭐ Prestígio',
-              `${p.prestigio.contador}× · +${porcento(p.prestigio.bonusAtributos)} atributos · +${porcento(p.prestigio.bonusXp)} XP`,
-              'ouro',
-            )
-          : null,
-      ),
-      el(
-        'div',
-        { class: 'bloco' },
-        el('h4', {}, 'Feitos'),
-        linhaDeDado('Vitórias em caçada', num(p.vitorias)),
-        linhaDeDado('Derrotas', num(p.derrotas)),
-        linhaDeDado('Chefes vencidos', num(p.boss.vencidos.length)),
-        linhaDeDado('Abismo — recorde', p.abismo.melhorAndar ? `andar ${p.abismo.melhorAndar}` : '—'),
-        linhaDeDado('Raids', `${num(p.raid.vitorias)}V / ${num(p.raid.derrotas)}D`),
-        linhaDeDado(
-          'PvP',
-          `${num(p.pvp.pontos)} pts · ${num(p.pvp.vitorias)}V / ${num(p.pvp.derrotas)}D`,
-        ),
-      ),
-    ),
-    el(
-      'div',
-      { class: 'bloco', style: 'margin-top:14px' },
-      el('h4', {}, `Habilidades (${p.habilidades.length})`),
-      p.habilidades.length
-        ? el(
-            'div',
-            { class: 'lista' },
-            ...p.habilidades.map((h) =>
-              el(
-                'div',
-                { class: 'linha-item' },
-                el('div', { class: 'icone' }, h.emoji),
-                el(
-                  'div',
-                  { class: 'corpo' },
-                  el('div', { class: 'nome' }, h.nome),
-                  el('div', { class: 'detalhe' }, h.resumo),
-                ),
-              ),
-            ),
-          )
-        : vazio('As habilidades acumulam a cada degrau da árvore. A primeira vem no nível 50.'),
-    ),
-    el(
-      'div',
-      { class: 'bloco', style: 'margin-top:14px' },
-      el('h4', {}, 'Equipamento'),
-      el(
-        'div',
-        { class: 'lista' },
-        ...Object.entries(p.equipado).map(([slot, item]) =>
-          item
-            ? linhaDeItem(item)
-            : el(
-                'div',
-                { class: 'linha-item' },
-                el('div', { class: 'icone' }, '·'),
-                el(
-                  'div',
-                  { class: 'corpo' },
-                  el('div', { class: 'nome', style: 'color:#5a5449;font-style:italic' }, `${nomeDoSlot(slot)} — vazio`),
-                ),
-              ),
-        ),
-      ),
-    ),
-    el('div', { class: 'bloco', style: 'margin-top:14px' }, el('h4', {}, 'Efeitos somados'), listaDeEfeitos),
-  )
-
-  abrirModal(
-    `${p.classe.emoji} ${p.nome} — nível ${p.nivel}${p.prestigio.contador ? ` · ⭐${p.prestigio.contador}` : ''}`,
-    corpo,
-  )
-}
-
-const NOMES_DE_EFEITO = {
-  perfuracao: 'Perfuração',
-  execucao: 'Execução',
-  progressivo: 'Dano progressivo',
-  golpeDuplo: 'Golpe duplo',
-  servo: 'Servo',
-  vampirismo: 'Vampirismo',
-  reducaoDeDano: 'Redução de dano',
-  furia: 'Fúria',
-  maldicao: 'Maldição',
-  prender: 'Prender',
-  esquivaExtra: 'Esquiva extra',
-  precisao: 'Precisão',
-  critico: 'Crítico',
-  danoExtra: 'Dano extra',
-  regeneracao: 'Regeneração',
-  curaDoGrupo: 'Cura do grupo (raid e evento)',
-  contraAtaque: 'Contra-ataque',
-  iniciativa: 'Iniciativa',
-  saqueGold: 'Gold extra',
-  saqueDrop: 'Chance de drop',
-}
+import { abrirPerfil, retrato } from './perfil.js'
 
 const porcento = (v) => `${Math.round(v * 1000) / 10}%`
-
-/**
- * Um efeito em texto. Fração simples vira porcentagem; objeto com chance
- * própria (execução, maldição, fúria) vira a frase que descreve o efeito.
- */
-function formatarEfeito(v) {
-  if (typeof v === 'boolean') return v ? 'sim' : 'não'
-  if (typeof v === 'number') return porcento(v)
-
-  if (v.chance !== undefined) {
-    const partes = [porcento(v.chance)]
-    if (v.mult) partes.push(`dano ×${v.mult}`)
-    if (v.perfuracao) partes.push(`ignora ${porcento(v.perfuracao)} da defesa`)
-    return partes.join(' · ')
-  }
-  if (v.porAcerto !== undefined) return `${porcento(v.porAcerto)} por acerto, até ${porcento(v.teto)}`
-  if (v.porRodada !== undefined) return `${porcento(v.porRodada)} por rodada, até ${porcento(v.teto)}`
-  return JSON.stringify(v)
-}
 
 // ================================================== M O C H I L A
 
@@ -1488,7 +1321,7 @@ export async function abrirPvp(aba = 'desafiar') {
         : vazio('Você não mandou nenhum desafio.'),
     )
   } else {
-    corpo = tabelaDeRanking(dados.ranking, 'pontosPvp', 'pts', p.id)
+    corpo = tabelaDeRanking(dados.ranking, 'pontosPvp', 'pts', p.id, () => abrirPvp(aba))
   }
 
   abrirModal('Arena dos Campeões', corpo, {
@@ -1526,12 +1359,16 @@ export async function narrarDuelo(duelo) {
 
 // ==================================================== R A N K I N G S
 
-function tabelaDeRanking(lista, campo, sufixo, meuId) {
+/**
+ * A tabela de um ranking. Cada linha abre o perfil do jogador; `voltar`
+ * redesenha o painel de onde a pessoa saiu (o modal é um só).
+ */
+function tabelaDeRanking(lista, campo, sufixo, meuId, voltar = null) {
   if (!lista.length) return vazio('Ninguém por aqui ainda.')
 
-  return el(
+  const tabela = el(
     'table',
-    { class: 'tabela' },
+    { class: 'tabela ranking' },
     el('thead', {}, el('tr', {},
       el('th', {}, '#'),
       el('th', {}, 'Aventureiro'),
@@ -1542,17 +1379,37 @@ function tabelaDeRanking(lista, campo, sufixo, meuId) {
       ...lista.map((r) =>
         el(
           'tr',
-          { class: r.id === meuId ? 'eu' : '' },
+          {
+            class: `clicavel${r.id === meuId ? ' eu' : ''}`,
+            title: `Ver o perfil de ${r.nome}`,
+            tabIndex: 0,
+            onClick: () => abrirPerfil(r.id, { voltar, rotuloVoltar: 'Voltar ao ranking' }),
+            onKeydown: (ev) => {
+              if (ev.key === 'Enter') abrirPerfil(r.id, { voltar, rotuloVoltar: 'Voltar ao ranking' })
+            },
+          },
           el('td', {}, `${r.posicao}.`),
           // A estrela acompanha o nome em todos os rankings: quem prestigiou
           // está no nível 1 de novo, e sem ela a linha não faria sentido.
-          el('td', {}, r.nome, r.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${r.prestigio}`) : null),
+          el(
+            'td',
+            {},
+            el(
+              'span',
+              { class: 'quem-ranking' },
+              retrato(r, { classe: 'mini' }),
+              el('span', { class: 'nome-link' }, r.nome),
+              r.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${r.prestigio}`) : null,
+            ),
+          ),
           el('td', {}, `${r.classe?.emoji ?? ''} ${r.classe?.nome ?? '—'} nv ${r.nivel}`),
           el('td', { class: 'num' }, num(r[campo] ?? r.nivel)),
         ),
       ),
     ),
   )
+
+  return el('div', {}, el('p', { class: 'sussurro dica-ranking' }, 'Toque num aventureiro para ver o perfil dele.'), tabela)
 }
 
 export async function abrirRanking(aba = 'nivel') {
@@ -1582,7 +1439,9 @@ export async function abrirRanking(aba = 'nivel') {
   }
 
   const [campo, sufixo] = campos[aba]
-  abrirModal('Ranking do servidor', tabelaDeRanking(dados[aba], campo, sufixo, meuId), { abas })
+  abrirModal('Ranking do servidor', tabelaDeRanking(dados[aba], campo, sufixo, meuId, () => abrirRanking(aba)), {
+    abas,
+  })
 }
 
 // ================================================== P R E S T Í G I O

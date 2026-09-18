@@ -225,22 +225,23 @@ ResenhaPG web/
 │   ├── mercado.js      Ofertas de item entre jogadores (só em memória)
 │   ├── grupo.js        A luta de grupo que a raid e os eventos dividem
 │   ├── eventos.js      Catálogo, agenda e resolução dos eventos aleatórios
-│   ├── admin.js        Comandos de administrador no chat (/evento, /chefe)
+│   ├── admin.js        Comandos de administrador no chat (/evento, /chefe, /foto)
 │   ├── missoes.js      Missões diárias
 │   ├── chefeMundial.js O chefe do dia, com vida compartilhada
 │   ├── masmorra.js     O Abismo em grupo
 │   ├── leilao.js       Casa de leilões
 │   ├── entregas.js     Itens esperando o dono ir buscar
+│   ├── fotos.js        A foto de cada personagem (guardada no banco)
 │   ├── tempo.js        Hora e dia no fuso do jogo
 │   ├── ambiente.js     Lê o .env da raiz, se houver
 │   ├── realtime.js     Chat, quem está on-line, avisos
 │   ├── rotas/          contas · combate · mochila · cidade · social · mercado · eventos
-│   │                   · missoes · chefeMundial · masmorra · leilao
+│   │                   · missoes · chefeMundial · masmorra · leilao · fotos
 │   └── rpg/            O motor, portado do bot (+ prestigio.js, novo aqui)
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
-│   └── js/             nucleo · narrativa · paineis · eventos · aventuras · som · app
+│   └── js/             nucleo · narrativa · paineis · perfil · eventos · aventuras · som · app
 ├── scripts/            conformidade.js · simulador.js · classes.js · atualizar.sh
 └── dados/              O banco (criado sozinho; não versione)
 ```
@@ -837,6 +838,24 @@ Tudo isso mora no banco (tabelas `leiloes` e `entregas`), então reiniciar o
 servidor não perde item nem gold. Código em `server/leilao.js` e
 `server/entregas.js`.
 
+### Foto e perfil
+
+Cada personagem pode ter uma foto: toque no quadro da ficha lateral (ou em
+"📷 Enviar foto" no Status do personagem), escolha a imagem, arraste para
+enquadrar e aproxime com a barra. O navegador recorta e reduz para 480×640 e
+manda um JPEG de uns 20–80 KB; reencodar no navegador também tira os dados da
+câmera (GPS, modelo do celular). O servidor confere pelos primeiros bytes que é
+JPG, PNG ou WebP, recusa acima de 400 KB e guarda na tabela `fotos` — então a
+foto entra no backup junto com o resto. Só quem está logado vê as fotos.
+
+No ranking, cada linha abre o **perfil** do jogador: foto, atributos, feitos,
+habilidades e equipamento (sem mochila nem materiais), com um botão para voltar
+à aba em que você estava. Os nomes na taverna abrem o mesmo perfil.
+
+Moderação: um administrador tira a foto de alguém digitando `/foto <nome do
+personagem>` no chat. Código em `server/fotos.js`, `server/rotas/fotos.js` e
+`public/js/perfil.js`.
+
 ---
 
 ## Eventos aleatórios
@@ -890,3 +909,5 @@ pode digitar no chat do jogo. A resposta aparece só para quem digitou.
 | `/evento lista` | mostra os nomes dos eventos |
 | `/evento encerrar` | fecha a chamada aberta e resolve agora |
 | `/evento proximo` | quando sai o próximo evento sorteado |
+| `/chefe` · `/chefe kraken` | faz o chefe mundial aparecer agora (ou um específico) |
+| `/foto Aelric` | tira a foto de um personagem (moderação) |

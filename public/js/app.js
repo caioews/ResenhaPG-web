@@ -49,7 +49,6 @@ import {
   abrirExpedicao,
   abrirFerreiro,
   abrirFeiticeiro,
-  abrirFicha,
   abrirLoja,
   abrirMercado,
   abrirMochila,
@@ -60,6 +59,7 @@ import {
   narrarDuelo,
   narrarRaidCompleta,
 } from './paineis.js'
+import { abrirEditorDeFoto, abrirFicha, abrirPerfil, retrato } from './perfil.js'
 import {
   buscarEvento,
   configurarEventos,
@@ -162,20 +162,25 @@ function desenharPersonagens() {
         type: 'button',
         onClick: () => entrarNoJogo(p.id),
       },
-      el('div', { class: 'nome' }, p.nome),
+      retrato(p, { classe: 'carta' }),
       el(
         'div',
-        { class: 'sub' },
-        `${p.classe?.emoji ?? ''} ${p.classe?.nome ?? 'sem classe'} · nível ${p.nivel}`,
-        p.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${p.prestigio}`) : null,
-      ),
-      el(
-        'div',
-        { class: 'linha-dados' },
-        el('span', {}, `❤️ ${num(p.hp)}/${num(p.hpMax)}`),
-        el('span', {}, `💰 ${num(p.gold)}`),
-        el('span', {}, `⚔️ ${num(p.vitorias)}V`),
-        p.melhorAndar ? el('span', {}, `🕳️ andar ${p.melhorAndar}`) : null,
+        { style: 'min-width:0' },
+        el('div', { class: 'nome' }, p.nome),
+        el(
+          'div',
+          { class: 'sub' },
+          `${p.classe?.emoji ?? ''} ${p.classe?.nome ?? 'sem classe'} · nível ${p.nivel}`,
+          p.prestigio ? el('span', { class: 'estrela-prestigio' }, ` ⭐${p.prestigio}`) : null,
+        ),
+        el(
+          'div',
+          { class: 'linha-dados' },
+          el('span', {}, `❤️ ${num(p.hp)}/${num(p.hpMax)}`),
+          el('span', {}, `💰 ${num(p.gold)}`),
+          el('span', {}, `⚔️ ${num(p.vitorias)}V`),
+          p.melhorAndar ? el('span', {}, `🕳️ andar ${p.melhorAndar}`) : null,
+        ),
       ),
     )
 
@@ -400,19 +405,27 @@ function desenharFicha() {
     el(
       'div',
       { class: 'ficha-cabeca' },
-      el('div', { class: 'brasao' }, p.classe?.emoji ?? '⚔️'),
+      // A foto abre direto o editor: é o jeito mais curto de trocar.
+      el(
+        'div',
+        { class: 'ficha-cabeca-retrato' },
+        retrato(p, {
+          classe: 'medio',
+          titulo: p.foto ? 'Trocar a foto' : 'Enviar uma foto',
+          onClick: () => abrirEditorDeFoto(),
+        }),
+        p.foto ? el('span', { class: 'brasao-selo', title: p.classe?.nome ?? '' }, p.classe?.emoji ?? '⚔️') : null,
+      ),
       el(
         'div',
         { style: 'min-width:0' },
-        el(
-          'div',
-          { class: 'nome' },
-          p.nome,
-          p.prestigio?.contador
-            ? el('span', { class: 'estrela-prestigio', title: `Prestígio ${p.prestigio.contador}` }, ` ⭐${p.prestigio.contador}`)
-            : null,
-        ),
-        el('div', { class: 'classe' }, `Nível ${p.nivel} · ${p.classe?.nome ?? 'sem classe'}`),
+        el('div', { class: 'nome' }, p.nome),
+        el('div', { class: 'classe' }, `Nível ${p.nivel}`),
+        el('div', { class: 'classe' }, `${p.classe?.emoji ?? ''} ${p.classe?.nome ?? 'sem classe'}`),
+        p.prestigio?.contador
+          ? el('div', { class: 'estrela-prestigio', title: `Prestígio ${p.prestigio.contador}` }, `⭐ Prestígio ${p.prestigio.contador}`)
+          : null,
+        p.foto ? null : el('div', { class: 'sussurro dica-foto' }, 'Toque no quadro para pôr uma foto'),
       ),
     ),
     linhaDeBarra('HP', 'vida', p.hp, p.hpMax),
@@ -777,7 +790,9 @@ function montarMenuDeLugares() {
 
   menuComPrestigio = Boolean(estado.p?.prestigio?.podeAgora)
 
-  menu.append(
+  // O filtro tira o botão do Prestígio quando ele não existe: `append(null)`
+  // escreveria "null" na tela.
+  const itens = [
     criarIndicador(),
     // Só existe quando o personagem chega ao teto: é o botão do recomeço.
     menuComPrestigio
@@ -828,7 +843,8 @@ function montarMenuDeLugares() {
         el('span', {}, 'Trocar'),
       ),
     ),
-  )
+  ]
+  menu.append(...itens.filter(Boolean))
 }
 
 // ------------------------------------------------ chat por cima (celular)
@@ -992,10 +1008,16 @@ function conectarSocket() {
     const caixa = limpar($('#lista-online'))
     if (!lista.length) return caixa.append(el('div', { class: 'sussurro' }, 'Ninguém por aqui agora.'))
     for (const j of lista) {
+      // Clicar num nome da taverna abre o perfil, como no ranking.
       caixa.append(
         el(
-          'div',
-          { class: 'quem' },
+          'button',
+          {
+            class: 'quem',
+            type: 'button',
+            title: `Ver o perfil de ${j.nome}`,
+            onClick: () => (j.classe ? abrirPerfil(j.id) : null),
+          },
           el('span', { class: 'ponto' }),
           el('span', { class: 'nome' }, `${j.classe?.emoji ?? ''} ${j.nome}`),
           el('span', { class: 'nv' }, `nv ${j.nivel}`),
@@ -1083,6 +1105,12 @@ function conectarSocket() {
   socket.on('mercado:pagamento', async ({ de, quanto }) => {
     tocar('mercado')
     avisarBom(`${de} te enviou ${num(quanto)} de gold.`)
+    await atualizarFicha()
+  })
+
+  // Um administrador tirou a foto (moderação, /foto no chat).
+  socket.on('foto:removida', async () => {
+    avisar('Sua foto foi removida por um administrador.')
     await atualizarFicha()
   })
 

@@ -95,6 +95,16 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_entregas_personagem ON entregas(personagem_id);
 
+  -- A foto de cada personagem. Fica fora da ficha JSON de propósito: a ficha
+  -- é regravada a cada caçada, e arrastar 60 KB de imagem junto seria
+  -- desperdício. Apagar o personagem leva a foto junto (cascade).
+  CREATE TABLE IF NOT EXISTS fotos (
+    personagem_id TEXT PRIMARY KEY REFERENCES personagens(id) ON DELETE CASCADE,
+    tipo          TEXT NOT NULL,
+    dados         BLOB NOT NULL,
+    atualizada_em INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS chat (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     canal     TEXT NOT NULL,

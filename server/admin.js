@@ -16,9 +16,13 @@
  *   /chefe <nome>               um chefe específico (ex.: /chefe kraken)
  *   /chefe lista                mostra os nomes dos chefes
  *   /chefe encerrar             o chefe no ar foge agora (espólio pela metade)
+ *   /foto <personagem>          tira a foto de um personagem (moderação)
  */
 import { EVENTOS, dispararEvento, encerrarEvento, proximoEvento } from './eventos.js'
 import { CHEFES_MUNDIAIS, encerrar as encerrarChefe, surgir } from './chefeMundial.js'
+import { removerFoto } from './fotos.js'
+import { emitirPara } from './realtime.js'
+import * as store from './store.js'
 
 // Lido na hora, e não quando o arquivo carrega: assim o .env (ambiente.js)
 // já está aplicado, qualquer que seja a ordem dos imports.
@@ -47,12 +51,25 @@ function comandoDoChefe(args) {
   return feito.erro ?? `${feito.chefe.chefe.emoji} ${feito.chefe.chefe.nome} apareceu.`
 }
 
+/** Tira a foto de um personagem, pelo nome. A tela dele se atualiza sozinha. */
+function comandoDaFoto(args) {
+  const nome = args.join(' ').trim().toLowerCase()
+  if (!nome) return 'Use: /foto <nome do personagem>'
+  const alvo = store.allPlayers().find((p) => p.name.toLowerCase() === nome)
+  if (!alvo) return `Ninguém chamado "${args.join(' ').trim()}".`
+  const feito = removerFoto(alvo)
+  store.flush()
+  emitirPara(alvo.id, 'foto:removida', {})
+  return feito.tinha ? `A foto de ${alvo.name} foi removida.` : `${alvo.name} não tinha foto.`
+}
+
 export function comandoDeAdmin({ usuario, texto }) {
   const [comando, ...args] = texto.slice(1).split(' ')
   const qual = comando.toLowerCase()
-  if (qual !== 'evento' && qual !== 'chefe') return null
+  if (qual !== 'evento' && qual !== 'chefe' && qual !== 'foto') return null
   if (!ehAdmin(usuario)) return 'Só administradores usam esse comando.'
   if (qual === 'chefe') return comandoDoChefe(args)
+  if (qual === 'foto') return comandoDaFoto(args)
 
   const alvo = (args[0] ?? '').trim()
 

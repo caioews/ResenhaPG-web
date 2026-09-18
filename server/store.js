@@ -71,6 +71,9 @@ export function fichaNova() {
     missoes: { dia: '', lista: [], bauResgatado: false },
     // Masmorra em grupo (server/masmorra.js)
     masmorra: { ultimaDescida: 0, melhorAndar: 0, descidas: 0 },
+    // Quando a foto foi enviada (server/fotos.js); 0 = sem foto. Entra no
+    // endereço da imagem para o navegador saber que ela mudou.
+    foto: 0,
     vitorias: 0,
     derrotas: 0,
   }
