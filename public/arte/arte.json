@@ -3,11 +3,11 @@
     "arqueiro": {
       "arquivo": "lutadores/arqueiro.webp",
       "quadro": [
-        199,
+        160,
         161
       ],
       "ancora": [
-        102,
+        65,
         157
       ],
       "linhas": [
@@ -15,118 +15,344 @@
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "bardo": {
       "arquivo": "lutadores/bardo.webp",
       "quadro": [
-        267,
-        179
+        224,
+        178
       ],
       "ancora": [
-        154,
-        175
+        122,
+        174
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "clerigo": {
       "arquivo": "lutadores/clerigo.webp",
       "quadro": [
-        252,
-        261
+        225,
+        257
       ],
       "ancora": [
-        140,
-        258
+        99,
+        254
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "duelista": {
       "arquivo": "lutadores/duelista.webp",
       "quadro": [
-        256,
-        161
+        214,
+        162
       ],
       "ancora": [
-        125,
-        157
+        83,
+        158
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "guerreiro": {
       "arquivo": "lutadores/guerreiro.webp",
       "quadro": [
-        204,
-        166
+        217,
+        164
       ],
       "ancora": [
         83,
-        163
+        160
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "ladino": {
       "arquivo": "lutadores/ladino.webp",
       "quadro": [
-        267,
-        174
+        265,
+        188
       ],
       "ancora": [
-        139,
-        170
+        119,
+        184
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
     "mago": {
       "arquivo": "lutadores/mago.webp",
       "quadro": [
-        204,
-        159
+        213,
+        163
       ],
       "ancora": [
-        94,
-        156
+        99,
+        159
       ],
       "linhas": [
         "andar",
         "atacar",
         "defender"
       ],
-      "quadros": 8
+      "quadros": [
+        8,
+        8,
+        8
+      ]
     },
-    "goblin": {
-      "arquivo": "lutadores/goblin.webp",
+    "abominacao": {
+      "arquivo": "lutadores/abominacao.webp",
       "quadro": [
-        248,
+        289,
+        215
+      ],
+      "ancora": [
+        129,
+        211
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "aranha": {
+      "arquivo": "lutadores/aranha.webp",
+      "quadro": [
+        187,
+        129
+      ],
+      "ancora": [
+        83,
+        126
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        7,
+        7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "arauto": {
+      "arquivo": "lutadores/arauto.webp",
+      "quadro": [
+        229,
+        177
+      ],
+      "ancora": [
+        110,
+        174
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "basilisco": {
+      "arquivo": "lutadores/basilisco.webp",
+      "quadro": [
+        216,
+        195
+      ],
+      "ancora": [
+        86,
+        192
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "behemoth": {
+      "arquivo": "lutadores/behemoth.webp",
+      "quadro": [
+        355,
+        268
+      ],
+      "ancora": [
+        181,
+        264
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "espectro": {
+      "arquivo": "lutadores/espectro.webp",
+      "quadro": [
+        257,
+        200
+      ],
+      "ancora": [
+        156,
+        196
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "demonio": {
+      "arquivo": "lutadores/demonio.webp",
+      "quadro": [
+        280,
+        238
+      ],
+      "ancora": [
+        119,
+        235
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "elemental": {
+      "arquivo": "lutadores/elemental.webp",
+      "quadro": [
+        240,
+        169
+      ],
+      "ancora": [
+        115,
+        166
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "esqueleto": {
+      "arquivo": "lutadores/esqueleto.webp",
+      "quadro": [
+        174,
+        166
+      ],
+      "ancora": [
+        80,
+        162
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        6,
+        5,
+        4
+      ],
+      "viradoParaEsquerda": false
+    },
+    "fantasma": {
+      "arquivo": "lutadores/fantasma.webp",
+      "quadro": [
+        209,
         158
       ],
       "ancora": [
-        120,
+        91,
         155
       ],
       "linhas": [
@@ -134,7 +360,231 @@
         "atacar",
         "defender"
       ],
-      "quadros": 8,
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "goblin": {
+      "arquivo": "lutadores/goblin.webp",
+      "quadro": [
+        195,
+        158
+      ],
+      "ancora": [
+        69,
+        154
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "golem": {
+      "arquivo": "lutadores/golem.webp",
+      "quadro": [
+        383,
+        264
+      ],
+      "ancora": [
+        172,
+        260
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        4,
+        4,
+        4
+      ],
+      "viradoParaEsquerda": false
+    },
+    "harpia": {
+      "arquivo": "lutadores/harpia.webp",
+      "quadro": [
+        238,
+        199
+      ],
+      "ancora": [
+        88,
+        195
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "lobo": {
+      "arquivo": "lutadores/lobo.webp",
+      "quadro": [
+        163,
+        136
+      ],
+      "ancora": [
+        76,
+        132
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "orc": {
+      "arquivo": "lutadores/orc.webp",
+      "quadro": [
+        284,
+        249
+      ],
+      "ancora": [
+        123,
+        246
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        7,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "quimera": {
+      "arquivo": "lutadores/quimera.webp",
+      "quadro": [
+        278,
+        213
+      ],
+      "ancora": [
+        120,
+        210
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "slime": {
+      "arquivo": "lutadores/slime.webp",
+      "quadro": [
+        104,
+        100
+      ],
+      "ancora": [
+        51,
+        97
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "troll": {
+      "arquivo": "lutadores/troll.webp",
+      "quadro": [
+        283,
+        280
+      ],
+      "ancora": [
+        152,
+        277
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        7,
+        7,
+        7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "vampiro": {
+      "arquivo": "lutadores/vampiro.webp",
+      "quadro": [
+        237,
+        180
+      ],
+      "ancora": [
+        111,
+        177
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "wyvern": {
+      "arquivo": "lutadores/wyvern.webp",
+      "quadro": [
+        253,
+        193
+      ],
+      "ancora": [
+        123,
+        190
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
       "viradoParaEsquerda": false
     }
   },

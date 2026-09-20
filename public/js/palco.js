@@ -35,11 +35,16 @@ const PASSO = 145
 /** Quanto dura a escurecida entre uma cena e outra. */
 const FADE = 620
 
+/**
+ * Cada animação é uma faixa do atlas. Quantos quadros ela tem vem do
+ * manifesto, por linha: as folhas não são todas iguais — o golem tem quatro
+ * quadros por faixa, o orc anda em sete, o esqueleto defende em quatro.
+ */
 const ANIMACOES = {
-  parado: { linha: 'andar', quadros: [0], porQuadro: 900, laco: true },
-  andar: { linha: 'andar', quadros: [0, 1, 2, 3, 4, 5, 6, 7], porQuadro: 95, laco: true },
-  atacar: { linha: 'atacar', quadros: [0, 1, 2, 3, 4, 5, 6, 7], porQuadro: 42, laco: false },
-  defender: { linha: 'defender', quadros: [0, 1, 2, 3, 4, 5, 6, 7], porQuadro: 46, laco: false },
+  parado: { linha: 'andar', porQuadro: 900, unico: true },
+  andar: { linha: 'andar', porQuadro: 95, laco: true },
+  atacar: { linha: 'atacar', porQuadro: 42 },
+  defender: { linha: 'defender', porQuadro: 46 },
 }
 
 // ------------------------------------------------------------- estado
@@ -206,14 +211,18 @@ function posicao(lutador, t) {
   return c.de + (c.para - c.de) * fracao
 }
 
-/** O quadro do atlas para este instante. */
+/** O quadro do atlas para este instante: que linha, que coluna, e se acabou. */
 function quadroDe(lutador, t) {
   const animacao = ANIMACOES[lutador.anim] ?? ANIMACOES.parado
+  const linha = Math.max(0, lutador.meta.linhas.indexOf(animacao.linha))
+  const naLinha = Array.isArray(lutador.meta.quadros)
+    ? lutador.meta.quadros[linha] ?? 1
+    : lutador.meta.quadros
+  const quantos = animacao.unico ? 1 : Math.max(1, naLinha)
+
   const passados = Math.floor((t - lutador.animDesde) / animacao.porQuadro)
-  const i = animacao.laco
-    ? passados % animacao.quadros.length
-    : Math.min(passados, animacao.quadros.length - 1)
-  return { animacao, coluna: animacao.quadros[Math.max(0, i)], terminou: passados >= animacao.quadros.length }
+  const coluna = animacao.laco ? passados % quantos : Math.min(passados, quantos - 1)
+  return { animacao, linha, coluna: Math.max(0, coluna), terminou: passados >= quantos }
 }
 
 // ------------------------------------------------------------ cenas
@@ -461,7 +470,7 @@ function desenharLutador(ctx, l, t) {
 
   const [cw, ch] = l.meta.quadro
   const [ax, ay] = l.meta.ancora
-  const { animacao, coluna, terminou } = quadroDe(l, t)
+  const { animacao, linha, coluna, terminou } = quadroDe(l, t)
 
   // Golpe e defesa voltam ao repouso sozinhos quando a animação acaba.
   if (terminou && !animacao.laco && !l.caiuEm) tocar(l, 'parado')
@@ -496,7 +505,7 @@ function desenharLutador(ctx, l, t) {
   ctx.scale(ESCALA, ESCALA)
 
   const sx = coluna * cw
-  const sy = Math.max(0, l.meta.linhas.indexOf(animacao.linha)) * ch
+  const sy = linha * ch
   if (flash > 0) ctx.drawImage(tingir(img, sx, sy, cw, ch, flash), 0, 0, cw, ch, -ax, -ay, cw, ch)
   else ctx.drawImage(img, sx, sy, cw, ch, -ax, -ay, cw, ch)
 

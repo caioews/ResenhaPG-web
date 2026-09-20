@@ -911,18 +911,50 @@ npm run arte
 O script (`scripts/arte.js`) mede a própria imagem para achar as faixas e os
 quadros, tira o fundo, alinha todos os quadros pelos pés, normaliza o tamanho
 e escreve `public/arte/` — atlas em WebP com fundo transparente, os cenários
-em camadas e um `arte.json` com a geometria. Só essa pasta (uns 3 MB) vai para
-o Git; o servidor não gera nada, só serve.
+em camadas e um `arte.json` com a geometria. Só essa pasta (uns 6 MB) vai para
+o Git; o servidor não gera nada, só serve. O navegador baixa só o que a cena
+pede: o sprite da sua classe e o do bicho da vez.
+
+As 20 espécies comuns têm folha. Os chefes de marco ainda entram em cena com
+o goblin, que é o sprite de reserva de quem não tem arte própria.
 
 Para um monstro novo, ponha a folha em `Assets/inimigos/` com o **id da
-espécie** no nome — `lobo.png`, ou uma pasta `lobo/`. Os ids são os de
-`server/rpg/monstros.js` (`slime`, `lobo`, `esqueleto`, `orc`, `troll`…).
-Rode `npm run arte` e pronto: o palco passa a usar o sprite certo sozinho.
-Enquanto uma espécie não tiver folha, ela entra em cena com o goblin.
+espécie** no nome — `lobo.png`, ou uma pasta `lobo/`; vale também o nome que
+a espécie tem no jogo (`cavaleiro espectral.png`). Os ids estão em
+`server/rpg/monstros.js`. Rode `npm run arte` e pronto: o palco passa a usar
+o sprite certo sozinho.
 
 Uma classe nova segue a mesma ideia: uma pasta `Assets/PERSONAGENS/sprites
 <classe>/` com a folha de animações e um arquivo `<classe> sentado` para a
 taberna.
+
+### Quando a medição erra
+
+As folhas não vêm todas iguais — fundo chapado, fundo em degradê, cada quadro
+numa cartela, moldura de janela em volta, cenário desenhado atrás dos bonecos.
+O script se vira com quase todas (inclusive as que não têm oito quadros por
+faixa: o golem tem quatro, o orc anda em sete, o esqueleto defende em quatro),
+mas algumas enganam a medição. Para essas há tabelas no começo do
+`scripts/arte.js`, cada uma com o caso que a motivou:
+
+| Tabela | Para quê |
+| --- | --- |
+| `ALTURA_RELATIVA` | o tamanho do bicho em relação ao herói (slime pela canela, behemoth enorme) |
+| `QUADROS_A_MAO` | quantos quadros cada faixa tem, quando o cenário atrás confunde a contagem |
+| `CAMADAS_A_MAO` | quantas camadas de fundo desenhado descascar |
+| `CONTRASTE_BAIXO` | bicho quase da cor do fundo, que pede rédea mais curta |
+| `COM_CENARIO_ATRAS` | folhas com cenário desenhado atrás dos quadros |
+| `OLHA_PARA_ESQUERDA` | folha desenhada virada para a esquerda (nenhuma, até agora) |
+
+Para conferir um recorte novo:
+
+```bash
+ARTE_DEBUG=1 npm run arte
+```
+
+Ele imprime, folha por folha, onde achou cada faixa e quantos quadros mediu.
+Se um quadro sair vazio, o atlas repete o anterior — na animação isso passa
+despercebido, e um buraco seria um piscar.
 
 `npm run arte` precisa do `sharp`, que é dependência de desenvolvimento. No
 servidor ele nem é instalado (`npm ci --omit=dev`): lá só chega a arte pronta.

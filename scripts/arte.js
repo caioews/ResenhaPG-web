@@ -31,8 +31,33 @@ const SAIDA = path.join(raiz, 'public', 'arte')
 
 /** Altura do personagem no atlas, em pixels. Tudo é normalizado para isso. */
 const ALTURA_DO_HEROI = 150
-/** O goblin é um bicho pequeno: entra um pouco menor que o herói. */
-const ALTURA_RELATIVA = { goblin: 0.86 }
+/**
+ * Altura de cada bicho em relação ao herói. É o que dá escala ao palco: um
+ * slime pela canela, um behemoth que não cabe na tela. Espécie que não
+ * estiver aqui entra do tamanho do herói.
+ */
+const ALTURA_RELATIVA = {
+  slime: 0.62,
+  goblin: 0.86,
+  lobo: 0.78,
+  esqueleto: 0.95,
+  aranha: 0.82,
+  harpia: 0.98,
+  orc: 1.12,
+  fantasma: 0.98,
+  troll: 1.3,
+  golem: 1.35,
+  wyvern: 1.18,
+  basilisco: 0.95,
+  quimera: 1.15,
+  espectro: 1.08,
+  vampiro: 1,
+  elemental: 1.05,
+  abominacao: 1.2,
+  demonio: 1.18,
+  behemoth: 1.45,
+  arauto: 1.12,
+}
 /**
  * Folhas desenhadas olhando para a esquerda. O normal é olharem para a
  * direita — inclusive a do goblin, apesar do rótulo "ANDANDO (ESQUERDA)" que
@@ -42,10 +67,66 @@ const ALTURA_RELATIVA = { goblin: 0.86 }
 const OLHA_PARA_ESQUERDA = new Set()
 /** Altura do sprite sentado da taberna. */
 const ALTURA_SENTADO = 120
-/** Quantos quadros cada faixa tem. */
-const QUADROS = 8
+/** Quantos quadros uma faixa costuma ter — só o palpite de partida. */
+const QUADROS_PADRAO = 8
+
+/**
+ * Quantos quadros cada faixa tem, quando a medição erra.
+ *
+ * Quase todas as folhas se medem sozinhas — inclusive as que fogem do
+ * padrão: o esqueleto vem com 6, 5 e 4 quadros, o golem com 4, o orc anda em
+ * 7. Estas três têm cenário desenhado ATRÁS dos bonecos (cavernas ao fundo,
+ * chão de pedra contínuo), e a mancha de cenário se confunde com quadro. Em
+ * vez de inventar regra para o caso particular, a contagem vem escrita.
+ */
+const QUADROS_A_MAO = {
+  behemoth: [8, 8, 8],
+  troll: [7, 7, 7],
+  lobo: [8, 8, 7],
+}
 /** O que cada faixa da folha significa, de cima para baixo. */
 const FAIXAS = ['andar', 'atacar', 'defender']
+
+/**
+ * Quanto se pode apagar de "fundo preso dentro do desenho".
+ *
+ * A régua apertada é a boa: sai o vão azul entre o braço e o corpo do golem,
+ * fica o miolo translúcido do slime e o corpo escuro do behemoth — que
+ * também são manchas chapadas parecidas com o fundo, e já foram apagados por
+ * engano. A frouxa existe para as folhas que desenharam CENÁRIO atrás dos
+ * quadros (a caverna do troll): ali a mancha é grande e precisa sair, senão
+ * ela se confunde com o bicho na hora de medir as faixas.
+ */
+const BOLSAO_APERTADO = { area: 0.004, variacao: 30, cor: 20 }
+const BOLSAO_FROUXO = { area: 0.03, variacao: 46, cor: 34 }
+/** Folhas com cenário desenhado atrás dos quadros. */
+const COM_CENARIO_ATRAS = new Set(['troll'])
+
+/**
+ * Folhas em que o bicho é quase da cor do fundo (um dragão cinza-escuro
+ * sobre azul-escuro). Aí a inundação precisa de rédea mais curta, senão
+ * atravessa o contorno e come o corpo.
+ */
+const CONTRASTE_BAIXO = new Set(['wyvern'])
+
+/**
+ * Quantas camadas de fundo desenhado tirar, quando a conta erra. O normal é
+ * deixar a régua da área decidir (até 3).
+ */
+const CAMADAS_A_MAO = {
+  // Cartelas claras e bicho escuro: na terceira volta a conta ia atrás do
+  // corpo da aranha.
+  aranha: 1,
+  // Moldura de janela + painel + cartela; a quarta volta comia a armadura.
+  arauto: 2,
+}
+
+/**
+ * Folhas em que todas as faixas usam a grade da primeira. Serve para as que
+ * têm cenário atrás: o chão e as pedras confundem a medição de uma linha,
+ * mas as três linhas foram desenhadas na mesma grade.
+ */
+const GRADE_DA_PRIMEIRA = new Set(['troll'])
 
 // --------------------------------------------------------- ferramentas
 
@@ -53,24 +134,183 @@ const somaAbs = (a, b, c, d, e, f) => Math.abs(a - d) + Math.abs(b - e) + Math.a
 
 async function lerRaw(arquivo) {
   const { data, info } = await sharp(arquivo).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-  return { data, W: info.width, H: info.height }
+  // Uma cópia sem o granulado do JPEG. Ela decide o que é fundo; o desenho
+  // que sai no atlas é sempre o original. Sem isso, a tolerância teria de
+  // ser alta o bastante para engolir o ruído — e aí engole também o contorno
+  // de um bicho escuro sobre fundo escuro.
+  const suave = await sharp(arquivo).ensureAlpha().median(3).raw().toBuffer()
+  return { data, suave, W: info.width, H: info.height }
 }
 
-/** A cor que mais aparece — nestas imagens é sempre o fundo. */
-function corDeFundo(data) {
+/** As cores que mais aparecem entre os pixels marcados (ou entre todos). */
+function coresDominantes(data, W, H, incluir = null, quantas = 1) {
   const conta = new Map()
-  for (let i = 0; i < data.length; i += 4) {
+  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+    if (incluir && !incluir(p)) continue
     const k = ((data[i] >> 3) << 10) | ((data[i + 1] >> 3) << 5) | (data[i + 2] >> 3)
     conta.set(k, (conta.get(k) ?? 0) + 1)
   }
-  const chave = [...conta.entries()].sort((a, b) => b[1] - a[1])[0][0]
-  return [((chave >> 10) & 31) << 3 | 4, ((chave >> 5) & 31) << 3 | 4, (chave & 31) << 3 | 4]
+  return [...conta.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, quantas)
+    .map(([k]) => [(((k >> 10) & 31) << 3) | 4, (((k >> 5) & 31) << 3) | 4, ((k & 31) << 3) | 4])
+}
+
+const corDominante = (data, W, H, incluir = null) => coresDominantes(data, W, H, incluir, 1)[0] ?? null
+
+const corDeFundo = (data, W, H) => corDominante(data, W, H)
+
+/**
+ * O fundo, por alastramento a partir das bordas.
+ *
+ * É o único jeito que aguenta as três folhas diferentes que chegaram: fundo
+ * chapado (goblin), fundo em degradê (lobo, orc) e cada quadro numa cartela
+ * mais clara (fantasma, aranha). Cada pixel entra se for parecido com o
+ * VIZINHO de onde veio, e não com uma cor fixa — degradê passa, contorno de
+ * desenho não.
+ */
+function alastrar(data, W, H, sementes, tolerancia) {
+  const fora = new Uint8Array(W * H)
+  const pilha = []
+  for (const p of sementes) {
+    if (fora[p]) continue
+    fora[p] = 1
+    pilha.push(p)
+  }
+
+  while (pilha.length) {
+    const p = pilha.pop()
+    const i = p * 4
+    const x = p % W
+    const y = (p / W) | 0
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
+      const q = ny * W + nx
+      if (fora[q]) continue
+      const j = q * 4
+      if (somaAbs(data[i], data[i + 1], data[i + 2], data[j], data[j + 1], data[j + 2]) > tolerancia) continue
+      fora[q] = 1
+      pilha.push(q)
+    }
+  }
+  return fora
 }
 
 /**
- * Transparência por distância da cor de fundo, com uma faixa de meio-termo
- * para a borda não ficar serrilhada. JPEG suja a borda do desenho, então o
- * corte nunca pode ser binário.
+ * O alpha de uma folha inteira.
+ *
+ * Alastra das bordas; se ainda sobrar muita área chapada (as cartelas de
+ * cada quadro, a faixa colorida de cada linha), alastra de novo a partir
+ * dela. Cada passo é desfeito se apagar quase tudo — foi o que aconteceu com
+ * a folha da aranha, em que o corpo do bicho virou "o que mais aparece".
+ */
+function alphaDaFolha(data, W, H, { tolerancia = 10, bolsoes = BOLSAO_APERTADO, camadas = 3 } = {}) {
+  const bordas = []
+  for (let x = 0; x < W; x++) {
+    bordas.push(x)
+    bordas.push((H - 1) * W + x)
+  }
+  for (let y = 0; y < H; y++) {
+    bordas.push(y * W)
+    bordas.push(y * W + W - 1)
+  }
+
+  const sobraDe = (fora) => {
+    let n = 0
+    for (let p = 0; p < W * H; p++) if (!fora[p]) n++
+    return n / (W * H)
+  }
+
+  let fora = alastrar(data, W, H, bordas, tolerancia)
+
+  // Cada volta tira mais uma camada de fundo desenhado: o painel atrás das
+  // faixas, a cartela atrás de cada quadro, a moldura de janela que algumas
+  // folhas têm em volta de tudo.
+  //
+  // Quando parar sai do tamanho do que sobrou: fundo desenhado ocupa metade
+  // da folha ou mais; boneco, de um décimo a um terço. Enquanto sobrar
+  // muito, ainda é fundo. Uma volta que deixe quase nada estava seguindo a
+  // cor do bicho, e é desfeita. `camadas` limita isso à mão quando a conta
+  // não serve para uma folha específica.
+  for (let volta = 0; volta < camadas && sobraDe(fora) >= 0.35; volta++) {
+    const cor = corDominante(data, W, H, (p) => !fora[p])
+    const sementes = []
+    for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+      if (fora[p]) continue
+      if (somaAbs(data[i], data[i + 1], data[i + 2], cor[0], cor[1], cor[2]) <= 26) sementes.push(p)
+    }
+    if (sementes.length < W * H * 0.06) break
+
+    for (let p = 0; p < W * H; p++) if (fora[p]) sementes.push(p)
+    const tentativa = alastrar(data, W, H, sementes, tolerancia)
+    if (sobraDe(tentativa) < 0.08) break
+    fora = tentativa
+  }
+
+  tirarBolsoes(data, W, H, fora, bolsoes)
+
+  const alpha = new Uint8Array(W * H)
+  for (let p = 0; p < W * H; p++) alpha[p] = fora[p] ? 0 : 255
+  return alpha
+}
+
+/**
+ * Fundo preso dentro do desenho (entre o braço e o corpo, no vão de uma
+ * perna): a inundação não tem por onde entrar. Reconhece-se por ser um
+ * pedaço chapado, da cor do fundo, cercado de desenho.
+ */
+function tirarBolsoes(data, W, H, fora, regua) {
+  const paleta = coresDominantes(data, W, H, (p) => fora[p] === 1, 8)
+  const visto = new Uint8Array(W * H)
+  const pilha = new Int32Array(W * H)
+
+  for (let inicio = 0; inicio < W * H; inicio++) {
+    if (visto[inicio] || fora[inicio]) continue
+    let topo = 0
+    pilha[topo++] = inicio
+    visto[inicio] = 1
+    const grupo = []
+    let soma = [0, 0, 0]
+    let menor = [255, 255, 255]
+    let maior = [0, 0, 0]
+
+    while (topo > 0) {
+      const p = pilha[--topo]
+      grupo.push(p)
+      for (let c = 0; c < 3; c++) {
+        const v = data[p * 4 + c]
+        soma[c] += v
+        if (v < menor[c]) menor[c] = v
+        if (v > maior[c]) maior[c] = v
+      }
+      const x = p % W
+      const y = (p / W) | 0
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx
+        const ny = y + dy
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
+        const q = ny * W + nx
+        if (visto[q] || fora[q]) continue
+        visto[q] = 1
+        pilha[topo++] = q
+      }
+    }
+
+    if (grupo.length > W * H * regua.area) continue
+    const chapado = maior.every((v, c) => v - menor[c] < regua.variacao)
+    if (!chapado) continue
+    const media = soma.map((v) => v / grupo.length)
+    const doFundo = paleta.some((cor) => somaAbs(media[0], media[1], media[2], cor[0], cor[1], cor[2]) <= regua.cor)
+    if (doFundo) for (const p of grupo) fora[p] = 1
+  }
+}
+
+/**
+ * Transparência por distância de uma cor de fundo conhecida, com uma faixa
+ * de meio-termo para a borda não ficar serrilhada. Serve para as imagens de
+ * fundo chapado e óbvio: os sentados da taberna, as camadas do cenário.
  */
 function alphaDoFundo(data, W, H, fundo, dentro = 60, fora = 130) {
   const alpha = new Uint8Array(W * H)
@@ -81,7 +321,11 @@ function alphaDoFundo(data, W, H, fundo, dentro = 60, fora = 130) {
   return alpha
 }
 
-/** Apaga manchinhas soltas (ruído de JPEG) e devolve o alpha limpo. */
+/**
+ * Apaga o que não é desenho: manchinhas soltas (ruído de JPEG) e as molduras
+ * que a folha desenha em volta de cada faixa. A moldura se reconhece pela
+ * forma — ocupa uma área enorme e quase não tem tinta dentro dela.
+ */
 function limparIlhas(alpha, W, H, minArea) {
   const visto = new Uint8Array(W * H)
   const pilha = new Int32Array(W * H)
@@ -91,11 +335,16 @@ function limparIlhas(alpha, W, H, minArea) {
     pilha[topo++] = inicio
     visto[inicio] = 1
     const grupo = []
+    let minX = W, maxX = 0, minY = H, maxY = 0
     while (topo > 0) {
       const p = pilha[--topo]
       grupo.push(p)
       const x = p % W
       const y = (p / W) | 0
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx
         const ny = y + dy
@@ -106,7 +355,10 @@ function limparIlhas(alpha, W, H, minArea) {
         pilha[topo++] = q
       }
     }
-    if (grupo.length < minArea) for (const p of grupo) alpha[p] = 0
+    const caixa = (maxX - minX + 1) * (maxY - minY + 1)
+    // Moldura do painel: ocupa um retângulo enorme e quase não tem tinta.
+    const moldura = caixa > W * H * 0.02 && grupo.length < caixa * 0.06
+    if (grupo.length < minArea || moldura) for (const p of grupo) alpha[p] = 0
   }
   return alpha
 }
@@ -149,9 +401,28 @@ function componentes(alpha, W, x0, x1, y0, y1) {
 }
 
 /**
- * Tira da célula o que não é o quadro: a borda do painel (uma linha fina) e
- * os restos do quadro vizinho que passaram do corte (a ponta de uma lâmina,
- * o fim de um efeito).
+ * Limpa a faixa antes de medir os quadros: fora o desenho, o que sobrou ali
+ * é moldura de cartela (linha fina), rótulo ("ATACANDO (MACHADO)") e letra
+ * solta. Tem de sair ANTES da medição — senão um rótulo comprido vira
+ * "quadro" e desloca a grade inteira.
+ */
+function limparFaixa(alpha, W, faixa) {
+  const altura = faixa.y1 - faixa.y0 + 1
+  for (const g of componentes(alpha, W, 0, W - 1, faixa.y0, faixa.y1)) {
+    const larg = g.x1 - g.x0 + 1
+    const alt = g.y1 - g.y0 + 1
+    const fino = (larg <= 8 && alt >= 24) || (alt <= 8 && larg >= 24)
+    const listra = alt < altura * 0.2 && larg > alt * 3.5
+    const letra = alt < altura * 0.16 && g.pixels.length < altura * altura * 0.02
+    // A cartela de um quadro: um retângulo do tamanho da faixa, oco.
+    const cartela = alt > altura * 0.5 && larg > altura * 0.4 && g.pixels.length < larg * alt * 0.12
+    if (fino || listra || letra || cartela) for (const p of g.pixels) alpha[p] = 0
+  }
+}
+
+/**
+ * Tira da célula os restos do quadro vizinho que passaram do corte: a ponta
+ * de uma lâmina, o fim de um efeito.
  */
 function limparCelula(alpha, W, x0, x1, y0, y1) {
   const grupos = componentes(alpha, W, x0, x1, y0, y1)
@@ -160,14 +431,118 @@ function limparCelula(alpha, W, x0, x1, y0, y1) {
   const centro = (x0 + x1) / 2
   const meio = (x1 - x0) * 0.3
 
+  const perto = (g) =>
+    g.x1 >= maior.x0 - (maior.x1 - maior.x0) * 0.1 &&
+    g.x0 <= maior.x1 + (maior.x1 - maior.x0) * 0.1 &&
+    g.y1 >= maior.y0 - (maior.y1 - maior.y0) * 0.1 &&
+    g.y0 <= maior.y1 + (maior.y1 - maior.y0) * 0.1
+
   for (const g of grupos) {
     if (g === maior) continue
-    const largura = g.x1 - g.x0 + 1
-    const altura = g.y1 - g.y0 + 1
-    const fino = largura <= 6 && altura >= 20
     const doVizinho = g.pixels.length < maior.pixels.length * 0.12 && Math.abs((g.x0 + g.x1) / 2 - centro) > meio
-    if (fino || doVizinho) for (const p of g.pixels) alpha[p] = 0
+    // Migalha longe do boneco: letra que sobrou do rótulo, pedra do cenário.
+    const migalha = g.pixels.length < maior.pixels.length * 0.05 && !perto(g)
+    if (doVizinho || migalha) for (const p of g.pixels) alpha[p] = 0
   }
+}
+
+/**
+ * Apaga as réguas retas que sobram do desenho da folha: a moldura da
+ * cartela de cada quadro, a linha que separa uma faixa da outra. Vai no
+ * pixel, e não por componente, porque a cartela quase sempre encosta no
+ * bicho — e aí os dois viram uma peça só.
+ *
+ * O que é "régua": um trecho reto, comprido e fino. Comprido o bastante para
+ * não pegar a lança de ninguém.
+ */
+/**
+ * Régua ou lança? As duas são retas e compridas; a régua da cartela tem a
+ * mesma espessura do começo ao fim, e a lança (a flecha do arqueiro, a
+ * língua do basilisco) afina na ponta. Mede em três pontos e compara.
+ */
+function reguaDeitada(alpha, W, H, x0, x1, y, espessura) {
+  // Uma régua de cartela termina encostada na régua perpendicular do canto —
+  // um traço vertical tão alto quanto a cartela. A flecha do arqueiro
+  // termina numa ponta de uma dúzia de pixels. É o que separa as duas.
+  const apoio = (x) => {
+    if (x < 0 || x >= W) return 0
+    let n = 1
+    while (y - n >= 0 && alpha[(y - n) * W + x] >= 40) n++
+    let m = 0
+    while (y + m + 1 < H && alpha[(y + m + 1) * W + x] >= 40) m++
+    return n + m
+  }
+  const comprimento = x1 - x0
+  if (apoio(x0 - 1) < comprimento * 0.25 && apoio(x1 + 1) < comprimento * 0.25) return false
+
+  const medir = (x) => {
+    let n = 1
+    while (y - n >= 0 && alpha[(y - n) * W + x] >= 40) n++
+    let m = 0
+    while (y + m + 1 < H && alpha[(y + m + 1) * W + x] >= 40) m++
+    return n + m
+  }
+  const pontos = [0.15, 0.5, 0.85].map((f) => medir(Math.round(x0 + (x1 - x0) * f)))
+  return Math.max(...pontos) <= espessura && Math.max(...pontos) <= Math.min(...pontos) * 1.6
+}
+
+function reguaEmPe(alpha, W, H, y0, y1, x, espessura) {
+  const apoio = (y) => {
+    if (y < 0 || y >= H) return 0
+    let n = 1
+    while (x - n >= 0 && alpha[y * W + x - n] >= 40) n++
+    let m = 0
+    while (x + m + 1 < W && alpha[y * W + x + m + 1] >= 40) m++
+    return n + m
+  }
+  const comprimento = y1 - y0
+  if (apoio(y0 - 1) < comprimento * 0.25 && apoio(y1 + 1) < comprimento * 0.25) return false
+
+  const medir = (y) => {
+    let n = 1
+    while (x - n >= 0 && alpha[y * W + x - n] >= 40) n++
+    let m = 0
+    while (x + m + 1 < W && alpha[y * W + x + m + 1] >= 40) m++
+    return n + m
+  }
+  const pontos = [0.15, 0.5, 0.85].map((f) => medir(Math.round(y0 + (y1 - y0) * f)))
+  return Math.max(...pontos) <= espessura && Math.max(...pontos) <= Math.min(...pontos) * 1.6
+}
+
+function tirarLinhasRetas(alpha, W, H) {
+  const apagar = new Uint8Array(W * H)
+  const ESPESSURA = 11
+  const minDeitada = Math.round(W * 0.1)
+  const minEmPe = Math.round(H * 0.15)
+
+  for (let y = 0; y < H; y++) {
+    let x = 0
+    while (x < W) {
+      if (alpha[y * W + x] < 40) { x++; continue }
+      let fim = x
+      while (fim < W && alpha[y * W + fim] >= 40) fim++
+      if (fim - x >= minDeitada && reguaDeitada(alpha, W, H, x, fim, y, ESPESSURA)) {
+        for (let k = x; k < fim; k++) apagar[y * W + k] = 1
+      }
+      x = fim
+    }
+  }
+
+  for (let x = 0; x < W; x++) {
+    let y = 0
+    while (y < H) {
+      if (alpha[y * W + x] < 40) { y++; continue }
+      let fim = y
+      while (fim < H && alpha[fim * W + x] >= 40) fim++
+      if (fim - y >= minEmPe && reguaEmPe(alpha, W, H, y, fim, x, ESPESSURA)) {
+        for (let k = y; k < fim; k++) apagar[k * W + x] = 1
+      }
+      y = fim
+    }
+  }
+
+  for (let p = 0; p < W * H; p++) if (apagar[p]) alpha[p] = 0
+  return alpha
 }
 
 /** Sequências de linhas (ou colunas) com conteúdo, juntando vãos pequenos. */
@@ -235,8 +610,35 @@ function faixasDaFolha(alpha, W, H) {
     perfilY[y] = s
   }
 
-  const bandas = corridas(perfilY, Math.round(W * 0.004), 6).filter(([a, b]) => b - a > H * 0.15)
+  // As faixas são as corridas altas: título e rótulos são listras baixas,
+  // qualquer que seja o desenho da folha. Quando o cenário desenhado atrás
+  // gruda duas faixas numa só (a caverna do troll), ela é cortada na linha
+  // mais vazia do meio — é sempre o vão entre uma fileira e a outra.
+  const brutas = corridas(perfilY, Math.round(W * 0.004), 6)
+  if (process.env.ARTE_DEBUG) {
+    console.log(`      corridas: ${brutas.map(([a, b]) => `${a}-${b}(${b - a + 1})`).join(' ')}`)
+  }
+
+  let bandas = brutas.filter(([a, b]) => b - a > H * 0.08)
+  while (bandas.length < 3 && bandas.length > 0) {
+    bandas.sort((x, y) => y[1] - y[0] - (x[1] - x[0]))
+    const [a, b] = bandas.shift()
+    const de = a + Math.round((b - a) * 0.3)
+    const ate = b - Math.round((b - a) * 0.3)
+    let corte = de
+    for (let y = de; y <= ate; y++) if (perfilY[y] < perfilY[corte]) corte = y
+    bandas.push([a, corte - 1], [corte + 1, b])
+  }
+
+  bandas = bandas
+    .sort((x, y) => y[1] - y[0] - (x[1] - x[0]))
+    .slice(0, 3)
+    .sort((x, y) => x[0] - y[0])
+
   if (bandas.length !== 3) throw new Error(`esperava 3 faixas, achei ${bandas.length}`)
+  const maisAlta = Math.max(...bandas.map(([a, b]) => b - a))
+  const baixa = bandas.find(([a, b]) => b - a < maisAlta * 0.35)
+  if (baixa) throw new Error(`faixa ${baixa[0]}-${baixa[1]} é baixa demais para ser uma linha de quadros`)
 
   return bandas.map(([ya, yb]) => {
     // Dentro da faixa, o rótulo é uma listra baixa colada no topo do painel.
@@ -247,7 +649,16 @@ function faixasDaFolha(alpha, W, H) {
   })
 }
 
-/** Os centros dos oito quadros de uma faixa, medidos onde há desenho. */
+/**
+ * Os centros dos quadros de uma faixa.
+ *
+ * O caminho honesto seria confiar nos vãos entre um desenho e o seguinte,
+ * mas eles mentem dos dois lados: um efeito grande cola dois quadros num
+ * borrão só, e uma faísca solta vira um "quadro" a mais. Então só se confia
+ * na contagem medida quando ela vem espaçada por igual; fora isso vale o
+ * oito de sempre, esticado entre o primeiro e o último desenho — que é como
+ * estas folhas são desenhadas. (O orc anda em sete, e cai no primeiro caso.)
+ */
 function centrosDaFaixa(alpha, W, faixa) {
   const margem = Math.round(W * 0.02)
   const perfilX = new Int32Array(W)
@@ -257,17 +668,51 @@ function centrosDaFaixa(alpha, W, faixa) {
     perfilX[x] = s
   }
 
-  const grupos = corridas(perfilX, 1, 6).filter(([a, b]) => b - a > W * 0.01)
-  if (grupos.length === QUADROS) {
-    return { centros: grupos.map(([a, b]) => (a + b) / 2), perfilX }
+  const grupos = corridas(perfilX, 1, 6).filter(([a, b]) => b - a > W * 0.012)
+  const comMassa = grupos.map(([a, b]) => {
+    let massa = 0
+    let soma = 0
+    for (let x = a; x <= b; x++) {
+      massa += perfilX[x]
+      soma += x * perfilX[x]
+    }
+    return { a, b, massa, centro: massa ? soma / massa : (a + b) / 2 }
+  })
+
+  // Faísca solta, poeira, o fim de um efeito: tem posição, mas quase não tem
+  // tinta. Não conta como quadro.
+  const massas = comMassa.map((g) => g.massa).sort((x, y) => x - y)
+  const mediana = massas[Math.floor(massas.length / 2)] ?? 0
+  const cheios = comMassa.filter((g) => g.massa > mediana * 0.15)
+  const centros = cheios.map((g) => g.centro)
+
+  if (centros.length < 2) {
+    const a = cheios[0]?.a ?? margem
+    const b = cheios[0]?.b ?? W - margem
+    const largura = (b - a) / QUADROS_PADRAO
+    return { centros: Array.from({ length: QUADROS_PADRAO }, (_, i) => a + largura * (i + 0.5)), perfilX }
   }
 
-  // Quadros que se encostam (um efeito grande invade o vizinho): divide o
-  // espaço ocupado em oito partes iguais, que é como a folha foi desenhada.
-  const a = grupos[0][0]
-  const b = grupos.at(-1)[1]
-  const largura = (b - a) / QUADROS
-  return { centros: Array.from({ length: QUADROS }, (_, i) => a + largura * (i + 0.5)), perfilX }
+  const vaos = []
+  for (let i = 1; i < centros.length; i++) vaos.push(centros[i] - centros[i - 1])
+  const regular = Math.max(...vaos) <= Math.min(...vaos) * 1.4
+
+  if (centros.length === QUADROS_PADRAO || (regular && centros.length >= 4 && centros.length <= 12)) {
+    return { centros, perfilX }
+  }
+
+  const largura = (centros.at(-1) - centros[0]) / (QUADROS_PADRAO - 1)
+  return {
+    centros: Array.from({ length: QUADROS_PADRAO }, (_, i) => centros[0] + largura * i),
+    perfilX,
+  }
+}
+
+/** Os mesmos limites, com o número de quadros que veio escrito. */
+function espalhar(centros, quantos) {
+  if (!quantos || quantos === centros.length) return centros
+  const largura = (centros.at(-1) - centros[0]) / (quantos - 1)
+  return Array.from({ length: quantos }, (_, i) => centros[0] + largura * i)
 }
 
 /** O corte entre dois quadros: a coluna mais vazia perto do meio. */
@@ -287,42 +732,77 @@ function corteEntre(perfilX, c1, c2) {
 }
 
 /** Recorta uma folha inteira: devolve os quadros já com fundo transparente. */
-async function lerFolha(arquivo) {
-  const { data, W, H } = await lerRaw(arquivo)
-  const fundo = corDeFundo(data)
-  const alpha = limparIlhas(alphaDoFundo(data, W, H, fundo), W, H, Math.round(W * H * 0.00002))
+async function lerFolha(arquivo, { quadrosAMao = null, bolsoes = BOLSAO_APERTADO, camadas = 3, gradeUnica = false, tolerancia = 10 } = {}) {
+  const { data, suave, W, H } = await lerRaw(arquivo)
+  const alpha = limparIlhas(
+    tirarLinhasRetas(alphaDaFolha(suave, W, H, { bolsoes, camadas, tolerancia }), W, H),
+    W,
+    H,
+    Math.round(W * H * 0.00002),
+  )
 
   const bandas = faixasDaFolha(alpha, W, H)
-  const referencia = centrosDaFaixa(alpha, W, bandas[0])
   const margem = Math.round(W * 0.02)
+  if (process.env.ARTE_DEBUG) {
+    console.log(`    ${path.basename(arquivo)}: faixas ${bandas.map((b) => `${b.y0}-${b.y1}`).join(' ')}`)
+  }
 
+  for (const faixa of bandas) limparFaixa(alpha, W, faixa)
+  // (a massa de cada quadro é medida na volta abaixo; quadro quase vazio é
+  // descartado depois, comparando com os vizinhos da mesma linha)
+
+  // Linha com o mesmo número de quadros da primeira usa a grade da primeira:
+  // as três faixas foram desenhadas na mesma régua, e um efeito grande no
+  // meio de uma delas desloca a medição dela sozinha.
+  let grade = null
   const linhas = bandas.map((faixa, iFaixa) => {
-    const { centros } = iFaixa === 0 ? referencia : centrosDaFaixa(alpha, W, faixa)
-    const usar = centros.length === QUADROS ? centros : referencia.centros
-    const perfil = centrosDaFaixa(alpha, W, faixa).perfilX
+    const { centros: medidos, perfilX } = centrosDaFaixa(alpha, W, faixa)
+    const daPrimeira = grade && (gradeUnica || grade.length === medidos.length)
+    const centros = espalhar(daPrimeira ? grade : medidos, quadrosAMao?.[iFaixa])
+    if (iFaixa === 0) grade = centros
 
-    const cortes = [Math.round(usar[0] - (usar[1] - usar[0]) * 0.62)]
-    for (let i = 1; i < usar.length; i++) cortes.push(corteEntre(perfil, usar[i - 1], usar[i]))
-    cortes.push(Math.round(usar.at(-1) + (usar.at(-1) - usar.at(-2)) * 0.62))
+    const cortes = [Math.round(centros[0] - (centros[1] - centros[0]) * 0.62)]
+    for (let i = 1; i < centros.length; i++) cortes.push(corteEntre(perfilX, centros[i - 1], centros[i]))
+    cortes.push(Math.round(centros.at(-1) + (centros.at(-1) - centros.at(-2)) * 0.62))
 
-    return Array.from({ length: QUADROS }, (_, i) => {
+    return Array.from({ length: centros.length }, (_, i) => {
       const x0 = Math.max(margem, cortes[i])
       const x1 = Math.min(W - 1 - margem, cortes[i + 1])
       limparCelula(alpha, W, x0, x1, faixa.y0, faixa.y1)
       const caixa = caixaDe(alpha, W, x0, x1, faixa.y0, faixa.y1)
-      return { caixa, ancora: caixa ? ancora(alpha, W, caixa) : null }
+      let massa = 0
+      if (caixa) {
+        for (let y = caixa.y0; y <= caixa.y1; y++) {
+          for (let x = caixa.x0; x <= caixa.x1; x++) if (alpha[y * W + x] >= 40) massa++
+        }
+      }
+      return { caixa, massa, ancora: caixa ? ancora(alpha, W, caixa) : null }
     })
   })
+
+  // Quadro com uma migalha de tinta perto do que têm os vizinhos não é
+  // quadro: é resto. Vira vazio, e o atlas repete o anterior no lugar dele.
+  for (const linha of linhas) {
+    const massas = linha.map((q) => q.massa).sort((a, b) => a - b)
+    const mediana = massas[Math.floor(massas.length / 2)] || 0
+    for (const q of linha) {
+      if (q.caixa && q.massa < mediana * 0.08) q.caixa = null
+    }
+  }
+
+  if (process.env.ARTE_DEBUG) console.log(`    quadros por faixa: ${linhas.map((l) => l.length).join(', ')}`)
 
   return { data, alpha, W, H, linhas }
 }
 
 /**
- * Monta o atlas: 8 colunas × 3 linhas, todo quadro na mesma célula, com os
- * pés no mesmo ponto. Assim a animação não treme.
+ * Monta o atlas: uma coluna por quadro, uma linha por faixa, todo quadro na
+ * mesma célula e com os pés no mesmo ponto — assim a animação não treme. As
+ * folhas não têm todas o mesmo número de quadros (o orc anda em sete), então
+ * o manifesto guarda quantos cada linha tem.
  */
-async function montarAtlas(arquivo, { alturaAlvo }) {
-  const folha = await lerFolha(arquivo)
+async function montarAtlas(arquivo, { alturaAlvo, quadros = null, bolsoes = BOLSAO_APERTADO, camadas = 3, gradeUnica = false, tolerancia = 10 }) {
+  const folha = await lerFolha(arquivo, { quadrosAMao: quadros, bolsoes, camadas, gradeUnica, tolerancia })
   const { data, alpha, W, linhas } = folha
 
   // Escala: a altura do personagem andando é a medida de referência.
@@ -348,15 +828,23 @@ async function montarAtlas(arquivo, { alturaAlvo }) {
   const ax = Math.round(esq * escala) + pad
   const ay = Math.round(cima * escala) + pad
 
+  const colunas = Math.max(...linhas.map((l) => l.length))
   const atlas = sharp({
-    create: { width: CW * QUADROS, height: CH * linhas.length, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    create: { width: CW * colunas, height: CH * linhas.length, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })
 
   const pedacos = []
   for (let l = 0; l < linhas.length; l++) {
-    for (let c = 0; c < QUADROS; c++) {
+    // Quadro que saiu vazio (um corte torto, um efeito que ficou todo no
+    // vizinho) repete o anterior: na animação isso é imperceptível, e um
+    // buraco seria um piscar.
+    let ultimo = null
+    for (let c = 0; c < linhas[l].length; c++) {
       const q = linhas[l][c]
-      if (!q.caixa) continue
+      if (!q.caixa) {
+        if (ultimo) pedacos.push({ ...ultimo, left: ultimo.left + (c - ultimo.coluna) * CW })
+        continue
+      }
       const lw = q.caixa.x1 - q.caixa.x0 + 1
       const lh = q.caixa.y1 - q.caixa.y0 + 1
 
@@ -380,22 +868,30 @@ async function montarAtlas(arquivo, { alturaAlvo }) {
         .png()
         .toBuffer()
 
-      pedacos.push({
+      ultimo = {
         input: png,
+        coluna: c,
         left: c * CW + ax - Math.round((q.ancora.x - q.caixa.x0) * escala),
         top: l * CH + ay - Math.round((q.ancora.y - q.caixa.y0) * escala),
-      })
+      }
+      pedacos.push(ultimo)
     }
   }
 
   const buffer = await atlas.composite(pedacos).webp({ quality: 85, alphaQuality: 100 }).toBuffer()
-  return { buffer, quadro: [CW, CH], ancora: [ax, ay], linhas: FAIXAS, quadros: QUADROS }
+  return {
+    buffer,
+    quadro: [CW, CH],
+    ancora: [ax, ay],
+    linhas: FAIXAS,
+    quadros: linhas.map((l) => l.length),
+  }
 }
 
 /** Um sprite solto num fundo chapado (os sentados da taberna). */
 async function recortarSolto(arquivo, { alturaAlvo }) {
   const { data, W, H } = await lerRaw(arquivo)
-  const fundo = corDeFundo(data)
+  const fundo = corDeFundo(data, W, H)
   const alpha = limparIlhas(alphaDoFundo(data, W, H, fundo, 40, 90), W, H, Math.round(W * H * 0.00002))
   const caixa = caixaDe(alpha, W, 0, W - 1, 0, H - 1)
   if (!caixa) throw new Error(`não achei desenho em ${arquivo}`)
@@ -565,13 +1061,15 @@ const semAcento = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036
  */
 function folhasDeInimigo() {
   const base = path.join(ENTRADA, 'inimigos')
-  const ids = ESPECIES.map((e) => e.id)
+  // Vale o id da espécie ou o nome dela no jogo: "cavaleiro espectral.jfif"
+  // é o `espectro`, "aranha gigante.jfif" é a `aranha`.
+  const chaves = ESPECIES.map((e) => ({ id: e.id, pistas: [e.id, semAcento(e.nome)] }))
   const saida = {}
   const soltos = []
 
   for (const entrada of readdirSync(base, { withFileTypes: true })) {
     const nome = semAcento(entrada.name)
-    const id = ids.find((x) => nome.includes(x))
+    const id = chaves.find((e) => e.pistas.some((pista) => nome.includes(pista)))?.id
     if (entrada.isDirectory()) {
       if (!id) throw new Error(`a pasta "${entrada.name}" não bate com nenhuma espécie`)
       saida[id] = achar(path.join(base, entrada.name), ehImagem)
@@ -615,6 +1113,11 @@ async function principal() {
   for (const [chave, arquivo] of Object.entries(folhasDeInimigo())) {
     const atlas = await montarAtlas(arquivo, {
       alturaAlvo: Math.round(ALTURA_DO_HEROI * (ALTURA_RELATIVA[chave] ?? 1)),
+      quadros: QUADROS_A_MAO[chave] ?? null,
+      bolsoes: COM_CENARIO_ATRAS.has(chave) ? BOLSAO_FROUXO : BOLSAO_APERTADO,
+      camadas: CAMADAS_A_MAO[chave] ?? 3,
+      gradeUnica: GRADE_DA_PRIMEIRA.has(chave),
+      tolerancia: CONTRASTE_BAIXO.has(chave) ? 6 : 10,
     })
     escrever(`lutadores/${chave}.webp`, atlas.buffer)
     manifesto.lutadores[chave] = {
