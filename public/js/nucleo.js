@@ -168,6 +168,10 @@ export async function comBotao(botao, acao) {
   try {
     return await acao()
   } catch (e) {
+    // Recusa do servidor (cooldown, mochila cheia) é rotina; o resto é bug,
+    // e aí a pilha no console vale mais que o aviso, que some em segundos.
+    if (e instanceof ErroDaApi) console.warn(e.message)
+    else console.error(e)
     avisarErro(e)
   } finally {
     botao.disabled = antes

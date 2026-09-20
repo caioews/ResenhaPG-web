@@ -6,3 +6,8 @@ dados/
 .env
 npm-debug.log*
 .DS_Store
+
+# A arte crua (as folhas geradas, os cenários em tamanho original). São 39 MB
+# de fonte: o que o jogo usa é o resultado de `npm run arte`, em public/arte,
+# e esse sim vai para o Git. Guarde a pasta Assets fora do repositório.
+Assets/

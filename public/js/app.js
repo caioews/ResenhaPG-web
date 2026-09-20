@@ -61,6 +61,18 @@ import {
 } from './paineis.js'
 import { abrirEditorDeFoto, abrirFicha, abrirPerfil, retrato } from './perfil.js'
 import {
+  andarUmTrecho,
+  entrarOMonstro,
+  esperarEmPosicao,
+  fimDaLuta,
+  golpe,
+  irCacar,
+  mostrarTaberna,
+  palcoEmBatalha,
+  pessoasNaTaberna,
+  prepararPalco,
+} from './palco.js'
+import {
   buscarEvento,
   configurarEventos,
   criarIndicador,
@@ -351,7 +363,8 @@ async function entrarNoJogo(id, { novo = false } = {}) {
   desenharFicha()
 
   limparNarrativa()
-  definirCena('Ruínas de Valkhar')
+  definirCena('Taberna da Resenha')
+  abrirOPalco()
   if (novo) {
     tituloDeCena(`${estado.p.classe.emoji} ${estado.p.nome}, ${estado.p.classe.nome}`)
     rico(
@@ -366,8 +379,8 @@ async function entrarNoJogo(id, { novo = false } = {}) {
         'um equipamento básico custa 40 de gold e muda a conta.',
     )
   } else {
-    tituloDeCena('De volta às ruínas')
-    sussurro('O vento passa entre os arcos quebrados. Escolha o que fazer.')
+    tituloDeCena('De volta à taberna')
+    sussurro('A lareira está acesa e a mesa, posta. Descanse ou saia para caçar.')
   }
 
   conectarSocket()
@@ -385,6 +398,25 @@ async function sairDoPersonagem() {
   estado.socket = null
   await irParaPersonagens()
 }
+
+// ------------------------------------------------------------- palco
+
+/** Liga o palco (cenário desenhado) e abre na taberna. */
+async function abrirOPalco() {
+  try {
+    $('#palco').hidden = false
+    await prepararPalco($('#palco'), { classe: classeBase() })
+    await mostrarTaberna({ imediato: true })
+    desenharAcoes()
+  } catch (e) {
+    // Sem arte o jogo continua inteiro: o palco é ilustração, não regra.
+    $('#palco').hidden = true
+    console.warn('palco indisponível:', e)
+  }
+}
+
+/** A classe de origem do personagem — é o sprite que ele usa em cena. */
+const classeBase = () => estado.p?.linhagem?.[0]?.id ?? estado.p?.classe?.id ?? null
 
 // ------------------------------------------------------------- ficha
 
@@ -529,6 +561,14 @@ function desenharAcoes() {
     relogio: 'luta',
   })
 
+  if (palcoEmBatalha()) {
+    itens.push({
+      rotulo: 'Voltar para a taberna',
+      nota: 'a lareira, a mesa e quem estiver on-line',
+      acao: voltarParaTaberna,
+    })
+  }
+
   itens.push({
     rotulo: p.estados.descansando > 0 ? 'Levantar da fogueira' : 'Descansar na fogueira',
     nota: p.estados.descansando > 0 ? 'a vida está subindo' : 'a vida sobe até encher',
@@ -617,14 +657,50 @@ function prepararTeclado() {
 // ------------------------------------------------------- as ações em si
 
 async function cacar() {
-  const p = estado.p
   const r = await mandar('/api/combate/cacar')
+  await entrarEmCena(r.encontro)
   await mostrarEncontro(r.encontro, r.travado)
 }
 
 async function enfrentarChefe() {
   const r = await mandar('/api/combate/chefe')
+  await entrarEmCena(r.encontro)
   await mostrarEncontro(r.encontro, false)
+}
+
+/**
+ * A ida até o bicho: da taberna, o personagem atravessa a tela andando; já
+ * nas ruínas, caminha só mais um trecho. Depois o monstro entra pela direita.
+ */
+async function entrarEmCena(encontro) {
+  // O palco é ilustração: se algo nele falhar, a caçada acontece do mesmo
+  // jeito — o log é que conta a história.
+  try {
+    if (!palcoEmBatalha()) {
+      definirCena('Ruínas de Valkhar')
+      await irCacar(classeBase())
+      desenharAcoes()
+    } else {
+      andarUmTrecho()
+    }
+    await entrarOMonstro(encontro.monstro.id)
+    await esperarEmPosicao()
+  } catch (e) {
+    console.warn('palco:', e)
+  }
+}
+
+/** Volta para a taberna: o mesmo fade, no sentido contrário. */
+async function voltarParaTaberna() {
+  // No meio de uma luta a volta limparia o log do que ainda está sendo
+  // contado. Espera acabar.
+  if (narrando()) return avisar('Termine a luta primeiro.')
+  await mostrarTaberna().catch((e) => console.warn('palco:', e))
+  definirCena('Taberna da Resenha')
+  limparNarrativa()
+  tituloDeCena('De volta à taberna')
+  sussurro('Você empurra a porta, o calor da lareira bate no rosto e alguém já pediu outra rodada.')
+  desenharAcoes()
 }
 
 async function mostrarEncontro(e, travado) {
@@ -652,8 +728,10 @@ async function mostrarEncontro(e, travado) {
     hpB: m.hpMax,
     hpMaxB: m.hpMax,
     log: e.log,
+    aoEntrada: golpe,
   })
 
+  fimDaLuta({ venceu: e.venceu })
   tituloDeCena(e.venceu ? 'Vitória' : 'Derrota')
 
   if (!e.venceu) {
@@ -1005,6 +1083,9 @@ function conectarSocket() {
   })
 
   socket.on('jogadores:online', (lista) => {
+    pessoasNaTaberna(
+      lista.map((j) => ({ id: j.id, nome: j.nome, classe: j.classeBase, eu: j.id === estado.p?.id })),
+    )
     const caixa = limpar($('#lista-online'))
     if (!lista.length) return caixa.append(el('div', { class: 'sussurro' }, 'Ninguém por aqui agora.'))
     for (const j of lista) {

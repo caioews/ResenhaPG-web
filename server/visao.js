@@ -112,6 +112,8 @@ export const classesBase = () =>
 export const verEncontro = (monstro, saida, hpInicial) => ({
   hpInicial,
   monstro: {
+    // A espécie (o `id`) diz ao palco qual sprite desenhar.
+    id: monstro.id,
     nome: monstro.nome,
     emoji: monstro.emoji,
     nivel: monstro.nivel,

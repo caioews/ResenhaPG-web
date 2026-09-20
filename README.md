@@ -207,6 +207,15 @@ depois de mexer em qualquer habilidade (`server/rpg/habilidades.js`). Use
 `N=60 npm run classes` para uma passada rápida e `TIERS=4` para medir um
 degrau só.
 
+```bash
+npm run arte
+```
+
+Recorta a arte crua de `Assets/` e escreve `public/arte/`: os sprites com
+fundo transparente, os cenários em camadas e o `arte.json` que o palco lê. Só
+precisa rodar quando entrar arte nova — ver
+[O palco](#o-palco-cenários-personagens-e-animações).
+
 ---
 
 ## Estrutura
@@ -241,8 +250,11 @@ ResenhaPG web/
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
-│   └── js/             nucleo · narrativa · paineis · perfil · eventos · aventuras · som · app
-├── scripts/            conformidade.js · simulador.js · classes.js · atualizar.sh
+│   ├── js/             nucleo · narrativa · palco · paineis · perfil · eventos
+│   │                   · aventuras · som · app
+│   └── arte/           A arte pronta para o navegador (gerada; versionada)
+├── Assets/             A arte crua, como saiu do gerador (não versionada)
+├── scripts/            conformidade.js · simulador.js · classes.js · arte.js · atualizar.sh
 └── dados/              O banco (criado sozinho; não versione)
 ```
 
@@ -855,6 +867,65 @@ habilidades e equipamento (sem mochila nem materiais), com um botão para voltar
 Moderação: um administrador tira a foto de alguém digitando `/foto <nome do
 personagem>` no chat. Código em `server/fotos.js`, `server/rotas/fotos.js` e
 `public/js/perfil.js`.
+
+---
+
+## O palco: cenários, personagens e animações
+
+Ao lado do log da aventura existe um palco desenhado — um `<canvas>` que
+mostra onde o personagem está. Ele não decide nada: quem diz quem bateu,
+quanto tirou e quem caiu continua sendo o servidor, pelo mesmo log que vira
+texto. O palco só desenha o que já aconteceu, uma linha de cada vez.
+
+**A taberna** é a cena de quem não está caçando, e é onde o jogo abre. Quem
+está on-line aparece sentado pelas mesas, com o sprite da classe de origem e
+o nome por cima. É a mesma lista de "Na taverna", só que em gente.
+
+**As ruínas** entram quando se clica em Caçar: a tela escurece, o personagem
+entra pela esquerda andando, o bicho vem pela direita, e a luta acontece com
+o boneco trocando de animação conforme o log — golpe, defesa, esquiva, o
+número do dano subindo, e quem perde cai no chão. O cenário tem quatro
+camadas que andam em velocidades diferentes (céu, ruínas ao longe, ruínas de
+perto e o chão), o que dá a sensação de movimento; elas se repetem em espelho,
+então dá para andar para sempre. Caçadas seguidas continuam de onde parou, e
+o corpo do bicho anterior fica para trás até sair de cena. Abaixo de "Caçar"
+existe **Voltar para a taberna**.
+
+Em painel largo o palco fica ao lado do log; em painel estreito (celular, ou
+com o chat aberto numa janela pequena) ele sobe para cima do log. Quem decide
+é a largura do painel, não a da janela.
+
+### Trocar ou acrescentar arte
+
+A arte crua fica em `Assets/` — as folhas como saíram do gerador: título,
+três faixas rotuladas (andando, atacando, defendendo) e oito quadros em cada
+uma. Isso é fonte, não produto: são 39 MB e a pasta está no `.gitignore`.
+Guarde uma cópia fora do repositório.
+
+O que o jogo carrega é o resultado de:
+
+```bash
+npm run arte
+```
+
+O script (`scripts/arte.js`) mede a própria imagem para achar as faixas e os
+quadros, tira o fundo, alinha todos os quadros pelos pés, normaliza o tamanho
+e escreve `public/arte/` — atlas em WebP com fundo transparente, os cenários
+em camadas e um `arte.json` com a geometria. Só essa pasta (uns 3 MB) vai para
+o Git; o servidor não gera nada, só serve.
+
+Para um monstro novo, ponha a folha em `Assets/inimigos/` com o **id da
+espécie** no nome — `lobo.png`, ou uma pasta `lobo/`. Os ids são os de
+`server/rpg/monstros.js` (`slime`, `lobo`, `esqueleto`, `orc`, `troll`…).
+Rode `npm run arte` e pronto: o palco passa a usar o sprite certo sozinho.
+Enquanto uma espécie não tiver folha, ela entra em cena com o goblin.
+
+Uma classe nova segue a mesma ideia: uma pasta `Assets/PERSONAGENS/sprites
+<classe>/` com a folha de animações e um arquivo `<classe> sentado` para a
+taberna.
+
+`npm run arte` precisa do `sharp`, que é dependência de desenvolvimento. No
+servidor ele nem é instalado (`npm ci --omit=dev`): lá só chega a arte pronta.
 
 ---
 

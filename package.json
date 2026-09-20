@@ -12,7 +12,8 @@
     "dev": "node --watch server/index.js",
     "balance": "node scripts/simulador.js",
     "classes": "node scripts/classes.js",
-    "conformidade": "node scripts/conformidade.js"
+    "conformidade": "node scripts/conformidade.js",
+    "arte": "node scripts/arte.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,5 +22,8 @@
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.4"
   }
 }

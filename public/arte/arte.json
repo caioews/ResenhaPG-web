@@ -1,0 +1,183 @@
+{
+  "lutadores": {
+    "arqueiro": {
+      "arquivo": "lutadores/arqueiro.webp",
+      "quadro": [
+        199,
+        161
+      ],
+      "ancora": [
+        102,
+        157
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "bardo": {
+      "arquivo": "lutadores/bardo.webp",
+      "quadro": [
+        267,
+        179
+      ],
+      "ancora": [
+        154,
+        175
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "clerigo": {
+      "arquivo": "lutadores/clerigo.webp",
+      "quadro": [
+        252,
+        261
+      ],
+      "ancora": [
+        140,
+        258
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "duelista": {
+      "arquivo": "lutadores/duelista.webp",
+      "quadro": [
+        256,
+        161
+      ],
+      "ancora": [
+        125,
+        157
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "guerreiro": {
+      "arquivo": "lutadores/guerreiro.webp",
+      "quadro": [
+        204,
+        166
+      ],
+      "ancora": [
+        83,
+        163
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "ladino": {
+      "arquivo": "lutadores/ladino.webp",
+      "quadro": [
+        267,
+        174
+      ],
+      "ancora": [
+        139,
+        170
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "mago": {
+      "arquivo": "lutadores/mago.webp",
+      "quadro": [
+        204,
+        159
+      ],
+      "ancora": [
+        94,
+        156
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8
+    },
+    "goblin": {
+      "arquivo": "lutadores/goblin.webp",
+      "quadro": [
+        248,
+        158
+      ],
+      "ancora": [
+        120,
+        155
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": 8,
+      "viradoParaEsquerda": false
+    }
+  },
+  "sentados": {
+    "arqueiro": "sentados/arqueiro.webp",
+    "bardo": "sentados/bardo.webp",
+    "clerigo": "sentados/clerigo.webp",
+    "duelista": "sentados/duelista.webp",
+    "guerreiro": "sentados/guerreiro.webp",
+    "ladino": "sentados/ladino.webp",
+    "mago": "sentados/mago.webp"
+  },
+  "cenario": {
+    "batalha": {
+      "proporcao": 2.357142857142857,
+      "linhaDoChao": 0.94,
+      "camadas": [
+        {
+          "arquivo": "cenario/batalha-ceu.webp",
+          "de": 0,
+          "ate": 0.7,
+          "velocidade": 0.18
+        },
+        {
+          "arquivo": "cenario/batalha-longe.webp",
+          "de": 0,
+          "ate": 0.7,
+          "velocidade": 0.42
+        },
+        {
+          "arquivo": "cenario/batalha-perto.webp",
+          "de": 0,
+          "ate": 0.72,
+          "velocidade": 0.68
+        },
+        {
+          "arquivo": "cenario/batalha-chao.webp",
+          "de": 0.66,
+          "ate": 1,
+          "velocidade": 1
+        }
+      ]
+    },
+    "taberna": "cenario/taberna.webp"
+  }
+}

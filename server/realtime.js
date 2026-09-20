@@ -12,7 +12,7 @@ import { config } from './config.js'
 import { COOKIE, usuarioDaSessao } from './auth.js'
 import { gravarMensagem, historicoDoChat, podarChat } from './db.js'
 import * as store from './store.js'
-import { classe } from './rpg/classes.js'
+import { classe, classeRaiz } from './rpg/classes.js'
 
 const CANAL = 'guilda'
 
@@ -41,6 +41,8 @@ export function jogadoresOnline() {
         nome: p.name,
         nivel: p.rpg.nivel,
         classe: c ? { id: p.rpg.classe, nome: c.nome, emoji: c.emoji } : null,
+        // A classe de origem: é o sprite que senta na taberna.
+        classeBase: p.rpg.classe ? classeRaiz(p.rpg.classe) : null,
         pontosPvp: p.rpg.pvp?.pontos ?? 0,
       }
     })

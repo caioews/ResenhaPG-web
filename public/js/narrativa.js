@@ -10,7 +10,15 @@
 import { $, barra, el, limpar, num, pct } from './nucleo.js'
 
 const RITMO = 260 // ms entre duas linhas
+const RITMO_MEDIO = 130
 const RITMO_RAPIDO = 45
+
+/**
+ * Luta curta passa devagar, para dar de ver; luta longa acelera, senão
+ * assistir a 30 rodadas cansa. O palco acompanha o mesmo ritmo.
+ */
+const ritmoPara = (quantasLinhas) =>
+  quantasLinhas > 70 ? RITMO_RAPIDO : quantasLinhas > 34 ? RITMO_MEDIO : RITMO
 
 let pulando = false
 let emCurso = false
@@ -198,7 +206,7 @@ function descreverGrupo(entrada, i) {
  * Reproduz uma luta individual. Enquanto roda, clicar ou apertar uma tecla
  * pula para o fim — ninguém quer assistir 30 rodadas duas vezes.
  */
-export async function narrarLuta({ nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, log }) {
+export async function narrarLuta({ nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, log, aoEntrada }) {
   const placar = criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB)
   escrever(placar.node)
 
@@ -218,6 +226,8 @@ export async function narrarLuta({ nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, log }
     for (let i = 0; i < log.length; i++) {
       const entrada = log[i]
       escrever(descrever(entrada, i))
+      // O palco desenha o mesmo lance que a linha acabou de contar.
+      aoEntrada?.(entrada)
 
       if (entrada.tipo === 'ataque' && !entrada.esquivou) {
         // `quem` é quem bateu; o alvo é o outro lado.
@@ -234,7 +244,7 @@ export async function narrarLuta({ nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, log }
         placar.atualizar(entrada.quem, entrada.hpQuemAtaca, entrada.quem === 'a' ? hpMaxA : hpMaxB)
       }
 
-      await dormir(pulando ? 0 : log.length > 40 ? RITMO_RAPIDO : RITMO)
+      await dormir(pulando ? 0 : ritmoPara(log.length))
     }
   } finally {
     emCurso = false
