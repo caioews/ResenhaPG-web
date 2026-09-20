@@ -16,6 +16,7 @@ import { contas } from './rotas/contas.js'
 import { fotosRotas } from './rotas/fotos.js'
 import { combate } from './rotas/combate.js'
 import { mochila } from './rotas/mochila.js'
+import { bauRotas } from './rotas/bau.js'
 import { cidade } from './rotas/cidade.js'
 import { social } from './rotas/social.js'
 import { mercadoRotas } from './rotas/mercado.js'
@@ -45,6 +46,7 @@ app.use('/api', contas)
 app.use('/api', fotosRotas)
 app.use('/api/combate', combate)
 app.use('/api/mochila', mochila)
+app.use('/api', bauRotas)
 app.use('/api', cidade)
 app.use('/api', social)
 app.use('/api', mercadoRotas)

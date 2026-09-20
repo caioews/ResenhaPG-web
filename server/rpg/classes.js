@@ -79,7 +79,7 @@ const BASES = {
     resumo: 'Luta no ritmo que ele mesmo impõe. Rápido, e nunca luta do jeito esperado.',
     base: { hp: 100, atq: 13, def: 6, agi: 13 },
     ganho: { hp: 10.5, atq: 2.5, def: 1.2, agi: 2.1 },
-    usa: ['flauta', 'tambor', 'mascara', 'capa'],
+    usa: ['flauta', 'banjo', 'mascara', 'capa'],
     habilidade: 'cadencia',
   },
   clerigo: {
@@ -204,7 +204,7 @@ const ESPECIALIDADES = {
     evoluiDe: 'bardo',
     resumo: 'A canção certa levanta quem já ia cair. Recupera-se lutando.',
     ganho: { hp: 12.4, atq: 2.85, def: 1.45, agi: 2.4 },
-    usa: ['flauta', 'tambor', 'mascara', 'capa'],
+    usa: ['flauta', 'banjo', 'mascara', 'capa'],
     habilidade: 'balada',
   },
   oraculo: {
@@ -213,7 +213,7 @@ const ESPECIALIDADES = {
     evoluiDe: 'bardo',
     resumo: 'Já viu esta luta acontecer. Desvia do golpe antes de ele sair.',
     ganho: { hp: 11.8, atq: 3.0, def: 1.35, agi: 2.6 },
-    usa: ['flauta', 'tambor', 'mascara', 'capa'],
+    usa: ['flauta', 'banjo', 'mascara', 'capa'],
     habilidade: 'presciencia',
   },
 
@@ -871,8 +871,23 @@ export function atributosBase(classeId, nivel) {
   }
 }
 
-/** A classe sabe usar esse tipo de item? Elmo, armadura e anel servem para todas. */
+/**
+ * Armas que toda classe equipa, em qualquer degrau da arvore.
+ *
+ * A foice nao pertence a caminho nenhum: cai para todo mundo e todo mundo
+ * usa. Fica aqui em vez de repetida nos trinta `usa` da arvore por dois
+ * motivos — uma arma nova para todos passa a ser uma linha, e o
+ * `npm run conformidade`, que confere que nenhuma evolucao perde uma arma do
+ * degrau anterior, continua olhando so o que e de classe.
+ */
+export const ARMAS_DE_TODOS = ['foice']
+
+/**
+ * A classe sabe usar esse tipo de item? Elmo, armadura e anel servem para
+ * todas, e a foice tambem.
+ */
 export function classePodeUsar(classeId, tipo) {
   if (['elmo', 'armadura', 'anel'].includes(tipo)) return true
+  if (ARMAS_DE_TODOS.includes(tipo)) return true
   return classe(classeId)?.usa.includes(tipo) ?? false
 }

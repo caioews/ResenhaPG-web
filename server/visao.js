@@ -6,7 +6,14 @@
  * so desenha — se ele calculasse gold ou dano, viraria formulario de fraude.
  */
 import { config } from './config.js'
-import { CLASSES, classe, especialidadesDe, linhagemDe, nivelDoProximoDegrau } from './rpg/classes.js'
+import {
+  ARMAS_DE_TODOS,
+  CLASSES,
+  classe,
+  especialidadesDe,
+  linhagemDe,
+  nivelDoProximoDegrau,
+} from './rpg/classes.js'
 import { HABILIDADES, efeitosDaClasse, habilidadesDaClasse } from './rpg/habilidades.js'
 import { NOME_DO_SLOT, RARIDADES, SLOTS, TIPOS, bonusFinal, nomeCompleto, precoDeReferencia } from './rpg/itens.js'
 import {
@@ -25,6 +32,7 @@ import { esperaDoAbismo } from './rpg/abismo.js'
 import { esperaEntreDuelos, posicaoNoRanking } from './rpg/pvp.js'
 import { esperaDoRito } from './rpg/evolucao.js'
 import { escalaDeAtributos, escalaDeXp, motivoParaNaoPrestigiar, prestigioDe } from './rpg/prestigio.js'
+import { bauCheio, espacosDoBau, itensDoBau, precoDoProximoEspaco } from './rpg/bau.js'
 import { resumoDasMissoes } from './missoes.js'
 import { quantasEntregas } from './entregas.js'
 import { urlDaFoto } from './fotos.js'
@@ -84,7 +92,10 @@ export const verClasse = (id) => {
     emoji: c.emoji,
     resumo: c.resumo ?? '',
     tier: c.tier,
-    usa: c.usa,
+    // A foice (e o que mais entrar em ARMAS_DE_TODOS) não está no `usa` de
+    // classe nenhuma justamente por ser de todas: ela entra aqui, na leitura,
+    // para a tela de classes não mentir sobre o que dá para equipar.
+    usa: [...c.usa, ...ARMAS_DE_TODOS],
     base: c.base,
     ganho: c.ganho,
     habilidade: c.habilidade ?? null,
@@ -190,6 +201,14 @@ export function verPersonagem(player) {
       .sort((a, b) => Number(b.emUso) - Number(a.emUso) || a.i - b.i)
       .map(({ item, i }) => verItem(item, i)),
     mochila: { usado: ficha.inventario.length, total: config.rpg.tamanhoMochila },
+    // Só a contagem: a lista do baú é pesada e só interessa a quem abre o
+    // painel, que a pede em GET /api/bau.
+    bau: {
+      usado: itensDoBau(player).length,
+      total: espacosDoBau(player),
+      cheio: bauCheio(player),
+      proximoPreco: precoDoProximoEspaco(player),
+    },
 
     titanitas: Object.fromEntries(
       Object.entries(TITANITAS).map(([grau, t]) => [

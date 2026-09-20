@@ -6,6 +6,7 @@
  * se perde: fica aqui, no banco, até a pessoa abrir espaço e retirar.
  */
 import { db } from './db.js'
+import { migrarItem } from './store.js'
 import { guardarItem, mochilaCheia } from './rpg/jogador.js'
 
 const inserir = db.prepare('INSERT INTO entregas (personagem_id, item, motivo, criado_em) VALUES (?, ?, ?, ?)')
@@ -20,7 +21,7 @@ export function entregar(personagemId, item, motivo) {
 export const entregasDe = (personagemId) =>
   listar.all(personagemId).map((linha) => ({
     id: linha.id,
-    item: JSON.parse(linha.item),
+    item: migrarItem(JSON.parse(linha.item)),
     motivo: linha.motivo,
     criadoEm: linha.criado_em,
   }))
@@ -43,7 +44,7 @@ export function retirar(player, id) {
   if (!linha) return { erro: 'Essa entrega não existe ou já foi retirada.' }
   if (mochilaCheia(player)) return { erro: 'Sua mochila está cheia. Abra espaço antes de retirar.' }
 
-  const item = JSON.parse(linha.item)
+  const item = migrarItem(JSON.parse(linha.item))
   // Apaga antes de guardar: se algo der errado no meio, o pior caso é o item
   // na mochila e a linha já sem uso — nunca o item em dois lugares.
   apagar.run(linha.id)

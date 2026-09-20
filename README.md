@@ -55,6 +55,9 @@ mesmos.
 | **Milagre** | — | regenera 2% por turno, leva 9% menos dano e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
 | **Feitiços** | só na arma | na arma **e** no item secundário. Os das duas peças equipadas valem juntos; o mesmo feitiço nas duas conta uma vez só |
 | **Prestígio** | — | no nível 250 dá para recomeçar do 1 mantendo tudo o que juntou, somando um contador que aumenta atributos e XP para sempre. Ver [Prestígio](#prestígio) |
+| **Armas do bardo** | Flauta e **Tambor** | Flauta e **Banjo** — mesma arma, mesmos números, outro nome e outro ícone. Quem já tinha um tambor guardado abre o jogo com um banjo: a conversão acontece na leitura da ficha (`migrarItem`, em `server/store.js`) |
+| **Foice** | — | a única arma que **toda classe** equipa. Bate um pouco menos que a arma de classe (1,55 contra 1,6 por nível) e devolve a diferença em agilidade, para ser sempre uma escolha e nunca a escolha óbvia |
+| **Baú** | — | 20 espaços fora da mochila, e mais espaços à venda um a um: 50 mil de gold o primeiro, 50 mil a mais a cada compra. Ver [Como se joga](#como-se-joga) |
 | **Balanceamento das classes** | as habilidades do bot | recalibradas por simulação para as classes de um mesmo degrau terem força parecida. Ver [Balanceamento das classes](#balanceamento-das-classes) |
 
 A rampa da fogueira continua sem temporizador nenhum: o que existe é o par
@@ -152,6 +155,12 @@ O motor está em [server/rpg/prestigio.js](server/rpg/prestigio.js); as rotas
   arquivo de áudio; o botão **Som** no menu liga e desliga.
 - **Mochila em divisões** — utilizáveis, armas, secundárias, elmos, armaduras e
   anéis, com filtro — e o que está equipado sempre no topo.
+- **Baú** (`server/rpg/bau.js`): 20 espaços fora da mochila para o que você não
+  quer carregar nem vender. Espaço a mais se compra um de cada vez — 50 mil de
+  gold o primeiro, 50 mil a mais a cada compra.
+- **A foice**, a única arma que toda classe equipa (`ARMAS_DE_TODOS`, em
+  `server/rpg/classes.js`): bate um pouco menos que a arma de classe e devolve a
+  diferença em agilidade.
 - **Prestígio** (`server/rpg/prestigio.js`): recomeçar no nível 250 em troca de
   um bônus permanente de atributos e XP, com ranking próprio.
 - **Missões diárias, chefe mundial, masmorra em grupo e casa de leilões** —
@@ -244,9 +253,9 @@ ResenhaPG web/
 │   ├── tempo.js        Hora e dia no fuso do jogo
 │   ├── ambiente.js     Lê o .env da raiz, se houver
 │   ├── realtime.js     Chat, quem está on-line, avisos
-│   ├── rotas/          contas · combate · mochila · cidade · social · mercado · eventos
-│   │                   · missoes · chefeMundial · masmorra · leilao · fotos
-│   └── rpg/            O motor, portado do bot (+ prestigio.js, novo aqui)
+│   ├── rotas/          contas · combate · mochila · bau · cidade · social · mercado
+│   │                   · eventos · missoes · chefeMundial · masmorra · leilao · fotos
+│   └── rpg/            O motor, portado do bot (+ prestigio.js e bau.js, novos aqui)
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
@@ -724,6 +733,9 @@ Alguns que você talvez queira mexer:
 | `rpg.feridoMinutos` | `2` | Quanto tempo a derrota deixa o personagem ferido |
 | `rpg.ofertaMinutos` | `5` | Quanto uma oferta de item fica de pé |
 | `rpg.goldInicial` | `200` | Com o que o novato começa |
+| `rpg.tamanhoMochila` | `40` | Itens que cabem na mochila |
+| `rpg.bau.espacos` | `20` | Espaços que o baú já tem, sem comprar nada |
+| `rpg.bau.precoPorEspaco` | `50000` | Preço do primeiro espaço comprado, e quanto cada um encarece o seguinte |
 | `rpg.escalaEndgame` | — | A dificuldade acima do nível 40. `teto: {...}` tudo em `0` desliga |
 | `rpg.raid.minJogadores` | `3` | Quantos precisa para começar uma raid |
 | `rpg.abismo.nivelMinimo` | `40` | Quando o Abismo abre |
@@ -775,6 +787,13 @@ dá uma habilidade que **acumula** com as anteriores.
 a 10 pessoas contra um chefe grande. PvP é duelo com ranking Elo e aposta
 opcional. O Abismo, a partir do nível 40, é uma descida solo que sempre
 termina em derrota — o que se mede é a profundidade.
+
+**Mochila e baú.** A mochila tem 40 espaços, e é ela que obriga a escolher o
+que carregar. O baú são outros 20, fora dela, para o que você quer manter sem
+levar junto. O que está guardado está *fora de jogo*: não equipa, não vende,
+não vai a leilão nem ao mercado até voltar para a mochila — guardar é
+arrumação, nunca um jeito de carregar mais. Espaço a mais custa 50 mil de gold
+o primeiro e 50 mil a mais a cada compra, um de cada vez.
 
 **Mercado.** A loja compra por 70% do valor de referência e vende por 150% —
 é essa margem que faz a negociação valer a pena. Como 40% dos drops caem fora

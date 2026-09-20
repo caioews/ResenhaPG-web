@@ -23,6 +23,17 @@ export const config = {
     regenPorMinuto: 0.05,
     // Itens que cabem na mochila
     tamanhoMochila: 40,
+
+    // O bau (server/rpg/bau.js): um deposito que nao ocupa a mochila. Comeca
+    // com `espacos` e cada espaco a mais e comprado um a um, cada vez mais
+    // caro: precoPorEspaco x (espacos ja comprados + 1) — 50 mil o primeiro,
+    // 100 mil o segundo, 150 mil o terceiro. Sem teto de proposito: o preco
+    // e o teto, e e um ralo de gold que cresce junto com quem joga muito.
+    bau: {
+      espacos: 20,
+      precoPorEspaco: 50_000,
+    },
+
     // Dificuldade de fim de jogo. Ate o nivel "desde" a conta de monstro
     // e a original; dali para cima cada nivel soma esta fracao aos
     // atributos. Sao os numeros que seguram o jogo em pe depois do 40 —

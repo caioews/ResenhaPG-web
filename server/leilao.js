@@ -52,7 +52,7 @@ const linhaParaLeilao = (l) => ({
   vendedorId: l.vendedor_id,
   vendedorNome: l.vendedor_nome,
   vendedorConta: l.vendedor_conta,
-  item: JSON.parse(l.item),
+  item: store.migrarItem(JSON.parse(l.item)),
   lanceMinimo: l.lance_minimo,
   compraJa: l.compra_ja,
   lance: l.lance,

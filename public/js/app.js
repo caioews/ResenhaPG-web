@@ -45,6 +45,7 @@ import {
 } from './narrativa.js'
 import {
   abrirAbismo,
+  abrirBau,
   abrirEvolucao,
   abrirExpedicao,
   abrirFerreiro,
@@ -884,7 +885,12 @@ function montarMenuDeLugares() {
     lugar('📜', 'Status do personagem', abrirFicha),
     comSelo(lugar('📋', 'Missões do dia', abrirMissoes), 'selo-missoes'),
     botaoDoChefe(),
-    lugar('🎒', 'Mochila', abrirMochila),
+    el(
+      'div',
+      { class: 'dupla-lugares' },
+      lugar('🎒', 'Mochila', abrirMochila),
+      lugar('🧰', 'Baú', () => abrirBau()),
+    ),
     lugar('💰', 'Loja', () => abrirLoja()),
     el(
       'div',

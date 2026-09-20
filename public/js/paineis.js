@@ -57,6 +57,26 @@ const DIVISOES_DA_MOCHILA = [
   { id: 'anel', nome: 'Anéis', pega: (i) => i.slot === 'anel' },
 ]
 
+/** Separa uma lista de itens nas divisões acima, sem as que ficaram vazias. */
+function dividirItens(itens) {
+  const sobra = itens.filter((i) => !DIVISOES_DA_MOCHILA.some((d) => d.pega(i)))
+  return [
+    ...DIVISOES_DA_MOCHILA.map((d) => ({ ...d, itens: itens.filter(d.pega) })),
+    { id: 'outros', nome: 'Outros', itens: sobra },
+  ].filter((d) => d.itens.length)
+}
+
+/** Uma lista de itens em seções, cada uma com o nome da divisão. */
+const emSecoes = (divisoes, linha) =>
+  divisoes.map((d) =>
+    el(
+      'section',
+      { class: 'divisao-mochila' },
+      el('div', { class: 'rotulo-secao' }, `${d.nome} · ${d.itens.length}`),
+      el('div', { class: 'lista' }, ...d.itens.map(linha)),
+    ),
+  )
+
 export async function abrirMochila(filtro = 'tudo') {
   const p = estado.p
   const equipados = new Set(Object.values(p.equipado).filter(Boolean).map((i) => i.uid))
@@ -155,11 +175,7 @@ export async function abrirMochila(filtro = 'tudo') {
       .sort((a, b) => Number(equipados.has(b.item.uid)) - Number(equipados.has(a.item.uid)) || a.i - b.i)
       .map(({ item }) => item)
 
-  const sobra = p.inventario.filter((i) => !DIVISOES_DA_MOCHILA.some((d) => d.pega(i)))
-  const divisoes = [
-    ...DIVISOES_DA_MOCHILA.map((d) => ({ ...d, itens: emUsoPrimeiro(p.inventario.filter(d.pega)) })),
-    { id: 'outros', nome: 'Outros', itens: sobra },
-  ].filter((d) => d.itens.length)
+  const divisoes = dividirItens(emUsoPrimeiro(p.inventario))
 
   if (filtro !== 'tudo' && !divisoes.some((d) => d.id === filtro)) filtro = 'tudo'
 
@@ -192,19 +208,138 @@ export async function abrirMochila(filtro = 'tudo') {
       el('span', { style: 'color:var(--ouro-claro)' }, `💰 ${num(p.gold)}`),
     ),
     p.inventario.length ? chips : null,
-    p.inventario.length
-      ? visiveis.map((d) =>
-          el(
-            'section',
-            { class: 'divisao-mochila' },
-            el('div', { class: 'rotulo-secao' }, `${d.nome} · ${d.itens.length}`),
-            el('div', { class: 'lista' }, ...d.itens.map(linha)),
-          ),
-        )
-      : vazio('Mochila vazia. Cace alguma coisa.'),
+    p.inventario.length ? emSecoes(visiveis, linha) : vazio('Mochila vazia. Cace alguma coisa.'),
   )
 
   abrirModal('Mochila', corpo, { nome: 'mochila', aoRecarregar: () => abrirMochila(filtro) })
+}
+
+// ============================================================ B A Ú
+
+/**
+ * O baú: o depósito que não ocupa a mochila.
+ *
+ * Duas abas porque são duas intenções diferentes — ver o que está guardado e
+ * escolher o que guardar — e porque a segunda lista é a mochila inteira, que
+ * não cabe junto da primeira sem virar rolagem sem fim.
+ */
+export async function abrirBau(aba = 'guardados') {
+  const d = await pegar('/api/bau')
+  const bauCheio = d.itens.length >= d.espacos
+  const mochilaCheia = estado.p.mochila.usado >= estado.p.mochila.total
+  const equipados = estado.p.inventario.length - d.guardaveis.length
+
+  const botao = (rotulo, impedido, motivo, acao) =>
+    el(
+      'button',
+      {
+        class: 'btn pequeno primario',
+        type: 'button',
+        disabled: impedido,
+        title: impedido ? motivo : '',
+        onClick: (ev) =>
+          comBotao(ev.currentTarget, async () => {
+            avisarBom((await acao()).texto)
+            abrirBau(aba)
+          }),
+      },
+      rotulo,
+    )
+
+  const linhaGuardada = (item) =>
+    linhaDeItem(item, {
+      acoes: [
+        botao('Retirar', mochilaCheia, 'Sua mochila está cheia', () =>
+          mandar('/api/bau/retirar', { uid: item.uid }),
+        ),
+      ],
+    })
+
+  const linhaDaMochila = (item) =>
+    linhaDeItem(item, {
+      acoes: [
+        botao('Guardar', bauCheio, 'O baú está cheio', () =>
+          mandar('/api/bau/guardar', { uid: item.uid }),
+        ),
+      ],
+    })
+
+  const topo = el(
+    'div',
+    { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px' },
+    el('span', {}, `${d.itens.length} de ${d.espacos} espaços`),
+    el('span', { style: 'color:var(--ouro-claro)' }, `💰 ${num(d.gold)}`),
+  )
+
+  // O preço do próximo espaço aparece antes da compra, e o botão só acende com
+  // gold em mãos: aqui não há desfazer, e são 50 mil de cada vez. O `wrap` é
+  // para a tela estreita: sem ele o texto se espreme ao lado do botão.
+  const compra = el(
+    'div',
+    {
+      class: 'bloco',
+      style:
+        'display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px',
+    },
+    el(
+      'div',
+      { style: 'flex:1 1 200px' },
+      el('div', {}, `Mais um espaço: ${num(d.proximoPreco)} 💰`),
+      el(
+        'div',
+        { class: 'sussurro' },
+        `Um de cada vez — cada espaço custa ${num(d.precoPorEspaco)} a mais que o anterior.`,
+      ),
+    ),
+    el(
+      'button',
+      {
+        class: 'btn pequeno primario',
+        type: 'button',
+        disabled: d.gold < d.proximoPreco,
+        title: d.gold < d.proximoPreco ? `Faltam ${num(d.proximoPreco - d.gold)} de gold` : '',
+        onClick: (ev) =>
+          comBotao(ev.currentTarget, async () => {
+            const r = await mandar('/api/bau/comprar-espaco')
+            avisarBom(r.texto)
+            abrirBau(aba)
+          }),
+      },
+      'Comprar espaço',
+    ),
+  )
+
+  const guardar = [
+    equipados
+      ? el(
+          'p',
+          { class: 'sussurro', style: 'margin-top:0' },
+          'O que está equipado não aparece: tire de uso antes de guardar.',
+        )
+      : null,
+    d.guardaveis.length
+      ? emSecoes(dividirItens(d.guardaveis), linhaDaMochila)
+      : vazio('Nada para guardar — a mochila está vazia ou tudo está em uso.'),
+  ]
+
+  const guardados = d.itens.length
+    ? emSecoes(dividirItens(d.itens), linhaGuardada)
+    : vazio('Baú vazio. Guarde aqui o que não quer carregar.')
+
+  const corpo = el('div', {}, topo, compra, aba === 'guardar' ? guardar : guardados)
+
+  abrirModal('Baú', corpo, {
+    nome: 'bau',
+    aoRecarregar: () => abrirBau(aba),
+    abas: abasDoModal(
+      [
+        { id: 'guardados', nome: `No baú · ${d.itens.length}` },
+        { id: 'guardar', nome: `Guardar · ${d.guardaveis.length}` },
+      ],
+      aba,
+      (id) => abrirBau(id),
+    ),
+  })
 }
 
 // ====================================================== L O J A

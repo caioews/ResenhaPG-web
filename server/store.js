@@ -31,6 +31,41 @@ const gravado = new Map()
  */
 const CLASSES_RENOMEADAS = { pistoleiro: 'guardiao' }
 
+/**
+ * Tipos de item que mudaram de id depois de o jogo ja estar rodando.
+ *
+ * Mesma ideia das classes renomeadas, um degrau abaixo: o item guardado
+ * carrega o `tipo` e o `nome` de quando caiu, entao renomear uma arma em
+ * rpg/itens.js nao basta — o tambor de nivel 40 de alguem continuaria se
+ * chamando Tambor e apontando para um tipo que nao existe mais, e nenhuma
+ * classe sabe usar o que nao esta em TIPOS.
+ *
+ * A tabela se basta de proposito (nao importa TIPOS): store.js e carregado
+ * por rpg/feiticos.js, e depender de rpg/itens.js aqui fecharia um ciclo bem
+ * no caminho de carregar().
+ */
+const TIPOS_DE_ITEM_RENOMEADOS = {
+  tambor: { tipo: 'banjo', de: 'Tambor', para: 'Banjo' },
+}
+
+/**
+ * Poe um item guardado no formato de hoje. Devolve o proprio item — vale
+ * tambem para os que estao fora da mochila (leiloes, entregas).
+ */
+export function migrarItem(item) {
+  const troca = TIPOS_DE_ITEM_RENOMEADOS[item?.tipo]
+  if (!troca) return item
+
+  item.tipo = troca.tipo
+  // O nome e "<Tipo> <material>": troca so a primeira parte, para o material
+  // sorteado la atras continuar sendo o que era.
+  if (typeof item.nome === 'string' && item.nome.startsWith(troca.de)) {
+    item.nome = troca.para + item.nome.slice(troca.de.length)
+  }
+
+  return item
+}
+
 /** A ficha de RPG zerada. É tambem o gabarito da migracao. */
 export function fichaNova() {
   return {
@@ -45,6 +80,9 @@ export function fichaNova() {
     bossPendente: 0,
     bossesVencidos: [],
     inventario: [],
+    // O bau (server/rpg/bau.js): itens guardados fora da mochila. Os espacos
+    // comprados somam ao que config.rpg.bau.espacos ja da de graca.
+    bau: { itens: [], espacosComprados: 0 },
     equipado: { arma: null, secundario: null, elmo: null, armadura: null, anel: null },
     lojaOferta: { item: null, expiraEm: 0 },
     expedicao: { tipo: null, terminaEm: 0 },
@@ -93,9 +131,16 @@ function migrar(rpg = {}) {
     ...rpg,
     classe,
     equipado: { ...base.equipado, ...rpg.equipado },
-    inventario: rpg.inventario ?? [],
+    inventario: (rpg.inventario ?? []).map(migrarItem),
+    bau: { ...base.bau, ...rpg.bau, itens: (rpg.bau?.itens ?? []).map(migrarItem) },
     bossesVencidos: rpg.bossesVencidos ?? [],
-    lojaOferta: { ...base.lojaOferta, ...rpg.lojaOferta },
+    // A oferta do dia tambem guarda um item inteiro, e ele fica de pe por
+    // minutos depois de um reinicio: passa pela mesma conversao.
+    lojaOferta: {
+      ...base.lojaOferta,
+      ...rpg.lojaOferta,
+      item: rpg.lojaOferta?.item ? migrarItem(rpg.lojaOferta.item) : null,
+    },
     expedicao: { ...base.expedicao, ...rpg.expedicao },
     raid: { ...base.raid, ...rpg.raid },
     evolucao: { ...base.evolucao, ...rpg.evolucao },

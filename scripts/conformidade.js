@@ -80,7 +80,8 @@ console.log('\nBônus de item no nível 50, raridade comum (spec 6.4):')
 for (const [tipo, esperado] of [
   ['espada', { atq: 83 }],
   ['martelo', { atq: 78, def: 21 }],
-  ['tambor', { atq: 78, hp: 58 }],
+  // O tambor da especificação virou banjo; os números são os mesmos.
+  ['banjo', { atq: 78, hp: 58 }],
   ['pistola', { atq: 94 }],
   ['escudo', { def: 62, hp: 105 }],
   ['grimorio', { atq: 52, hp: 74 }],

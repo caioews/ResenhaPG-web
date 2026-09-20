@@ -27,7 +27,10 @@ export const TIPOS = {
   martelo: { nome: 'Martelo', slot: 'arma', emoji: '🔨' },
   maca: { nome: 'Maça', slot: 'arma', emoji: '🏏' },
   flauta: { nome: 'Flauta', slot: 'arma', emoji: '🪈' },
-  tambor: { nome: 'Tambor', slot: 'arma', emoji: '🥁' },
+  banjo: { nome: 'Banjo', slot: 'arma', emoji: '🪕' },
+  // A unica arma que toda classe equipa, em qualquer degrau da arvore.
+  // Quem decide isso e ARMAS_DE_TODOS, em classes.js.
+  foice: { nome: 'Foice', slot: 'arma', emoji: '🌾' },
   // Armas de especialidade: so caem para quem evoluiu naquele caminho.
   pistola: { nome: 'Pistola', slot: 'arma', emoji: '🔫', exclusivo: true },
   machado: { nome: 'Machado', slot: 'arma', emoji: '🪓', exclusivo: true },
@@ -87,7 +90,12 @@ function bonusBase(tipo, nivel) {
   if (tipo === 'martelo') return { atq: 3 + nivel * 1.5, def: 1 + nivel * 0.4 }
   if (tipo === 'maca') return { atq: 3 + nivel * 1.5, def: 1 + nivel * 0.35 }
   if (tipo === 'flauta') return { atq: 3 + nivel * 1.45, agi: 1 + nivel * 0.4 }
-  if (tipo === 'tambor') return { atq: 3 + nivel * 1.5, hp: 3 + nivel * 1.1 }
+  if (tipo === 'banjo') return { atq: 3 + nivel * 1.5, hp: 3 + nivel * 1.1 }
+  // A foice serve a qualquer classe, entao nao pode ser a melhor arma de
+  // nenhuma: bate um pouco menos que a arma comum (1.55 contra 1.6 por
+  // nivel) e devolve a diferenca em agilidade. Assim ela e sempre uma
+  // escolha — nunca a escolha obvia que aposentaria as outras.
+  if (tipo === 'foice') return { atq: 3 + nivel * 1.55, agi: 1 + nivel * 0.25 }
   if (slot === 'arma') return { atq: 3 + nivel * 1.6 }
 
   if (tipo === 'escudo') return { def: 2 + nivel * 1.2, hp: 5 + nivel * 2 }
