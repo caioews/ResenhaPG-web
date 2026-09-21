@@ -9,6 +9,7 @@ import { config } from '../config.js'
 import { exigirLogin } from '../auth.js'
 import { exigirClasse, exigirPersonagem, responder, rota } from '../contexto.js'
 import {
+  cenarioDaProfundidade,
   descer,
   esperaDoAbismo,
   nomeDaProfundidade,
@@ -237,7 +238,11 @@ combate.post(
           hpFinal: a.hpFinal,
           hpMax: a.hpMax,
           profundidade: nomeDaProfundidade(a.andar),
+          // O que o palco precisa para desenhar o andar: o cenário da faixa
+          // de profundidade e o sprite deste habitante.
+          cenario: cenarioDaProfundidade(a.andar),
           inimigo: {
+            id: a.inimigo.id,
             nome: a.inimigo.nome,
             emoji: a.inimigo.emoji,
             nivel: a.inimigo.nivel,

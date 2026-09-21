@@ -774,8 +774,15 @@ nível 40.
 ## Como se joga
 
 **Tela principal.** À esquerda a aventura: a narrativa e o menu de ações
-numerado (as teclas `1` a `9` funcionam). No meio a ficha do personagem e os
-botões para os outros lugares. À direita o chat.
+numerado. No meio a ficha do personagem e os botões para os outros lugares. À
+direita o chat.
+
+**Teclado.** `L` abre a loja, `M` a mochila e `J` as missões, de onde você
+estiver — a letra aparece no botão do menu. Os números `1` a `9` agem no que
+está na tela: com um painel aberto, na linha de mesmo número (`[3]` na loja
+compra o terceiro item, `[3]` na mochila usa ou equipa o terceiro); sem
+painel, no menu de ações. `Esc` fecha o que estiver por cima. No celular as
+dicas `[n]` não aparecem — ocupariam a largura que o nome do item precisa.
 
 **O laço do jogo.** Caçar dá XP, gold e equipamento. A cada 5 níveis, a
 partir do 10, o nível **trava** até você derrubar o chefe daquele marco — o
@@ -910,6 +917,16 @@ então dá para andar para sempre. Caçadas seguidas continuam de onde parou, e
 o corpo do bicho anterior fica para trás até sair de cena. Abaixo de "Caçar"
 existe **Voltar para a taberna**.
 
+**O Abismo** tem cena própria, e ela muda com a profundidade: Boca do Abismo,
+Galerias, Fossa, Raiz do Mundo, Silêncio e Fundo — as mesmas faixas que já
+apareciam no texto. Cada andar é uma imagem inteira (sem camadas), repetida
+em espelho enquanto o personagem anda; quando a descida passa de uma faixa
+para a outra, o cenário novo entra por cima do velho sem piscar. Os sete
+habitantes têm sprite próprio, e o da vez entra pela direita como o bicho da
+caçada — a Sentinela de Ossos, o Carrasco Cego, a Coisa Sem Nome, o Vigia do
+Poço, a Fera Acorrentada, o Eco do Rei Morto e o Devorador de Luz. Quem
+reaparece mais fundo (com ★) é o mesmo desenho, mais forte.
+
 Em painel largo o palco fica ao lado do log; em painel estreito (celular, ou
 com o chat aberto numa janela pequena) ele sobe para cima do log. Quem decide
 é a largura do painel, não a da janela.
@@ -930,12 +947,13 @@ npm run arte
 O script (`scripts/arte.js`) mede a própria imagem para achar as faixas e os
 quadros, tira o fundo, alinha todos os quadros pelos pés, normaliza o tamanho
 e escreve `public/arte/` — atlas em WebP com fundo transparente, os cenários
-em camadas e um `arte.json` com a geometria. Só essa pasta (uns 6 MB) vai para
+em camadas e um `arte.json` com a geometria. Só essa pasta (uns 8 MB) vai para
 o Git; o servidor não gera nada, só serve. O navegador baixa só o que a cena
 pede: o sprite da sua classe e o do bicho da vez.
 
-As 20 espécies comuns têm folha. Os chefes de marco ainda entram em cena com
-o goblin, que é o sprite de reserva de quem não tem arte própria.
+As 20 espécies comuns e os 7 habitantes do Abismo têm folha. Os chefes de
+marco ainda entram em cena com o goblin, que é o sprite de reserva de quem
+não tem arte própria.
 
 Para um monstro novo, ponha a folha em `Assets/inimigos/` com o **id da
 espécie** no nome — `lobo.png`, ou uma pasta `lobo/`; vale também o nome que
@@ -946,6 +964,15 @@ o sprite certo sozinho.
 Uma classe nova segue a mesma ideia: uma pasta `Assets/PERSONAGENS/sprites
 <classe>/` com a folha de animações e um arquivo `<classe> sentado` para a
 taberna.
+
+**O Abismo casa a arte pelo NOME**, e não por um id: a folha
+`Assets/inimigos/chefes abismo/Vigia do Poço.jfif` vira a chave
+`vigia-do-poco`, que é o que o servidor manda para o palco quando esse
+habitante aparece. O mesmo vale para os andares:
+`Assets/CENARIOS/abismo/raiz do mundo.jfif` atende a profundidade "Raiz do
+Mundo". Renomear um habitante ou uma profundidade em
+[server/rpg/abismo.js](server/rpg/abismo.js) pede renomear o arquivo — senão
+o chefe entra com o sprite de reserva e o andar fica sem cenário.
 
 ### Quando a medição erra
 
@@ -961,6 +988,8 @@ mas algumas enganam a medição. Para essas há tabelas no começo do
 | `ALTURA_RELATIVA` | o tamanho do bicho em relação ao herói (slime pela canela, behemoth enorme) |
 | `QUADROS_A_MAO` | quantos quadros cada faixa tem, quando o cenário atrás confunde a contagem |
 | `CAMADAS_A_MAO` | quantas camadas de fundo desenhado descascar |
+| `GRADE_REGULAR` | a faixa é dividida em N fatias iguais, sem medir onde está cada boneco (para as que têm efeito grande no meio, como o rastro da foice) |
+| `ATE_O_QUADRO` | quantos quadros aproveitar do começo da faixa, quando o gerador desenhou sobra no fim (uma lâmina sem corpo, meio boneco) |
 | `CONTRASTE_BAIXO` | bicho quase da cor do fundo, que pede rédea mais curta |
 | `COM_CENARIO_ATRAS` | folhas com cenário desenhado atrás dos quadros |
 | `OLHA_PARA_ESQUERDA` | folha desenhada virada para a esquerda (nenhuma, até agora) |
@@ -974,6 +1003,13 @@ ARTE_DEBUG=1 npm run arte
 Ele imprime, folha por folha, onde achou cada faixa e quantos quadros mediu.
 Se um quadro sair vazio, o atlas repete o anterior — na animação isso passa
 despercebido, e um buraco seria um piscar.
+
+Um caso que vale conhecer: as folhas dos chefes do Abismo vêm com fundo
+branco chapado, e nelas o descasque de camadas é desligado (`camadas: 0`). A
+régua que decide quando parar olha quanto sobrou da folha; o pouco que a
+inundação deixa em volta dos bonecos bastava para ela achar que ainda havia
+fundo, e a volta seguinte ia atrás do preto do capuz e vazava o corpo inteiro
+— sobravam o machado e o contorno.
 
 `npm run arte` precisa do `sharp`, que é dependência de desenvolvimento. No
 servidor ele nem é instalado (`npm ci --omit=dev`): lá só chega a arte pronta.

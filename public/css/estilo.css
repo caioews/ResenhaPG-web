@@ -968,6 +968,15 @@ select:focus {
   font-size: 15px;
   flex: none;
 }
+/* A letra de atalho de um lugar. Discreta: ela não numera uma fila como o
+   [1] do menu de ações, só lembra qual tecla abre aquele painel. */
+.lugar .tecla {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ouro-fraco);
+  letter-spacing: 0;
+  flex: none;
+}
 .lugar .selo {
   margin-left: auto;
   font-family: var(--mono);
@@ -1244,6 +1253,29 @@ select:focus {
   flex: none;
   width: 26px;
   text-align: center;
+}
+/* O número do atalho de uma linha. Guarda o lugar mesmo vazio: nas listas em
+   que só as nove primeiras linhas têm tecla, é o que mantém os ícones
+   alinhados de cima a baixo. */
+.linha-item .tecla-item {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ouro-fraco);
+  flex: none;
+  width: 19px;
+  margin-right: -5px;
+  text-align: right;
+}
+
+/* Sem teclado o atalho não existe, e a coluna do [n] custa caro: numa linha
+   de equipamento ela empurra as etiquetas (raridade, nível, bônus) para mais
+   uma volta. No celular some — a tecla continua funcionando para quem tiver
+   um teclado, só não fica anunciada. O mesmo vale para a letra do menu. */
+@media (max-width: 860px) {
+  .linha-item .tecla-item,
+  .lugar .tecla {
+    display: none;
+  }
 }
 .linha-item .corpo {
   flex: 1;

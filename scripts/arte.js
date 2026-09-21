@@ -57,6 +57,14 @@ const ALTURA_RELATIVA = {
   demonio: 1.18,
   behemoth: 1.45,
   arauto: 1.12,
+  // Os chefes do Abismo. Todos maiores que o herói: são chefes.
+  'sentinela-de-ossos': 1.15,
+  'carrasco-cego': 1.22,
+  'coisa-sem-nome': 1.2,
+  'vigia-do-poco': 1.12,
+  'fera-acorrentada': 1.3,
+  'eco-do-rei-morto': 1.18,
+  'devorador-de-luz': 1.25,
 }
 /**
  * Folhas desenhadas olhando para a esquerda. O normal é olharem para a
@@ -83,6 +91,26 @@ const QUADROS_A_MAO = {
   behemoth: [8, 8, 8],
   troll: [7, 7, 7],
   lobo: [8, 8, 7],
+  // Chefes do Abismo. Aqui o que confunde a contagem é o efeito: o rastro da
+  // foice, a lâmina que o gerador desenhou solta no fim da faixa, a bola de
+  // luz que ocupa dois quadros. A medição parte a mancha grande em duas.
+  'sentinela-de-ossos': [7, 7, 4],
+  'eco-do-rei-morto': [6, 6, 6],
+  'fera-acorrentada': [6, 6, 4],
+}
+
+/**
+ * Quantos quadros ficam, do começo da faixa.
+ *
+ * O gerador às vezes desenha sobra no fim da linha: uma lâmina solta sem
+ * corpo, meio boneco, o rastro do golpe já sem quem golpeou. A grade não
+ * muda (os cortes continuam saindo da faixa inteira, e é isso que mantém os
+ * quadros bons alinhados) — o que muda é até onde ela é aproveitada.
+ */
+const ATE_O_QUADRO = {
+  // Andando, o sétimo quadro é só o machado, sem esqueleto nenhum. Atacando,
+  // do quarto em diante sobrou o rastro branco do golpe e meio boneco.
+  'sentinela-de-ossos': [6, 3, 4],
 }
 /** O que cada faixa da folha significa, de cima para baixo. */
 const FAIXAS = ['andar', 'atacar', 'defender']
@@ -122,11 +150,45 @@ const CAMADAS_A_MAO = {
 }
 
 /**
+ * Folhas de grade REGULAR: a faixa é dividida em N quadros de mesma largura,
+ * de ponta a ponta, sem medir onde está cada boneco.
+ *
+ * Serve para as que têm efeito grande no meio da faixa — o rastro branco da
+ * foice da Sentinela, o chicote de correntes da Fera. A mancha do efeito
+ * pesa na conta do centro de massa e desloca a grade medida; mas o gerador
+ * desenhou os quadros numa régua certinha, e é essa régua que se usa aqui.
+ */
+const GRADE_REGULAR = {
+  'sentinela-de-ossos': [7, 7, 4],
+  'eco-do-rei-morto': [6, 6, 6],
+  'fera-acorrentada': [6, 6, 4],
+}
+
+/**
  * Folhas em que todas as faixas usam a grade da primeira. Serve para as que
  * têm cenário atrás: o chão e as pedras confundem a medição de uma linha,
  * mas as três linhas foram desenhadas na mesma grade.
  */
 const GRADE_DA_PRIMEIRA = new Set(['troll'])
+
+/**
+ * Quanto cortar do TOPO de um cenário do Abismo.
+ *
+ * Duas das seis vieram com o rótulo do gerador escrito em cima ("LEVEL 3:
+ * THE TRENCH"). Cortar a faixa é mais honesto que pintar por cima: some o
+ * texto e o teto da caverna continua inteiro.
+ */
+const RECORTE_DO_TOPO = {
+  fossa: 0.06,
+  'raiz-do-mundo': 0.06,
+}
+
+/**
+ * Onde ficam os pés de quem está em cena, em fração da altura do cenário.
+ * Cada andar do Abismo tem o chão numa altura diferente; quem não estiver
+ * aqui usa o padrão.
+ */
+const LINHA_DO_CHAO = { padrao: 0.93 }
 
 // --------------------------------------------------------- ferramentas
 
@@ -732,7 +794,33 @@ function corteEntre(perfilX, c1, c2) {
 }
 
 /** Recorta uma folha inteira: devolve os quadros já com fundo transparente. */
-async function lerFolha(arquivo, { quadrosAMao = null, bolsoes = BOLSAO_APERTADO, camadas = 3, gradeUnica = false, tolerancia = 10 } = {}) {
+/** Um quadro recortado: onde ele está na folha, quanta tinta tem e a âncora. */
+function medirQuadro(alpha, W, x0, x1, faixa) {
+  limparCelula(alpha, W, x0, x1, faixa.y0, faixa.y1)
+  const caixa = caixaDe(alpha, W, x0, x1, faixa.y0, faixa.y1)
+
+  let massa = 0
+  if (caixa) {
+    for (let y = caixa.y0; y <= caixa.y1; y++) {
+      for (let x = caixa.x0; x <= caixa.x1; x++) if (alpha[y * W + x] >= 40) massa++
+    }
+  }
+
+  return { caixa, massa, ancora: caixa ? ancora(alpha, W, caixa) : null }
+}
+
+async function lerFolha(
+  arquivo,
+  {
+    quadrosAMao = null,
+    gradeRegular = null,
+    ateOQuadro = null,
+    bolsoes = BOLSAO_APERTADO,
+    camadas = 3,
+    gradeUnica = false,
+    tolerancia = 10,
+  } = {},
+) {
   const { data, suave, W, H } = await lerRaw(arquivo)
   const alpha = limparIlhas(
     tirarLinhasRetas(alphaDaFolha(suave, W, H, { bolsoes, camadas, tolerancia }), W, H),
@@ -757,6 +845,23 @@ async function lerFolha(arquivo, { quadrosAMao = null, bolsoes = BOLSAO_APERTADO
   let grade = null
   const linhas = bandas.map((faixa, iFaixa) => {
     const { centros: medidos, perfilX } = centrosDaFaixa(alpha, W, faixa)
+    const quantosRegulares = gradeRegular?.[iFaixa] ?? 0
+
+    // Grade regular: N fatias iguais, do primeiro ao último pingo de tinta da
+    // faixa. Não há centro para medir, e é justamente esse o ponto. A régua
+    // parte da tinta, e não da borda da folha, porque há faixa que termina no
+    // meio — a Sentinela defende em quatro quadros e deixa o resto em branco.
+    if (quantosRegulares) {
+      let ini = margem
+      let fim = W - 1 - margem
+      while (ini < fim && !perfilX[ini]) ini++
+      while (fim > ini && !perfilX[fim]) fim--
+
+      const passo = (fim - ini + 1) / quantosRegulares
+      const cortes = Array.from({ length: quantosRegulares + 1 }, (_, i) => Math.round(ini + passo * i))
+      return Array.from({ length: quantosRegulares }, (_, i) => medirQuadro(alpha, W, cortes[i], cortes[i + 1], faixa))
+    }
+
     const daPrimeira = grade && (gradeUnica || grade.length === medidos.length)
     const centros = espalhar(daPrimeira ? grade : medidos, quadrosAMao?.[iFaixa])
     if (iFaixa === 0) grade = centros
@@ -765,20 +870,17 @@ async function lerFolha(arquivo, { quadrosAMao = null, bolsoes = BOLSAO_APERTADO
     for (let i = 1; i < centros.length; i++) cortes.push(corteEntre(perfilX, centros[i - 1], centros[i]))
     cortes.push(Math.round(centros.at(-1) + (centros.at(-1) - centros.at(-2)) * 0.62))
 
-    return Array.from({ length: centros.length }, (_, i) => {
-      const x0 = Math.max(margem, cortes[i])
-      const x1 = Math.min(W - 1 - margem, cortes[i + 1])
-      limparCelula(alpha, W, x0, x1, faixa.y0, faixa.y1)
-      const caixa = caixaDe(alpha, W, x0, x1, faixa.y0, faixa.y1)
-      let massa = 0
-      if (caixa) {
-        for (let y = caixa.y0; y <= caixa.y1; y++) {
-          for (let x = caixa.x0; x <= caixa.x1; x++) if (alpha[y * W + x] >= 40) massa++
-        }
-      }
-      return { caixa, massa, ancora: caixa ? ancora(alpha, W, caixa) : null }
-    })
+    return Array.from({ length: centros.length }, (_, i) =>
+      medirQuadro(alpha, W, Math.max(margem, cortes[i]), Math.min(W - 1 - margem, cortes[i + 1]), faixa),
+    )
   })
+
+  // A sobra do fim da faixa, se a folha tiver (ver ATE_O_QUADRO).
+  if (ateOQuadro) {
+    for (let i = 0; i < linhas.length; i++) {
+      if (ateOQuadro[i]) linhas[i] = linhas[i].slice(0, ateOQuadro[i])
+    }
+  }
 
   // Quadro com uma migalha de tinta perto do que têm os vizinhos não é
   // quadro: é resto. Vira vazio, e o atlas repete o anterior no lugar dele.
@@ -801,8 +903,28 @@ async function lerFolha(arquivo, { quadrosAMao = null, bolsoes = BOLSAO_APERTADO
  * folhas não têm todas o mesmo número de quadros (o orc anda em sete), então
  * o manifesto guarda quantos cada linha tem.
  */
-async function montarAtlas(arquivo, { alturaAlvo, quadros = null, bolsoes = BOLSAO_APERTADO, camadas = 3, gradeUnica = false, tolerancia = 10 }) {
-  const folha = await lerFolha(arquivo, { quadrosAMao: quadros, bolsoes, camadas, gradeUnica, tolerancia })
+async function montarAtlas(
+  arquivo,
+  {
+    alturaAlvo,
+    quadros = null,
+    regular = null,
+    ate = null,
+    bolsoes = BOLSAO_APERTADO,
+    camadas = 3,
+    gradeUnica = false,
+    tolerancia = 10,
+  },
+) {
+  const folha = await lerFolha(arquivo, {
+    quadrosAMao: quadros,
+    gradeRegular: regular,
+    ateOQuadro: ate,
+    bolsoes,
+    camadas,
+    gradeUnica,
+    tolerancia,
+  })
   const { data, alpha, W, linhas } = folha
 
   // Escala: a altura do personagem andando é a medida de referência.
@@ -1054,6 +1176,18 @@ function pastasDeClasse() {
 const semAcento = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 /**
+ * O identificador de uma peça de arte, tirado do nome: minúsculo, sem
+ * acento, hífen no lugar do espaço. É ele que liga o arquivo ao jogo —
+ * "Vigia do Poço.jfif" e o habitante "Vigia do Poço" viram `vigia-do-poco`,
+ * "raiz do mundo.jfif" e a profundidade "Raiz do Mundo", `raiz-do-mundo`.
+ * O servidor faz a mesma conta (`chaveDeArte`, em server/rpg/abismo.js).
+ */
+const chaveDeArte = (nome) =>
+  semAcento(path.parse(nome).name)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/**
  * As folhas de inimigo, por espécie. Vale o nome da pasta ou do arquivo:
  * `Assets/inimigos/lobo/folha.png` ou `Assets/inimigos/lobo.png`. Um arquivo
  * solto com nome de gerador entra como goblin enquanto for o único — foi
@@ -1071,6 +1205,8 @@ function folhasDeInimigo() {
     const nome = semAcento(entrada.name)
     const id = chaves.find((e) => e.pistas.some((pista) => nome.includes(pista)))?.id
     if (entrada.isDirectory()) {
+      // Os chefes do Abismo moram numa pasta só deles e não são espécies.
+      if (entrada.name === PASTA_DOS_CHEFES) continue
       if (!id) throw new Error(`a pasta "${entrada.name}" não bate com nenhuma espécie`)
       saida[id] = achar(path.join(base, entrada.name), ehImagem)
     } else if (ehImagem(entrada.name)) {
@@ -1083,6 +1219,45 @@ function folhasDeInimigo() {
   else for (const s of soltos) console.log(`  (ignorado: ${path.basename(s)} — renomeie com o id da espécie)`)
 
   return saida
+}
+
+/** Onde ficam as folhas dos chefes do Abismo, dentro de `inimigos`. */
+const PASTA_DOS_CHEFES = 'chefes abismo'
+
+/**
+ * As folhas dos chefes do Abismo. Diferente das espécies, aqui não há lista
+ * para conferir: a ligação é pelo NOME do arquivo, que vira a chave do
+ * manifesto. Renomear um habitante em server/rpg/abismo.js pede renomear o
+ * arquivo — senão o chefe entra em cena com o sprite de reserva.
+ */
+function folhasDeChefeDoAbismo() {
+  const base = path.join(ENTRADA, 'inimigos', PASTA_DOS_CHEFES)
+  if (!existsSync(base)) return {}
+
+  const saida = {}
+  for (const nome of readdirSync(base)) {
+    if (ehImagem(nome)) saida[chaveDeArte(nome)] = path.join(base, nome)
+  }
+  return saida
+}
+
+/**
+ * Um cenário inteiriço — os andares do Abismo vêm numa imagem só, sem
+ * camadas. O palco repete a imagem enquanto o personagem anda: não há
+ * parallax aqui, o que dá a sensação de movimento é a repetição.
+ */
+async function cenaInteira(arquivo, { recorteDoTopo = 0, largura }) {
+  const { width, height } = await sharp(arquivo).metadata()
+  const topo = Math.round(height * recorteDoTopo)
+  const altura = height - topo
+
+  const buffer = await sharp(arquivo)
+    .extract({ left: 0, top: topo, width, height: altura })
+    .resize({ width: largura })
+    .webp({ quality: 82 })
+    .toBuffer()
+
+  return { buffer, proporcao: width / altura }
 }
 
 async function principal() {
@@ -1127,6 +1302,31 @@ async function principal() {
     }
   }
 
+  console.log('\nChefes do Abismo')
+  for (const [chave, arquivo] of Object.entries(folhasDeChefeDoAbismo())) {
+    const atlas = await montarAtlas(arquivo, {
+      alturaAlvo: Math.round(ALTURA_DO_HEROI * (ALTURA_RELATIVA[chave] ?? 1.15)),
+      quadros: QUADROS_A_MAO[chave] ?? null,
+      regular: GRADE_REGULAR[chave] ?? null,
+      ate: ATE_O_QUADRO[chave] ?? null,
+      bolsoes: COM_CENARIO_ATRAS.has(chave) ? BOLSAO_FROUXO : BOLSAO_APERTADO,
+      // Nenhuma volta de descasque: estas folhas vêm com fundo branco
+      // chapado e sem painel desenhado, e o pouco que a inundação deixa em
+      // volta dos bonecos bastava para a régua da área achar que ainda havia
+      // fundo. A volta seguinte então ia atrás do preto do capuz e vazava o
+      // corpo inteiro — sobravam o machado e o contorno.
+      camadas: CAMADAS_A_MAO[chave] ?? 0,
+      gradeUnica: GRADE_DA_PRIMEIRA.has(chave),
+      tolerancia: CONTRASTE_BAIXO.has(chave) ? 6 : 10,
+    })
+    escrever(`lutadores/${chave}.webp`, atlas.buffer)
+    manifesto.lutadores[chave] = {
+      arquivo: `lutadores/${chave}.webp`,
+      ...semBuffer(atlas),
+      viradoParaEsquerda: OLHA_PARA_ESQUERDA.has(chave),
+    }
+  }
+
   console.log('\nCenário')
   const batalha = path.join(ENTRADA, 'CENARIOS', 'cenario de batalha')
   const arquivoDe = (pedaco) => achar(batalha, (n) => n.toUpperCase().startsWith(pedaco))
@@ -1157,6 +1357,25 @@ async function principal() {
     // Onde ficam os pés de quem está em cena, em fração da altura do panorama.
     linhaDoChao: 0.94,
     camadas,
+  }
+
+  // Os andares do Abismo: uma imagem por profundidade, e o palco troca de
+  // uma para a outra conforme a descida muda de faixa.
+  const abismo = path.join(ENTRADA, 'CENARIOS', 'abismo')
+  manifesto.cenario.abismo = {}
+  for (const nome of readdirSync(abismo).filter(ehImagem)) {
+    const chave = chaveDeArte(nome)
+    const relativo = `cenario/abismo-${chave}.webp`
+    const feito = await cenaInteira(path.join(abismo, nome), {
+      recorteDoTopo: RECORTE_DO_TOPO[chave] ?? 0,
+      largura: 1600,
+    })
+    escrever(relativo, feito.buffer)
+    manifesto.cenario.abismo[chave] = {
+      arquivo: relativo,
+      proporcao: feito.proporcao,
+      linhaDoChao: LINHA_DO_CHAO[chave] ?? LINHA_DO_CHAO.padrao,
+    }
   }
 
   const salao = path.join(ENTRADA, 'CENARIOS', 'cenário taberna')

@@ -84,6 +84,12 @@ export function aplicarFicha(ficha) {
 
 export const aoMudarFicha = (fn) => estado.ouvintes.add(fn)
 
+/**
+ * A classe de ORIGEM do personagem — é o sprite que ele usa em cena. Um
+ * Ceifador Noturno continua desenhado como o Ladino que ele era.
+ */
+export const classeBase = () => estado.p?.linhagem?.[0]?.id ?? estado.p?.classe?.id ?? null
+
 // ------------------------------------------------------------ formatação
 
 /** 12.400 em vez de 12400 — número grande no meio de texto cansa de ler. */
@@ -229,8 +235,19 @@ export function etiquetaDeRaridade(item) {
   return el('span', { class: `etiqueta r-${item.raridade}` }, item.raridadeNome)
 }
 
-/** A linha padrão de um item nas listas (mochila, loja, forja). */
-export function linhaDeItem(item, { acoes = [], detalhes = [], selecionada = false, onClick } = {}) {
+/**
+ * A linha padrão de um item nas listas (mochila, loja, forja).
+ *
+ * `tecla` é o atalho de teclado da linha: o número aparece à esquerda, como o
+ * `[1]` do menu de ações, e marca a PRIMEIRA ação — é ela que a tecla dispara
+ * (o despacho está em prepararTeclado, no app.js). `0` não numera a linha mas
+ * guarda o lugar, para as listas onde só as nove primeiras têm atalho não
+ * saírem desalinhadas; `null` não reserva nada.
+ */
+export function linhaDeItem(
+  item,
+  { acoes = [], detalhes = [], selecionada = false, onClick, tecla = null } = {},
+) {
   const corpo = el(
     'div',
     { class: 'corpo' },
@@ -254,6 +271,8 @@ export function linhaDeItem(item, { acoes = [], detalhes = [], selecionada = fal
     ),
   )
 
+  if (tecla && acoes.length) acoes[0].dataset.tecla = String(tecla)
+
   return el(
     'div',
     {
@@ -261,6 +280,7 @@ export function linhaDeItem(item, { acoes = [], detalhes = [], selecionada = fal
       onClick: onClick ?? null,
       style: onClick ? 'cursor:pointer' : null,
     },
+    tecla === null ? null : el('span', { class: 'tecla-item' }, tecla ? `[${tecla}]` : ''),
     el('div', { class: 'icone' }, item.emoji ?? '📦'),
     corpo,
     acoes.length ? el('div', { class: 'acoes-item' }, ...acoes) : null,

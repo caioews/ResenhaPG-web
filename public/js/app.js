@@ -11,6 +11,7 @@ import {
   avisar,
   avisarBom,
   avisarErro,
+  classeBase,
   comBotao,
   confirmar,
   definirPersonagemAtivo,
@@ -63,6 +64,7 @@ import {
 import { abrirEditorDeFoto, abrirFicha, abrirPerfil, retrato } from './perfil.js'
 import {
   andarUmTrecho,
+  aoTrocarDeCena,
   entrarOMonstro,
   esperarEmPosicao,
   fimDaLuta,
@@ -70,6 +72,7 @@ import {
   irCacar,
   mostrarTaberna,
   palcoEmBatalha,
+  palcoEmCena,
   pessoasNaTaberna,
   prepararPalco,
 } from './palco.js'
@@ -406,6 +409,12 @@ async function sairDoPersonagem() {
 async function abrirOPalco() {
   try {
     $('#palco').hidden = false
+    // Trocar de cena muda o menu (é de lá que sai o "Voltar para a
+    // taberna"), e quem troca de cena nem sempre é este arquivo: a descida
+    // do Abismo é narrada pelo painel.
+    aoTrocarDeCena(() => {
+      if (estado.p) desenharAcoes()
+    })
     await prepararPalco($('#palco'), { classe: classeBase() })
     await mostrarTaberna({ imediato: true })
     desenharAcoes()
@@ -415,9 +424,6 @@ async function abrirOPalco() {
     console.warn('palco indisponível:', e)
   }
 }
-
-/** A classe de origem do personagem — é o sprite que ele usa em cena. */
-const classeBase = () => estado.p?.linhagem?.[0]?.id ?? estado.p?.classe?.id ?? null
 
 // ------------------------------------------------------------- ficha
 
@@ -562,7 +568,7 @@ function desenharAcoes() {
     relogio: 'luta',
   })
 
-  if (palcoEmBatalha()) {
+  if (palcoEmCena()) {
     itens.push({
       rotulo: 'Voltar para a taberna',
       nota: 'a lareira, a mesa e quem estiver on-line',
@@ -636,7 +642,25 @@ function desenharAcoes() {
   })
 }
 
-/** Teclas 1..9 disparam a ação da mesma posição, como no menu de texto. */
+/** Uma letra, um painel. O menu mostra a tecla de cada um. */
+const PAINEL_POR_TECLA = {
+  l: abrirLoja,
+  m: abrirMochila,
+  j: abrirMissoes,
+}
+
+/**
+ * O teclado, em três camadas.
+ *
+ *   Esc       fecha o que está mais por cima
+ *   L M J     abrem um painel, de qualquer lugar
+ *   1..9      agem: no painel aberto, se ele numerou as linhas; senão no
+ *             menu de ações, como no menu de texto do bot
+ *
+ * O número faz o que a linha mostra — compra na loja, usa ou equipa na
+ * mochila. Quem decide é o `[n]` desenhado na linha (`data-tecla`), e não uma
+ * lista aqui: painel nenhum precisa avisar este arquivo para ganhar atalho.
+ */
 function prepararTeclado() {
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') {
@@ -645,9 +669,33 @@ function prepararTeclado() {
       if (modalAberto()) return fecharModal()
       if (chatAberto()) return fecharChat()
     }
+    // Ctrl+L é a barra de endereços, Cmd+M minimiza: atalho nosso é tecla
+    // solta.
+    if (ev.ctrlKey || ev.altKey || ev.metaKey) return
     if (ev.target.matches('input, textarea')) return
+    // Na tela de login ou de escolha de personagem não há painel para abrir
+    // nem ação para disparar.
+    if (!estado.p?.classe) return
+
+    const abrirPainel = PAINEL_POR_TECLA[ev.key.toLowerCase()]
+    if (abrirPainel) {
+      // O pop-up de evento pede uma decisão e tem relógio correndo: não some
+      // por baixo de um painel.
+      if (eventoNaTela()) return
+      ev.preventDefault()
+      Promise.resolve(abrirPainel()).catch(avisarErro)
+      return
+    }
+
     if (!/^[1-9]$/.test(ev.key)) return
-    if (modalAberto() || narrando()) return
+
+    // Com um painel aberto o número é dele — se ele numerou as linhas.
+    if (modalAberto()) {
+      const alvo = document.querySelector(`#modal-corpo [data-tecla="${ev.key}"]`)
+      if (alvo && !alvo.disabled) alvo.click()
+      return
+    }
+    if (narrando()) return
 
     const botoes = document.querySelectorAll('#acoes .acao')
     const botao = botoes[Number(ev.key) - 1]
@@ -680,7 +728,6 @@ async function entrarEmCena(encontro) {
     if (!palcoEmBatalha()) {
       definirCena('Ruínas de Valkhar')
       await irCacar(classeBase())
-      desenharAcoes()
     } else {
       andarUmTrecho()
     }
@@ -838,13 +885,18 @@ function desenharSelos() {
 function montarMenuDeLugares() {
   const menu = limpar($('#menu-lugares'))
 
-  const lugar = (icone, nome, acao, selo = null) =>
+  const lugar = (icone, nome, acao, tecla = null) =>
     el(
       'button',
-      { class: 'lugar', type: 'button', onClick: (ev) => comBotao(ev.currentTarget, acao) },
+      {
+        class: 'lugar',
+        type: 'button',
+        title: tecla ? `Atalho: ${tecla}` : '',
+        onClick: (ev) => comBotao(ev.currentTarget, acao),
+      },
       el('span', { class: 'icone' }, icone),
       el('span', {}, nome),
-      selo ? el('span', { class: 'selo' }, selo) : null,
+      tecla ? el('span', { class: 'tecla' }, `[${tecla}]`) : null,
     )
 
   const botaoDeSom = el(
@@ -883,15 +935,15 @@ function montarMenuDeLugares() {
         )
       : null,
     lugar('📜', 'Status do personagem', abrirFicha),
-    comSelo(lugar('📋', 'Missões do dia', abrirMissoes), 'selo-missoes'),
+    comSelo(lugar('📋', 'Missões do dia', abrirMissoes, 'J'), 'selo-missoes'),
     botaoDoChefe(),
     el(
       'div',
       { class: 'dupla-lugares' },
-      lugar('🎒', 'Mochila', abrirMochila),
+      lugar('🎒', 'Mochila', abrirMochila, 'M'),
       lugar('🧰', 'Baú', () => abrirBau()),
     ),
-    lugar('💰', 'Loja', () => abrirLoja()),
+    lugar('💰', 'Loja', () => abrirLoja(), 'L'),
     el(
       'div',
       { class: 'dupla-lugares' },

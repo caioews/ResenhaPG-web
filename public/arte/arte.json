@@ -586,6 +586,160 @@
         8
       ],
       "viradoParaEsquerda": false
+    },
+    "carrasco-cego": {
+      "arquivo": "lutadores/carrasco-cego.webp",
+      "quadro": [
+        230,
+        237
+      ],
+      "ancora": [
+        105,
+        233
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        6
+      ],
+      "viradoParaEsquerda": false
+    },
+    "coisa-sem-nome": {
+      "arquivo": "lutadores/coisa-sem-nome.webp",
+      "quadro": [
+        374,
+        234
+      ],
+      "ancora": [
+        167,
+        230
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        4,
+        4,
+        4
+      ],
+      "viradoParaEsquerda": false
+    },
+    "devorador-de-luz": {
+      "arquivo": "lutadores/devorador-de-luz.webp",
+      "quadro": [
+        256,
+        209
+      ],
+      "ancora": [
+        113,
+        206
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        7,
+        6
+      ],
+      "viradoParaEsquerda": false
+    },
+    "eco-do-rei-morto": {
+      "arquivo": "lutadores/eco-do-rei-morto.webp",
+      "quadro": [
+        188,
+        183
+      ],
+      "ancora": [
+        86,
+        180
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        6,
+        6,
+        6
+      ],
+      "viradoParaEsquerda": false
+    },
+    "fera-acorrentada": {
+      "arquivo": "lutadores/fera-acorrentada.webp",
+      "quadro": [
+        374,
+        289
+      ],
+      "ancora": [
+        181,
+        286
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        6,
+        6,
+        4
+      ],
+      "viradoParaEsquerda": false
+    },
+    "sentinela-de-ossos": {
+      "arquivo": "lutadores/sentinela-de-ossos.webp",
+      "quadro": [
+        172,
+        179
+      ],
+      "ancora": [
+        72,
+        176
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        6,
+        3,
+        4
+      ],
+      "viradoParaEsquerda": false
+    },
+    "vigia-do-poco": {
+      "arquivo": "lutadores/vigia-do-poco.webp",
+      "quadro": [
+        152,
+        178
+      ],
+      "ancora": [
+        78,
+        174
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        7,
+        7,
+        7
+      ],
+      "viradoParaEsquerda": false
     }
   },
   "sentados": {
@@ -627,6 +781,38 @@
           "velocidade": 1
         }
       ]
+    },
+    "abismo": {
+      "boca-do-abismo": {
+        "arquivo": "cenario/abismo-boca-do-abismo.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "fossa": {
+        "arquivo": "cenario/abismo-fossa.webp",
+        "proporcao": 1.9058171745152355,
+        "linhaDoChao": 0.93
+      },
+      "fundo": {
+        "arquivo": "cenario/abismo-fundo.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "galerias": {
+        "arquivo": "cenario/abismo-galerias.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "raiz-do-mundo": {
+        "arquivo": "cenario/abismo-raiz-do-mundo.webp",
+        "proporcao": 1.9058171745152355,
+        "linhaDoChao": 0.93
+      },
+      "silencio": {
+        "arquivo": "cenario/abismo-silencio.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      }
     },
     "taberna": "cenario/taberna.webp"
   }

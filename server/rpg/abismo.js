@@ -24,6 +24,24 @@ import { atributosDeMonstro } from './monstros.js'
 const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
 
 /**
+ * A chave da arte de um nome: minúsculo, sem acento, hífen no lugar do
+ * espaço.
+ *
+ * É o que liga o habitante e a profundidade aos arquivos de `public/arte`:
+ * "Vigia do Poço" vira `vigia-do-poco`, que é como a folha está nomeada em
+ * `Assets/inimigos/chefes abismo`. A mesma conta acontece do outro lado, em
+ * scripts/arte.js — renomear um habitante aqui pede renomear a folha lá,
+ * senão ele entra em cena com o sprite de reserva.
+ */
+export const chaveDeArte = (nome) =>
+  String(nome)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/**
  * Os moradores do Abismo. Ciclam conforme a descida: quem chega fundo
  * reencontra os mesmos nomes, so que muito mais fortes.
  *
@@ -54,6 +72,9 @@ const PROFUNDIDADES = [
 
 export const nomeDaProfundidade = (andar) => PROFUNDIDADES.find((p) => andar <= p.ate).nome
 
+/** A mesma profundidade, no formato que o palco usa para achar o cenário. */
+export const cenarioDaProfundidade = (andar) => chaveDeArte(nomeDaProfundidade(andar))
+
 /** O chefe de um andar, para um jogador de determinado nivel. */
 export function criarHabitante(nivelJogador, andar) {
   const a = config.rpg.abismo
@@ -79,6 +100,9 @@ export function criarHabitante(nivelJogador, andar) {
 
   return {
     nome: `${habitante.nome}${sufixo}`,
+    // A chave sai do nome SEM o sufixo de estrelas: o Eco do Rei Morto da
+    // terceira volta é o mesmo desenho, só mais forte.
+    id: chaveDeArte(habitante.nome),
     emoji: habitante.emoji,
     nivel,
     andar,

@@ -12,6 +12,7 @@ import {
   abrirModal,
   avisar,
   avisarBom,
+  classeBase,
   comBotao,
   confirmar,
   duracao,
@@ -39,6 +40,15 @@ import {
   tituloDeCena,
 } from './narrativa.js'
 import { abrirPerfil, retrato } from './perfil.js'
+import {
+  descerUmAndar,
+  entrarOMonstro,
+  esperarEmPosicao,
+  fimDaLuta,
+  golpe,
+  irAoAbismo,
+  prepararAbismo,
+} from './palco.js'
 
 const porcento = (v) => `${Math.round(v * 1000) / 10}%`
 
@@ -81,7 +91,13 @@ export async function abrirMochila(filtro = 'tudo') {
   const p = estado.p
   const equipados = new Set(Object.values(p.equipado).filter(Boolean).map((i) => i.uid))
 
+  // A tecla é a posição NA TELA, de cima para baixo, atravessando as
+  // divisões — e só as nove primeiras linhas têm uma. O contador zera a cada
+  // desenho, que é o que faz o atalho bater com o que está sendo visto.
+  let posicao = 0
+
   const linha = (item) => {
+    const tecla = ++posicao <= 9 ? posicao : 0
     const acoes = []
 
     if (item.consumivel) {
@@ -163,6 +179,7 @@ export async function abrirMochila(filtro = 'tudo') {
 
     return linhaDeItem(item, {
       acoes,
+      tecla,
       detalhes: equipados.has(item.uid) ? [el('span', { class: 'reforco' }, 'equipado')] : [],
     })
   }
@@ -363,13 +380,17 @@ export async function abrirLoja(aba = 'comprar') {
     corpo = el(
       'div',
       { class: 'lista' },
-      ...dados.itens.map((linhaDaLoja) => {
+      // A prateleira tem no máximo cinco linhas (as quatro fixas e a oferta
+      // do dia), então a tecla é sempre a posição.
+      ...dados.itens.map((linhaDaLoja, i) => {
+        const tecla = i + 1
         const podePagar = p.gold >= linhaDaLoja.preco
         const botao = el(
           'button',
           {
             class: 'btn pequeno primario',
             type: 'button',
+            dataset: { tecla },
             disabled: !podePagar,
             onClick: (ev) =>
               comBotao(ev.currentTarget, async () => {
@@ -384,6 +405,7 @@ export async function abrirLoja(aba = 'comprar') {
         if (linhaDaLoja.especial) {
           return linhaDeItem(linhaDaLoja.item, {
             acoes: [botao],
+            tecla,
             detalhes: [
               el('span', { style: 'color:var(--ouro-claro)' }, '✨ Oferta do dia'),
               `expira em ${duracao(linhaDaLoja.expiraEm - Date.now())}`,
@@ -394,6 +416,7 @@ export async function abrirLoja(aba = 'comprar') {
         return el(
           'div',
           { class: 'linha-item' },
+          el('span', { class: 'tecla-item' }, `[${tecla}]`),
           el('div', { class: 'icone' }, linhaDaLoja.nome.split(' ')[0]),
           el(
             'div',
@@ -1084,8 +1107,34 @@ async function narrarDescida(descida) {
   tituloDeCena('A descida')
   sussurro('Não há volta pelo mesmo caminho. Só se mede até onde deu.')
 
-  for (const andar of descida.andares) {
+  // O palco é ilustração: se alguma coisa nele falhar, a descida acontece do
+  // mesmo jeito — quem conta a história é o log.
+  const noPalco = async (acao) => {
+    try {
+      await acao()
+    } catch (e) {
+      console.warn('palco:', e)
+    }
+  }
+
+  await noPalco(async () => {
+    // Os andares desta descida já são conhecidos: dá para carregar os
+    // cenários todos agora e não engasgar na troca.
+    prepararAbismo(descida.andares.map((a) => a.cenario))
+    await irAoAbismo(classeBase(), descida.andares[0]?.cenario)
+  })
+
+  for (const [i, andar] of descida.andares.entries()) {
     tituloDeCena(`Andar ${andar.andar} — ${andar.profundidade}`)
+
+    await noPalco(async () => {
+      // Do segundo andar em diante o personagem segue andando, e o cenário
+      // troca por baixo dele quando a descida muda de profundidade.
+      if (i > 0) descerUmAndar(andar.cenario)
+      await entrarOMonstro(andar.inimigo.id)
+      await esperarEmPosicao()
+    })
+
     await narrarLuta({
       nomeA: 'Você',
       hpA: andar.hpInicial,
@@ -1094,7 +1143,10 @@ async function narrarDescida(descida) {
       hpB: andar.inimigo.hpMax,
       hpMaxB: andar.inimigo.hpMax,
       log: andar.log,
+      aoEntrada: golpe,
     })
+    fimDaLuta({ venceu: andar.venceu })
+
     if (!andar.venceu) {
       rico(forte('Você caiu.', 'perigo'), ` O Abismo ficou com o andar ${andar.andar}.`)
       break
