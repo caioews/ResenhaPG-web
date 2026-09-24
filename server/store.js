@@ -49,6 +49,17 @@ const TIPOS_DE_ITEM_RENOMEADOS = {
 }
 
 /**
+ * Tipos de item que sairam do jogo. Pocao e bandagem administravam a vida
+ * ENTRE duas lutas, e entre duas lutas nao ha mais o que administrar: a fase
+ * comeca sempre com a vida cheia (ver rpg/jogador.js). Quem tinha alguma
+ * guardada simplesmente nao a encontra mais na mochila.
+ */
+const TIPOS_DE_ITEM_APOSENTADOS = new Set(['pocao', 'bandagem'])
+
+/** Se este item ainda existe no jogo. */
+export const itemAposentado = (item) => TIPOS_DE_ITEM_APOSENTADOS.has(item?.tipo)
+
+/**
  * Poe um item guardado no formato de hoje. Devolve o proprio item — vale
  * tambem para os que estao fora da mochila (leiloes, entregas).
  */
@@ -73,12 +84,21 @@ export function fichaNova() {
     nivel: 1,
     xp: 0,
     gold: 0,
-    hp: null, // null = vida cheia
-    hpEm: 0,
-    feridoAte: 0,
-    fogueiraAte: 0,
-    bossPendente: 0,
-    bossesVencidos: [],
+    // Onde o personagem esta na rota (rpg/rota.js) e o que ele ja venceu.
+    // `repetindo` = o avanco automatico esta desligado porque ele caiu;
+    // `travada` = a fase em que caiu, que e para onde o botao "ir para a
+    // proxima fase" o manda de volta.
+    cacada: {
+      ato: 1,
+      fase: 1,
+      repetindo: false,
+      travada: null,
+      maiorAto: 0,
+      maiorFase: 0,
+      vitorias: 0,
+      derrotas: 0,
+      ultimaFaseEm: 0,
+    },
     inventario: [],
     // O bau (server/rpg/bau.js): itens guardados fora da mochila. Os espacos
     // comprados somam ao que config.rpg.bau.espacos ja da de graca.
@@ -100,7 +120,6 @@ export function fichaNova() {
       goldGanho: 0,
       ultimoDuelo: 0,
     },
-    ultimaLuta: 0,
     provaAte: 0,
     // Quantas vezes este personagem ja recomecou do nivel 1 (rpg/prestigio.js)
     prestigio: 0,
@@ -122,24 +141,46 @@ export function fichaNova() {
  * aparece preenchido com o padrao, sem script de migracao e sem `undefined`
  * vazando para o calculo.
  */
+const CAMPOS_APOSENTADOS = [
+  // A vida deixou de ser guardada: fora de combate ela e sempre cheia.
+  'hp',
+  'hpEm',
+  'feridoAte',
+  'fogueiraAte',
+  // Os marcos de nivel viraram os chefes de ato (rpg/rota.js).
+  'bossPendente',
+  'bossesVencidos',
+  'ultimaLuta',
+]
+
 function migrar(rpg = {}) {
   const base = fichaNova()
   const classe = CLASSES_RENOMEADAS[rpg.classe] ?? rpg.classe ?? null
+  for (const campo of CAMPOS_APOSENTADOS) delete rpg[campo]
 
   return {
     ...base,
     ...rpg,
     classe,
     equipado: { ...base.equipado, ...rpg.equipado },
-    inventario: (rpg.inventario ?? []).map(migrarItem),
-    bau: { ...base.bau, ...rpg.bau, itens: (rpg.bau?.itens ?? []).map(migrarItem) },
-    bossesVencidos: rpg.bossesVencidos ?? [],
+    // Os itens aposentados somem na leitura: e a mesma ideia das classes
+    // renomeadas, so que sem para onde converter.
+    inventario: (rpg.inventario ?? []).filter((i) => !itemAposentado(i)).map(migrarItem),
+    bau: {
+      ...base.bau,
+      ...rpg.bau,
+      itens: (rpg.bau?.itens ?? []).filter((i) => !itemAposentado(i)).map(migrarItem),
+    },
+    cacada: { ...base.cacada, ...rpg.cacada },
     // A oferta do dia tambem guarda um item inteiro, e ele fica de pe por
     // minutos depois de um reinicio: passa pela mesma conversao.
     lojaOferta: {
       ...base.lojaOferta,
       ...rpg.lojaOferta,
-      item: rpg.lojaOferta?.item ? migrarItem(rpg.lojaOferta.item) : null,
+      item:
+        rpg.lojaOferta?.item && !itemAposentado(rpg.lojaOferta.item)
+          ? migrarItem(rpg.lojaOferta.item)
+          : null,
     },
     expedicao: { ...base.expedicao, ...rpg.expedicao },
     raid: { ...base.raid, ...rpg.raid },

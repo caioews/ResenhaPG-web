@@ -1,31 +1,22 @@
 /**
- * Junta tudo que acontece numa luta contra um monstro: combate, vida,
- * recompensa, drop e a punicao da derrota. Os comandos so formatam o que
- * sai daqui.
+ * O que um lutador leva para a briga, e o que ele tira de um inimigo caido.
+ *
+ * E a camada compartilhada entre a caçada (rpg/cacada.js), o Abismo, a
+ * masmorra e os eventos: todo mundo monta o jogador do mesmo jeito e paga a
+ * vitoria do mesmo jeito. Nada aqui formata mensagem e nada aqui decide
+ * quando a luta acontece — so devolve dados.
  */
 import { config } from '../config.js'
 import * as store from '../store.js'
 import { classe } from './classes.js'
-import { barraDeVida, lutar, resumir } from './combate.js'
+import { lutar } from './combate.js'
 import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { SLOTS_COM_FEITICO, darFeitico, efeitosDosFeiticos, juntarEfeitos, sortearFeitico } from './feiticos.js'
 import { efeitosDaClasse } from './habilidades.js'
 import { sortearDrop } from './itens.js'
 import { recompensas } from './monstros.js'
 import { xpComPrestigio } from './prestigio.js'
-import {
-  atributos,
-  darGold,
-  definirVida,
-  itemEquipado,
-  ferir,
-  ganharXp,
-  guardarItem,
-  levantarDaFogueira,
-  mochilaCheia,
-  vencerBoss,
-  vidaAtual,
-} from './jogador.js'
+import { atributos, darGold, itemEquipado, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
 
 /**
  * Tudo que o jogador leva para a luta alem dos atributos: as habilidades da
@@ -41,10 +32,11 @@ export function efeitosDe(player) {
 }
 
 /**
- * O jogador como combatente: atributos totais, entrando com a vida atual e
- * carregando habilidades de classe e feiticos das pecas.
+ * O jogador como combatente. `hp` e a vida com que ele ENTRA: cheia por
+ * padrao, e o que sobrou do inimigo anterior quando a horda de uma fase
+ * encadeia uma luta na outra.
  */
-export function comoLutador(player, nome = 'Você') {
+export function comoLutador(player, nome = 'Você', hp = null) {
   const total = atributos(player)
   return {
     nome,
@@ -52,88 +44,57 @@ export function comoLutador(player, nome = 'Você') {
     atq: total.atq,
     def: total.def,
     agi: total.agi,
-    hp: vidaAtual(player),
+    hp: hp === null ? total.hp : Math.max(1, Math.round(hp)),
     hpMax: total.hp,
     hab: efeitosDe(player),
   }
 }
 
+/** O inimigo no formato que o motor de combate espera. */
+export const comoInimigo = (monstro) => ({
+  nome: `${monstro.emoji} ${monstro.nome}`,
+  nivel: monstro.nivel,
+  atq: monstro.atq,
+  def: monstro.def,
+  agi: monstro.agi,
+  hp: monstro.hp,
+})
+
 /**
- * Resolve um encontro completo.
- * Nao formata mensagem: devolve os dados para o comando montar o texto.
+ * O que cai de um inimigo derrotado: XP, gold, titanita, feitico e item.
+ *
+ * Ja aplica tudo na ficha — o retorno e so o relatorio para a tela. `forca`
+ * e a rampa da fase (rpg/rota.js): o que endurece tambem paga melhor.
  */
-export function resolver(player, monstro, sorte = Math.random) {
-  levantarDaFogueira(player) // ninguem luta sentado
-  const eu = comoLutador(player)
-  const inimigo = {
-    nome: `${monstro.emoji} ${monstro.nome}`,
-    nivel: monstro.nivel,
-    atq: monstro.atq,
-    def: monstro.def,
-    agi: monstro.agi,
-    hp: monstro.hp,
-  }
-
-  const luta = lutar(eu, inimigo, sorte)
-  const venceu = luta.vencedor === 'a'
-
-  const saida = {
-    venceu,
-    luta,
-    linhas: resumir(luta),
-    barra: barraDeVida(venceu ? luta.hpA : 0, luta.hpMaxA),
-    hpFinal: luta.hpA,
-    hpMax: luta.hpMaxA,
-    xp: 0,
-    gold: 0,
-    drop: null,
-    mochilaCheia: false,
-    subiuPara: [],
-    bossVencido: false,
-    goldPerdido: 0,
-    goldDeSaque: 0,
-    titanita: null,
-    feitico: null,
-  }
-
-  player.rpg.ultimaLuta = Date.now()
-
-  if (!venceu) {
-    player.rpg.derrotas++
-    saida.goldPerdido = Math.floor(player.rpg.gold * config.rpg.goldPerdidoAoPerder)
-    darGold(player, -saida.goldPerdido)
-    ferir(player)
-    store.save()
-    return saida
-  }
-
-  player.rpg.vitorias++
-  definirVida(player, luta.hpA)
-
-  const premio = recompensas(monstro, sorte)
+export function premiar(player, monstro, { sorte = Math.random, forca = 1 } = {}) {
+  const premio = recompensas(monstro, sorte, forca)
   const hab = efeitosDe(player)
 
   // O prestigio soma no XP antes de qualquer coisa: o numero que entra na
   // ficha e o mesmo que a tela mostra.
-  saida.xp = xpComPrestigio(player, premio.xp)
-  saida.gold = Math.round(premio.gold * (1 + (hab.saqueGold ?? 0)))
-  saida.goldDeSaque = saida.gold - premio.gold
+  const xp = xpComPrestigio(player, premio.xp)
+  const gold = Math.round(premio.gold * (1 + (hab.saqueGold ?? 0)))
 
-  darGold(player, saida.gold)
-
-  if (monstro.boss) {
-    vencerBoss(player, monstro.marco ?? monstro.nivel)
-    saida.bossVencido = true
+  const ganhos = {
+    xp,
+    gold,
+    goldDeSaque: gold - premio.gold,
+    subiuPara: [],
+    drop: null,
+    mochilaCheia: false,
+    titanita: null,
+    feitico: null,
   }
 
-  saida.subiuPara = ganharXp(player, saida.xp)
+  darGold(player, gold)
+  ganhos.subiuPara = ganharXp(player, xp)
 
   // Titanita: cai de bicho comum, de elite e sempre de chefe.
   const origem = monstro.boss ? 'boss' : monstro.elite ? 'elite' : 'comum'
   const titanita = sortearTitanita(origem, sorte)
   if (titanita) {
     darTitanita(player, titanita.grau, titanita.quantidade)
-    saida.titanita = titanita
+    ganhos.titanita = titanita
   }
 
   // Feitico: so de chefe, e so os liberados para aquele nivel.
@@ -141,21 +102,53 @@ export function resolver(player, monstro, sorte = Math.random) {
     const id = sortearFeitico(monstro.nivel, sorte)
     if (id) {
       darFeitico(player, id)
-      saida.feitico = id
+      ganhos.feitico = id
     }
   }
 
   if (sorte() < premio.chanceDrop + (hab.saqueDrop ?? 0)) {
     const item = sortearDrop(player.rpg.classe, monstro.nivel, config.rpg.chanceDropDaPropriaClasse, sorte)
-    if (mochilaCheia(player)) {
-      saida.mochilaCheia = true
-      saida.drop = item
-    } else {
-      guardarItem(player, item)
-      saida.drop = item
-    }
+    ganhos.drop = item
+    // Mochila cheia nao segura a caçada: o item aparece no relatorio como
+    // perdido, e quem esta no laco automatico ve o aviso e vai esvaziar.
+    if (mochilaCheia(player)) ganhos.mochilaCheia = true
+    else guardarItem(player, item)
   }
 
   store.save()
-  return saida
+  return ganhos
+}
+
+/**
+ * Uma luta solta, do comeco ao fim: a caçada nao passa por aqui (ela
+ * encadeia uma horda inteira, em rpg/cacada.js), mas o evento individual da
+ * Fenda sim. Entra com a vida cheia, como tudo fora da rota.
+ */
+export function resolver(player, monstro, sorte = Math.random) {
+  const luta = lutar(comoLutador(player), comoInimigo(monstro), sorte)
+  const venceu = luta.vencedor === 'a'
+
+  const saida = {
+    venceu,
+    luta,
+    hpFinal: luta.hpA,
+    hpMax: luta.hpMaxA,
+    xp: 0,
+    gold: 0,
+    goldDeSaque: 0,
+    subiuPara: [],
+    drop: null,
+    mochilaCheia: false,
+    titanita: null,
+    feitico: null,
+  }
+
+  if (!venceu) {
+    player.rpg.derrotas++
+    store.save()
+    return saida
+  }
+
+  player.rpg.vitorias++
+  return Object.assign(saida, premiar(player, monstro, { sorte }))
 }

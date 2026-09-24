@@ -20,9 +20,7 @@ import {
   atributos,
   darGold,
   desequiparIncompativeis,
-  descansoRestante,
   estaEquipado,
-  feridoRestante,
   vidaAtual,
   ganharXp,
   guardarItem,
@@ -403,7 +401,6 @@ cidade.post(
     if (!opcoesDe(player).includes(alvo)) {
       return res.status(400).json({ erro: 'Esse caminho não sai da sua classe atual.' })
     }
-    if (feridoRestante(player) > 0) return res.status(409).json({ erro: 'Ninguém encara o Rito ferido.' })
     if (emExpedicao(player)) return res.status(409).json({ erro: 'Seu personagem está em expedição.' })
 
     const rito = encarar(player, alvo)
@@ -480,8 +477,8 @@ cidade.post(
 
     darGold(player, -custo)
 
-    // Você entra com a vida que tem; o espectro sempre entra inteiro. Entrar
-    // machucado na Prova do Espelho é jogar gold fora.
+    // Os dois entram inteiros: a Prova é um espelho, e espelho não tem
+    // vantagem de vida.
     const hpInicial = vidaAtual(player)
     const eu = comoLutador(player, player.name)
     const espectro = comoLutador(player, `Espectro ${CLASSES[player.rpg.classe].nome}`)
@@ -628,10 +625,6 @@ cidade.post(
     const expedicao = EXPEDICOES[String(req.body?.tipo ?? '')]
     if (!expedicao) return res.status(400).json({ erro: 'Essa expedição não existe.' })
     if (emExpedicao(player)) return res.status(409).json({ erro: 'Seu personagem já está fora.' })
-    if (feridoRestante(player) > 0) return res.status(409).json({ erro: 'Ferido desse jeito ninguém viaja.' })
-    if (descansoRestante(player) > 0) {
-      return res.status(409).json({ erro: 'Você está descansando na fogueira. Levante antes de partir.' })
-    }
 
     enviar(player, expedicao)
 

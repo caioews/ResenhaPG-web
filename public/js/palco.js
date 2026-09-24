@@ -2,11 +2,19 @@
  * O palco: o jogo visto, ao lado do log que já existia.
  *
  * Três cenas moram aqui. A taberna, onde ficam sentados os personagens que
- * estão on-line — é o que aparece enquanto ninguém está caçando. O campo de
- * batalha, em camadas com parallax, onde o personagem entra andando,
- * encontra o bicho e troca golpes. E o Abismo, que é o mesmo campo de
- * batalha com outro cenário: uma imagem por profundidade, repetida enquanto
- * o personagem anda, trocando de andar conforme a descida desce.
+ * estão on-line — é o que aparece enquanto ninguém está caçando. A rota, por
+ * onde o personagem anda de fase em fase enfrentando a horda de cada uma. E
+ * o Abismo, que é a mesma rota com outro conjunto de cenários.
+ *
+ * As duas cenas de luta desenham a mesma coisa: um panorama que se repete
+ * enquanto o personagem anda para a direita, e que troca — com uma passagem
+ * suave por cima, sem piscar — quando a viagem muda de lugar. O panorama
+ * vem em uma de duas formas, e o manifesto diz qual:
+ *
+ *   em camadas  várias imagens, cada uma numa velocidade. É o parallax, e
+ *               é como o ato 1 (Ruínas de Valkhar) foi desenhado.
+ *   inteiriço   uma imagem só, repetida espelhada. É o que basta para um
+ *               ato, e é como vêm os andares do Abismo.
  *
  * Duas regras valem para o arquivo inteiro:
  *
@@ -24,15 +32,18 @@
 const LARGURA = 640
 const ALTURA = 360
 
-/** Um pouco de zoom no panorama: sobra cenário para a câmera andar. */
+/**
+ * Um pouco de zoom no panorama em camadas: sobra cenário para a câmera
+ * andar por dentro dele.
+ */
 const ZOOM = 1.2
 /**
- * No Abismo o zoom é quase nenhum: o cenário vem numa imagem só, desenhada
- * inteira, e cortar o teto da caverna seria jogar fora metade do desenho.
+ * No cenário inteiriço o zoom é quase nenhum: ele vem numa imagem só,
+ * desenhada inteira, e cortar o teto seria jogar fora metade do desenho.
  */
-const ZOOM_DO_ABISMO = 1.04
-/** Quanto dura a passagem de um andar do Abismo para o seguinte. */
-const TROCA_DE_ANDAR = 900
+const ZOOM_INTEIRO = 1.04
+/** Quanto dura a passagem de um cenário para o seguinte. */
+const TROCA_DE_CENARIO = 900
 /** Do tamanho do atlas para o tamanho em cena. */
 const ESCALA = 0.78
 /** Onde o herói fica quando a luta começa, em pixels de palco. */
@@ -67,8 +78,8 @@ const estado = {
   ligado: false,
   /** Transição entre cenas; `ate` = 0 quando não há nenhuma em curso. */
   fade: { de: 0, ate: 0 },
-  /** Qual andar do Abismo está em cena, e de qual ele está saindo. */
-  abismo: { chave: null, anterior: null, trocouEm: 0 },
+  /** Qual cenário está em cena, e de qual ele está saindo. */
+  cenario: { chave: null, anterior: null, trocouEm: 0 },
   camera: { x: 0 },
   heroi: null,
   monstro: null,
@@ -132,10 +143,9 @@ export async function prepararPalco(elemento, { classe = null } = {}) {
   ajustarTela()
   new ResizeObserver(ajustarTela).observe(elemento)
 
-  // A arte da batalha entra em segundo plano: quando a pessoa clicar em
-  // "Caçar" já está tudo carregado, e a taberna abre sem esperar por ela.
+  // A arte da luta entra em segundo plano: quando a pessoa clicar em "Ir à
+  // caçada" já está tudo carregado, e a taberna abre sem esperar por ela.
   setTimeout(() => {
-    for (const c of estado.arte.cenario.batalha.camadas) tentarCarregar(c.arquivo)
     const heroi = spriteDaClasse(classe)
     if (heroi) tentarCarregar(estado.arte.lutadores[heroi].arquivo)
     const bicho = spriteDoMonstro(null)
@@ -154,11 +164,11 @@ export async function prepararPalco(elemento, { classe = null } = {}) {
 
 export const palcoPreparado = () => Boolean(estado.arte)
 
-/** Se o palco está mostrando as ruínas da caçada. */
-export const palcoEmBatalha = () => estado.cena === 'batalha'
+/** Se o palco está mostrando a rota (a caçada), e não a taberna. */
+export const palcoNaRota = () => estado.cena === 'rota'
 
-/** Se o palco está fora da taberna — nas ruínas ou no Abismo. */
-export const palcoEmCena = () => estado.cena === 'batalha' || estado.cena === 'abismo'
+/** Se o palco está fora da taberna — na rota ou no Abismo. */
+export const palcoEmCena = () => estado.cena === 'rota' || estado.cena === 'abismo'
 
 /**
  * Quem quer saber que a cena mudou. É assim que o menu de ações descobre
@@ -286,91 +296,87 @@ export function pessoasNaTaberna(lista) {
   for (const p of estado.pessoas) tentarCarregar(estado.arte?.sentados?.[p.classe])
 }
 
+// ------------------------------------------------------------- cenários
+
 /**
- * Sai da taberna e entra no cenário de batalha: o personagem aparece pela
+ * Onde mora o cenário de uma cena. A rota tem um por ato; o Abismo, um por
+ * faixa de profundidade. Fora isso os dois são a mesma coisa para o palco.
+ */
+const bancoDeCenarios = (cena = estado.cena) =>
+  (cena === 'abismo' ? estado.arte?.cenario?.abismo : estado.arte?.cenario?.atos) ?? {}
+
+const dadosDoCenario = (chave, cena) => bancoDeCenarios(cena)[chave] ?? null
+
+/** Os arquivos de um cenário: as camadas dele, ou a imagem única. */
+const arquivosDoCenario = (dados) =>
+  dados ? (dados.camadas ? dados.camadas.map((c) => c.arquivo) : [dados.arquivo]) : []
+
+/** Deixa prontos os cenários que esta caçada ou esta descida vai atravessar. */
+export function prepararCenarios(chaves, cena = estado.cena) {
+  for (const chave of new Set(chaves.filter(Boolean))) {
+    for (const arquivo of arquivosDoCenario(dadosDoCenario(chave, cena))) tentarCarregar(arquivo)
+  }
+}
+
+/**
+ * Sai da taberna e entra numa cena de luta: o personagem aparece pela
  * esquerda andando para a direita, com a câmera atrás.
+ *
+ * Vale para a rota e para o Abismo — a única diferença é de qual banco sai o
+ * cenário e quanto o herói anda antes de o primeiro inimigo entrar.
  */
-export async function irCacar(classe) {
-  if (!estado.arte) return
-  const chave = spriteDaClasse(classe)
-  if (!chave) return
-  await Promise.all([
-    ...estado.arte.cenario.batalha.camadas.map((c) => tentarCarregar(c.arquivo)),
-    tentarCarregar(estado.arte.lutadores[chave].arquivo),
-  ])
-
-  estado.monstro = null
-  estado.caidos = []
-  estado.flutuantes = []
-  estado.camera.x = 0
-  estado.heroi = criarLutador(chave, { x: -70, virado: 1 })
-  caminhar(estado.heroi, POSTO_DO_HEROI + 260)
-
-  if (estado.cena !== 'batalha') await trocarCena('batalha')
-}
-
-// ------------------------------------------------------------- abismo
-
-const cenarioDoAndar = (chave) => estado.arte?.cenario?.abismo?.[chave] ?? null
-
-/** Deixa os andares desta descida prontos antes de ela começar. */
-export function prepararAbismo(chaves) {
-  for (const chave of new Set(chaves)) tentarCarregar(cenarioDoAndar(chave)?.arquivo)
-}
-
-/**
- * Entra no Abismo: o mesmo palco da caçada, com o cenário do primeiro andar
- * e o personagem entrando pela esquerda.
- */
-export async function irAoAbismo(classe, chave) {
+async function entrarEmCampo(cena, classe, chave, distancia) {
   if (!estado.arte) return
   const heroi = spriteDaClasse(classe)
-  const cena = cenarioDoAndar(chave)
-  if (!heroi || !cena) return
+  const dados = dadosDoCenario(chave, cena)
+  if (!heroi) return
 
-  await Promise.all([tentarCarregar(cena.arquivo), tentarCarregar(estado.arte.lutadores[heroi].arquivo)])
+  await Promise.all([
+    ...arquivosDoCenario(dados).map(tentarCarregar),
+    tentarCarregar(estado.arte.lutadores[heroi].arquivo),
+  ])
 
-  estado.abismo = { chave, anterior: null, trocouEm: 0 }
+  estado.cenario = { chave, anterior: null, trocouEm: 0 }
   estado.monstro = null
   estado.caidos = []
   estado.flutuantes = []
   estado.camera.x = 0
   estado.heroi = criarLutador(heroi, { x: -70, virado: 1 })
-  caminhar(estado.heroi, POSTO_DO_HEROI + 170)
+  caminhar(estado.heroi, POSTO_DO_HEROI + distancia)
 
-  if (estado.cena !== 'abismo') await trocarCena('abismo')
+  if (estado.cena !== cena) await trocarCena(cena)
 }
 
+/** Entra na rota, no cenário do ato em que o personagem está. */
+export const irParaOAto = (classe, chave) => entrarEmCampo('rota', classe, chave, 260)
+
+/** Entra no Abismo, no cenário do primeiro andar da descida. */
+export const irAoAbismo = (classe, chave) => entrarEmCampo('abismo', classe, chave, 170)
+
 /**
- * O andar seguinte: o herói segue andando e, se a descida mudou de faixa de
- * profundidade, o cenário novo entra por cima do velho sem piscar.
+ * Segue viagem: o herói caminha mais um trecho e, se o lugar mudou, o
+ * cenário novo entra por cima do velho sem piscar preto no meio.
+ *
+ * É o mesmo movimento para a fase seguinte da rota e para o andar seguinte
+ * do Abismo. Passar a mesma chave de sempre só faz o herói andar.
  */
-export function descerUmAndar(chave) {
-  if (estado.cena !== 'abismo' || !estado.heroi) return
+export function seguirViagem(chave = estado.cenario.chave) {
+  if (!palcoEmCena() || !estado.heroi) return
 
   if (estado.monstro?.caiuEm) estado.caidos.push(estado.monstro)
   estado.monstro = null
+  // Quem apanhou na fase anterior levanta antes de seguir.
   estado.heroi.caiuEm = 0
-  caminhar(estado.heroi, posicao(estado.heroi, agora()) + 200)
+  caminhar(estado.heroi, posicao(estado.heroi, agora()) + 215)
 
-  if (chave && chave !== estado.abismo.chave && cenarioDoAndar(chave)) {
-    tentarCarregar(cenarioDoAndar(chave).arquivo)
-    estado.abismo = { chave, anterior: estado.abismo.chave, trocouEm: agora() }
+  if (chave && chave !== estado.cenario.chave && dadosDoCenario(chave)) {
+    for (const arquivo of arquivosDoCenario(dadosDoCenario(chave))) tentarCarregar(arquivo)
+    estado.cenario = { chave, anterior: estado.cenario.chave, trocouEm: agora() }
   }
 }
 
-/**
- * Já está no cenário: o herói caminha mais um trecho antes do próximo bicho.
- * O que ficou caído continua caído — sai de cena quando a câmera passa.
- */
-export function andarUmTrecho() {
-  if (!estado.heroi) return
-  if (estado.monstro?.caiuEm) estado.caidos.push(estado.monstro)
-  estado.monstro = null
-  // Quem apanhou na caçada anterior levanta antes de seguir.
-  estado.heroi.caiuEm = 0
-  caminhar(estado.heroi, posicao(estado.heroi, agora()) + 230)
-}
+/** Qual cenário está em cena agora. */
+export const cenarioEmCena = () => estado.cenario.chave
 
 /** O bicho entra pela direita e para na distância de luta. */
 export async function entrarOMonstro(especie) {
@@ -444,52 +450,53 @@ export function fimDaLuta({ venceu }) {
 
 // --------------------------------------------------------- desenho
 
-const dadosDaBatalha = () => estado.arte?.cenario?.batalha
+/** O cenário em cena: o do ato da rota, ou o do andar do Abismo. */
+const cenarioAtual = () => dadosDoCenario(estado.cenario.chave)
 
-/** O cenário em cena: as ruínas da caçada ou o andar do Abismo. */
-const cenarioAtual = () =>
-  estado.cena === 'abismo' ? cenarioDoAndar(estado.abismo.chave) : dadosDaBatalha()
+/** O zoom depende da forma: em camadas a câmera anda por dentro do panorama. */
+const zoomDe = (dados) => (dados?.camadas ? ZOOM : ZOOM_INTEIRO)
 
-const panoramaAltura = () => ALTURA * (estado.cena === 'abismo' ? ZOOM_DO_ABISMO : ZOOM)
-const panoramaTopo = () => ALTURA - panoramaAltura()
-const panoramaLargura = () => panoramaAltura() * (cenarioAtual()?.proporcao ?? 2)
-const linhaDoChao = () => panoramaTopo() + panoramaAltura() * (cenarioAtual()?.linhaDoChao ?? 0.94)
-
-/** As ruínas da caçada: camadas empilhadas, cada uma no seu ritmo. */
-function desenharRuinas(ctx) {
-  const dados = dadosDaBatalha()
-  const alturaP = panoramaAltura()
-  const topo = panoramaTopo()
-  const largura = panoramaLargura()
-
-  for (const camada of dados.camadas) {
-    const img = pronta(camada.arquivo)
-    if (!img) continue
-    repetir(ctx, img, -estado.camera.x * camada.velocidade, topo + alturaP * camada.de, largura, alturaP * (camada.ate - camada.de))
-  }
+const panoramaAltura = (dados = cenarioAtual()) => ALTURA * zoomDe(dados)
+const panoramaTopo = (dados = cenarioAtual()) => ALTURA - panoramaAltura(dados)
+const linhaDoChao = () => {
+  const dados = cenarioAtual()
+  return panoramaTopo(dados) + panoramaAltura(dados) * (dados?.linhaDoChao ?? 0.94)
 }
 
 /**
- * O andar do Abismo: uma imagem só, repetida enquanto o personagem anda —
- * é a repetição que dá a sensação de movimento, já que aqui não há camadas
- * para fazer parallax. Quando a descida muda de profundidade, o cenário
- * novo entra por cima do velho, sem piscar preto no meio.
+ * Um panorama desenhado, repetido enquanto o personagem anda — é a
+ * repetição que dá a sensação de movimento.
+ *
+ * Em camadas, cada uma anda no seu ritmo e sai o parallax; inteiriço, é uma
+ * imagem só. `opacidade` é o que faz a passagem de um lugar para o outro:
+ * o novo aparece por cima do velho em vez de piscar preto no meio.
  */
-function desenharAbismo(ctx, t) {
-  const alturaP = panoramaAltura()
-  const topo = panoramaTopo()
-  const largura = panoramaLargura()
+function desenharPanorama(ctx, dados, opacidade = 1) {
+  if (!dados) return
+  const alturaP = panoramaAltura(dados)
+  const topo = panoramaTopo(dados)
+  const largura = alturaP * (dados.proporcao ?? 2)
 
-  const trocando = estado.abismo.anterior && t - estado.abismo.trocouEm < TROCA_DE_ANDAR
-  if (trocando) {
-    const velho = pronta(cenarioDoAndar(estado.abismo.anterior)?.arquivo)
-    if (velho) repetir(ctx, velho, -estado.camera.x, topo, largura, alturaP)
+  ctx.globalAlpha = opacidade
+
+  if (dados.camadas) {
+    for (const camada of dados.camadas) {
+      const img = pronta(camada.arquivo)
+      if (!img) continue
+      repetir(
+        ctx,
+        img,
+        -estado.camera.x * camada.velocidade,
+        topo + alturaP * camada.de,
+        largura,
+        alturaP * (camada.ate - camada.de),
+      )
+    }
+  } else {
+    const img = pronta(dados.arquivo)
+    if (img) repetir(ctx, img, -estado.camera.x, topo, largura, alturaP)
   }
 
-  const img = pronta(cenarioAtual()?.arquivo)
-  if (!img) return
-  ctx.globalAlpha = trocando ? limitar((t - estado.abismo.trocouEm) / TROCA_DE_ANDAR, 0, 1) : 1
-  repetir(ctx, img, -estado.camera.x, topo, largura, alturaP)
   ctx.globalAlpha = 1
 }
 
@@ -501,8 +508,13 @@ function desenharCena(ctx, t) {
   ctx.fillStyle = estado.cena === 'abismo' ? '#05040a' : '#0b0a12'
   ctx.fillRect(0, 0, LARGURA, ALTURA)
 
-  if (estado.cena === 'abismo') desenharAbismo(ctx, t)
-  else desenharRuinas(ctx)
+  const trocando = estado.cenario.anterior && t - estado.cenario.trocouEm < TROCA_DE_CENARIO
+  if (trocando) desenharPanorama(ctx, dadosDoCenario(estado.cenario.anterior))
+  desenharPanorama(
+    ctx,
+    cenarioAtual(),
+    trocando ? limitar((t - estado.cenario.trocouEm) / TROCA_DE_CENARIO, 0, 1) : 1,
+  )
 
   estado.caidos = estado.caidos.filter((c) => c.x - estado.camera.x > -140)
   for (const lutador of [...estado.caidos, estado.heroi, estado.monstro].filter(Boolean).sort((a, b) => a.x - b.x)) {

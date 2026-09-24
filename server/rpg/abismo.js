@@ -17,29 +17,16 @@ import { comoLutador, efeitosDe } from './encontro.js'
 import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { darFeitico, sortearFeitico } from './feiticos.js'
 import { RARIDADES, criarItem, tiposDaClasse } from './itens.js'
-import { atributos, darGold, definirVida, ferir, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
+import { atributos, darGold, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
 import { xpComPrestigio } from './prestigio.js'
 import { atributosDeMonstro } from './monstros.js'
+import { chaveDeArte } from './arte.js'
 
 const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
 
-/**
- * A chave da arte de um nome: minúsculo, sem acento, hífen no lugar do
- * espaço.
- *
- * É o que liga o habitante e a profundidade aos arquivos de `public/arte`:
- * "Vigia do Poço" vira `vigia-do-poco`, que é como a folha está nomeada em
- * `Assets/inimigos/chefes abismo`. A mesma conta acontece do outro lado, em
- * scripts/arte.js — renomear um habitante aqui pede renomear a folha lá,
- * senão ele entra em cena com o sprite de reserva.
- */
-export const chaveDeArte = (nome) =>
-  String(nome)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+// A chave que liga o habitante, a profundidade e o ato aos arquivos de
+// `public/arte` mora em rpg/arte.js — a rota usa a mesma conta.
+export { chaveDeArte }
 
 /**
  * Os moradores do Abismo. Ciclam conforme a descida: quem chega fundo
@@ -255,8 +242,6 @@ export function descer(player, sorte = Math.random) {
     }
   }
 
-  // Sai do Abismo carregado nos bracos: ferido, como qualquer derrota.
-  ferir(player)
   premio.xp = xpComPrestigio(player, premio.xp)
   const subiu = ganharXp(player, premio.xp)
   store.save()

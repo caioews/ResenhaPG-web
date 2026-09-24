@@ -3,7 +3,6 @@ import { config } from '../config.js'
 import * as store from '../store.js'
 import { atributosBase, classePodeUsar } from './classes.js'
 import { SLOTS, TIPOS, bonusFinal } from './itens.js'
-import { ehNivelDeBoss, proximoBoss } from './monstros.js'
 
 /** XP de combate para sair de um nivel para o proximo. */
 export const xpParaSubir = (nivel) => Math.round(55 * Math.pow(nivel, 1.15))
@@ -68,136 +67,38 @@ export function atributosDaClasse(player) {
 // ------------------------------------------------------------------ vida
 
 /**
- * A vida regenera sozinha com o tempo, entao nao precisa de comando para
- * descansar: o valor guardado e recalculado toda vez que alguem olha.
- */
-/** A regeneracao passiva: 5% do maximo por minuto desde que a vida foi gravada. */
-function regeneracaoPassiva(ficha, maximo) {
-  const minutos = (Date.now() - (ficha.hpEm || Date.now())) / 60_000
-  return ficha.hp + maximo * (config.rpg.regenPorMinuto * minutos)
-}
-
-export function vidaAtual(player) {
-  const maximo = atributos(player).hp
-  const ficha = player.rpg
-
-  if (ficha.hp === null || ficha.hp === undefined) return maximo
-
-  // Descanso na fogueira: a vida sobe em RAMPA, do que havia quando o fogo
-  // foi aceso ate o maximo no instante em que o descanso termina. E uma
-  // divergencia deliberada do bot, onde a vida saltava de uma vez no fim.
-  //
-  // Continua sem temporizador: o que existe e o par (hp, hpEm) gravado no
-  // acender e o horario de termino. A conta e feita na leitura, entao o
-  // servidor pode cair e voltar no meio do descanso sem perder nada.
-  if (ficha.fogueiraAte) {
-    if (Date.now() >= ficha.fogueiraAte) return maximo
-
-    const inicio = ficha.hpEm || ficha.fogueiraAte
-    const duracao = ficha.fogueiraAte - inicio
-
-    if (duracao > 0) {
-      const andado = Math.min(1, Math.max(0, (Date.now() - inicio) / duracao))
-      const naFogueira = ficha.hp + (maximo - ficha.hp) * andado
-
-      // Fica a maior das duas contas. Garante que sentar na fogueira nunca
-      // renda menos que ficar de pe — o que aconteceria se alguem
-      // configurasse um descanso muito longo.
-      const melhor = Math.max(naFogueira, regeneracaoPassiva(ficha, maximo))
-      return Math.max(0, Math.min(maximo, Math.round(melhor)))
-    }
-  }
-
-  return Math.max(0, Math.min(maximo, Math.round(regeneracaoPassiva(ficha, maximo))))
-}
-
-export function definirVida(player, valor) {
-  player.rpg.hp = Math.max(0, Math.round(valor))
-  player.rpg.hpEm = Date.now()
-  store.save()
-}
-
-export const feridoRestante = (player) => Math.max(0, (player.rpg.feridoAte ?? 0) - Date.now())
-
-/** Quanto falta do descanso na fogueira. 0 = nao esta descansando. */
-export const descansoRestante = (player) => Math.max(0, (player.rpg.fogueiraAte ?? 0) - Date.now())
-
-/** Senta na fogueira. Devolve o horario em que o descanso termina. */
-export function acenderFogueira(player, minutos = config.rpg.fogueiraMinutos) {
-  // Grava a vida no instante em que o fogo e aceso: e desse ponto que a
-  // rampa de vidaAtual() parte, e e por isso que gravar vem primeiro.
-  definirVida(player, vidaAtual(player))
-  player.rpg.fogueiraAte = Date.now() + minutos * 60_000
-  store.save()
-  return player.rpg.fogueiraAte
-}
-
-/**
- * Levanta da fogueira, congelando o que ela deu ate aqui.
+ * A vida fora de combate e SEMPRE cheia.
  *
- * Levantar antes da hora nao perde o que a rampa ja tinha subido — so para
- * de subir. Gravar antes de zerar `fogueiraAte` importa: e vidaAtual() que
- * sabe calcular a rampa, e ela depende desse campo.
+ * Isso e consequencia direta da rota (rpg/rota.js): a fase e que e a prova,
+ * e ela comeca do zero toda vez. Vencer uma fase leva a proxima com a vida
+ * inteira; perder devolve o personagem a fase anterior, tambem inteiro. Raid,
+ * Abismo, masmorra, evento e duelo entram cheios pelo mesmo motivo.
+ *
+ * Por isso nao ha mais regeneracao com relogio, fogueira, pocao, bandagem
+ * nem estado ferido: eles existiam para administrar a vida ENTRE duas
+ * lutas, e entre duas lutas agora nao ha o que administrar. A vida continua
+ * importando muito — so que dentro da fase, onde o desgaste de um inimigo
+ * para o outro e o que decide se a horda cai ou nao.
  */
-export function levantarDaFogueira(player) {
-  const terminou = Boolean(player.rpg.fogueiraAte) && Date.now() >= player.rpg.fogueiraAte
-
-  if (player.rpg.fogueiraAte) definirVida(player, vidaAtual(player))
-
-  player.rpg.fogueiraAte = 0
-  store.save()
-  return terminou
-}
-
-export function ferir(player) {
-  player.rpg.feridoAte = Date.now() + config.rpg.feridoMinutos * 60_000
-  definirVida(player, 1)
-}
-
-export function curar(player, fracao) {
-  const maximo = atributos(player).hp
-  const antes = vidaAtual(player)
-  definirVida(player, Math.min(maximo, antes + maximo * fracao))
-  return vidaAtual(player) - antes
-}
+export const vidaAtual = (player) => atributos(player).hp
 
 // ------------------------------------------------------------------ nivel
 
-/**
- * Soma XP de combate. O nivel trava nos marcos de boss ate o jogador
- * derrotar o chefe daquele marco — o XP continua entrando, so nao sobe.
- */
+/** Soma XP de combate e devolve os niveis que subiu. */
 export function ganharXp(player, quanto) {
   const ficha = player.rpg
   ficha.xp += quanto
 
   const subiu = []
   while (ficha.xp >= xpParaSubir(ficha.nivel)) {
-    if (bloqueadoPorBoss(player)) break
     ficha.xp -= xpParaSubir(ficha.nivel)
     ficha.nivel++
     subiu.push(ficha.nivel)
-
-    if (ehNivelDeBoss(ficha.nivel) && !ficha.bossesVencidos.includes(ficha.nivel)) {
-      ficha.bossPendente = ficha.nivel
-      break
-    }
   }
 
   store.save()
   return subiu
 }
-
-export const bloqueadoPorBoss = (player) => Boolean(player.rpg.bossPendente)
-
-export function vencerBoss(player, nivelMarco) {
-  const ficha = player.rpg
-  if (!ficha.bossesVencidos.includes(nivelMarco)) ficha.bossesVencidos.push(nivelMarco)
-  ficha.bossPendente = 0
-  store.save()
-}
-
-export const proximoMarco = (player) => proximoBoss(player.rpg.nivel)
 
 // -------------------------------------------------------------- inventario
 
@@ -232,7 +133,7 @@ export function itemEquipado(player, slot) {
 
 export const estaEquipado = (player, uid) => Object.values(player.rpg.equipado).includes(uid)
 
-/** Minusculo e sem acento, para "pocao" achar "Poção". */
+/** Minusculo e sem acento, para "cajado" achar "Cajado de Prata". */
 const semAcento = (texto) =>
   String(texto ?? '')
     .toLowerCase()

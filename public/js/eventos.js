@@ -17,6 +17,7 @@ let relogio = null
 /** O que o app.js empresta: sem isso este arquivo teria de importá-lo. */
 const ganchos = {
   mostrarEncontro: async () => {},
+  entrarEmCena: async () => {},
   atualizarFicha: async () => {},
 }
 
@@ -223,7 +224,10 @@ async function narrarResultado({ evento, ausentes = [], raid, encontro, bonus, b
     await narrarRaidCompleta(raid, { cena: 'Evento', abertura: forte(evento.chamada) })
   } else if (encontro) {
     definirCena('Evento')
-    await ganchos.mostrarEncontro(encontro, false)
+    // O palco também mostra: a criatura da Fenda entra onde o personagem
+    // estiver, sem mexer na posição dele na rota.
+    await ganchos.entrarEmCena(encontro)
+    await ganchos.mostrarEncontro(encontro)
     if (bonus?.xp || bonus?.gold) {
       rico(
         `${evento.emoji} A ${evento.nome.toLowerCase()} paga o dobro: +`,

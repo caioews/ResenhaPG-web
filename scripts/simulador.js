@@ -18,7 +18,8 @@ import { CLASSES, NOMES_DE_CLASSE, atributosBase, especialidadesDe } from '../se
 import { lutar } from '../server/rpg/combate.js'
 import { efeitosDaClasse } from '../server/rpg/habilidades.js'
 import { RARIDADES, TIPOS, criarItem } from '../server/rpg/itens.js'
-import { criarBoss, sortearMonstro } from '../server/rpg/monstros.js'
+import { sortearMonstro } from '../server/rpg/monstros.js'
+import { criarChefeDoAto, faseDoIndice, faseDoNivel, forcaDaFase } from '../server/rpg/rota.js'
 
 const RODADAS = Number(process.env.RODADAS ?? 1500)
 
@@ -69,6 +70,20 @@ export function taxaDeVitoria(jogador, fabrica, rodadas = RODADAS) {
 const pct = (n) => `${(n * 100).toFixed(0)}%`.padStart(4)
 
 /**
+ * Em que ponto da rota um nivel se encaixa, e o chefe que espera por la.
+ *
+ * A dificuldade deixou de sair do nivel do jogador e passou a sair da FASE
+ * (server/rpg/rota.js): quem quer saber se o nivel 60 esta duro precisa
+ * medir contra a fase em que o nivel 60 cai, nao contra um monstro nivel 60
+ * qualquer. E o que esta funcao faz.
+ */
+export function pontoDaRota(nivel) {
+  const indice = faseDoNivel(nivel)
+  const { ato, fase } = faseDoIndice(indice)
+  return { indice, ato, fase, forca: forcaDaFase(indice), chefe: criarChefeDoAto(ato, indice) }
+}
+
+/**
  * Qual elenco usar num nivel: o degrau mais alto que ja estaria aberto.
  * Abaixo de 50 e a classe base; dali para cima, especialidade, maestria e
  * apoteose conforme os niveis do config.
@@ -88,21 +103,20 @@ function elencoPara(nivel) {
 function tabela(niveis, raridades) {
   for (const raridade of raridades) {
     console.log(`\n### equipamento ${RARIDADES[raridade].nome} ${RARIDADES[raridade].emoji}`)
-    console.log('nível  classe                    comum  elite  chefe')
+    console.log('nível  fase   classe                    comum  elite  chefe')
 
     for (const nivel of niveis) {
+      const ponto = pontoDaRota(nivel)
       for (const classeId of elencoPara(nivel)) {
         const eu = referencia(classeId, nivel, raridade)
 
-        const comum = taxaDeVitoria(eu, () => sortearMonstro(nivel, 0))
-        const elite = taxaDeVitoria(eu, () => sortearMonstro(nivel, 1))
-        const marco = Math.floor(nivel / 5) * 5
-        const chefe = criarBoss(marco)
-        const boss = chefe ? taxaDeVitoria(eu, () => chefe) : null
+        const comum = taxaDeVitoria(eu, () => sortearMonstro(nivel, 0, Math.random, { forca: ponto.forca, daRota: true }))
+        const elite = taxaDeVitoria(eu, () => sortearMonstro(nivel, 1, Math.random, { forca: ponto.forca, daRota: true }))
+        const boss = taxaDeVitoria(eu, () => ponto.chefe)
 
         console.log(
-          `${String(nivel).padStart(4)}   ${CLASSES[classeId].nome.padEnd(24)} ${pct(comum)}   ${pct(elite)}  ` +
-            `${boss === null ? '   —' : pct(boss)}`,
+          `${String(nivel).padStart(4)}   ${`${ponto.ato}-${ponto.fase}`.padStart(5)}  ` +
+            `${CLASSES[classeId].nome.padEnd(24)} ${pct(comum)}   ${pct(elite)}  ${pct(boss)}`,
         )
       }
     }
@@ -112,15 +126,14 @@ function tabela(niveis, raridades) {
 /** Media da taxa de vitoria de todo o elenco de um nivel, por alvo. */
 export function medias(nivel, raridade) {
   const elenco = elencoPara(nivel)
-  const marco = Math.floor(nivel / 5) * 5
-  const chefe = criarBoss(marco)
+  const ponto = pontoDaRota(nivel)
   const soma = { comum: 0, elite: 0, boss: 0 }
 
   for (const classeId of elenco) {
     const eu = referencia(classeId, nivel, raridade)
-    soma.comum += taxaDeVitoria(eu, () => sortearMonstro(nivel, 0))
-    soma.elite += taxaDeVitoria(eu, () => sortearMonstro(nivel, 1))
-    soma.boss += chefe ? taxaDeVitoria(eu, () => chefe) : 0
+    soma.comum += taxaDeVitoria(eu, () => sortearMonstro(nivel, 0, Math.random, { forca: ponto.forca, daRota: true }))
+    soma.elite += taxaDeVitoria(eu, () => sortearMonstro(nivel, 1, Math.random, { forca: ponto.forca, daRota: true }))
+    soma.boss += taxaDeVitoria(eu, () => ponto.chefe)
   }
 
   return {

@@ -1,6 +1,10 @@
 /**
- * A loja do bot: poções, bandagem, um equipamento básico e uma oferta especial
- * sorteada de tempos em tempos.
+ * A loja: um equipamento básico e uma oferta especial sorteada de tempos em
+ * tempos.
+ *
+ * Poção e bandagem saíram da prateleira junto com o que elas resolviam: a
+ * vida fora de combate é sempre cheia (rpg/jogador.js), e não há mais nada
+ * para curar entre duas lutas.
  *
  * A loja compra barato e vende caro de propósito. É essa diferença que faz a
  * negociação entre jogadores valer a pena: vender para outra pessoa quase
@@ -9,10 +13,6 @@
 import { config } from '../config.js'
 import * as store from '../store.js'
 import { criarItem, precoDeReferencia, tiposDaClasse } from './itens.js'
-
-export const POCAO_PEQUENA = { tipo: 'pocao', nome: 'Poção Pequena', emoji: '🧪', cura: 0.4 }
-export const POCAO_GRANDE = { tipo: 'pocao', nome: 'Poção Grande', emoji: '⚗️', cura: 1 }
-export const BANDAGEM = { tipo: 'bandagem', nome: 'Bandagem', emoji: '🩹', tiraFerimento: true }
 
 /**
  * Pesos da raridade na oferta especial — quanto mais raro, mais difícil.
@@ -26,10 +26,6 @@ export const PESOS_DA_OFERTA = {
   epico: 10,
   lendario: 3,
 }
-
-const novoUid = () => Math.random().toString(36).slice(2, 8)
-
-const consumivel = (modelo) => ({ uid: novoUid(), slot: null, ...modelo })
 
 /** Quanto a loja PAGA por um item do jogador. */
 export const precoDeCompra = (item) =>
@@ -92,27 +88,6 @@ export function prateleira(player) {
   const itens = [
     {
       id: 1,
-      nome: `${POCAO_PEQUENA.emoji} ${POCAO_PEQUENA.nome}`,
-      descricao: 'Recupera 40% da vida',
-      preco: config.rpg.precoPocaoPequena,
-      criar: () => consumivel(POCAO_PEQUENA),
-    },
-    {
-      id: 2,
-      nome: `${POCAO_GRANDE.emoji} ${POCAO_GRANDE.nome}`,
-      descricao: 'Recupera toda a vida',
-      preco: config.rpg.precoPocaoGrande,
-      criar: () => consumivel(POCAO_GRANDE),
-    },
-    {
-      id: 3,
-      nome: `${BANDAGEM.emoji} ${BANDAGEM.nome}`,
-      descricao: 'Tira o estado ferido na hora',
-      preco: config.rpg.precoBandagem,
-      criar: () => consumivel(BANDAGEM),
-    },
-    {
-      id: 4,
       nome: `⚒️ Equipamento básico (nível ${nivel})`,
       descricao: 'Uma peça comum sorteada entre as que sua classe usa',
       preco: config.rpg.precoEquipamentoPorNivel * nivel,
@@ -127,7 +102,7 @@ export function prateleira(player) {
   const oferta = ofertaEspecial(player)
   if (oferta.item) {
     itens.push({
-      id: 5,
+      id: 2,
       especial: true,
       item: oferta.item,
       expiraEm: oferta.expiraEm,

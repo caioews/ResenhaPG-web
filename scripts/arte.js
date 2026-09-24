@@ -17,11 +17,13 @@
  * `Assets/` não vai para o Git (é pesado e é fonte, não produto). Só o que
  * sai daqui, já otimizado, é versionado.
  */
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { ESPECIES } from '../server/rpg/monstros.js'
+import { ATOS } from '../server/rpg/rota.js'
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ENTRADA = path.join(raiz, 'Assets')
@@ -1260,6 +1262,119 @@ async function cenaInteira(arquivo, { recorteDoTopo = 0, largura }) {
   return { buffer, proporcao: width / altura }
 }
 
+/**
+ * As camadas de um cenário desenhado em partes. Só a primeira pasta veio
+ * assim (Ruínas de Valkhar, o ato 1): céu, estruturas ao fundo, estruturas
+ * de perto e chão, cada uma andando numa velocidade — é o parallax.
+ *
+ * Cada camada vem com o chão desenhado no rodapé; se todas ficassem
+ * inteiras, o mesmo chão apareceria três vezes, em velocidades diferentes,
+ * assim que a câmera andasse. Cada uma fica só com a parte que lhe cabe, e o
+ * manifesto guarda onde ela entra no panorama — é o que deixa o cliente
+ * empilhar tudo alinhado.
+ */
+const CAMADAS_DO_CENARIO = [
+  { nome: 'ceu', de: 0, ate: 0.7, velocidade: 0.18, fonte: 'CÉU' },
+  { nome: 'longe', de: 0, ate: 0.7, velocidade: 0.42, fonte: 'ESTRUTURAS MAIS', transparente: true },
+  { nome: 'perto', de: 0, ate: 0.72, velocidade: 0.68, fonte: 'ESTRUTURAS.', transparente: true },
+  { nome: 'chao', de: 0.66, ate: 1, velocidade: 1, fonte: 'CÉU', desvanecerTopo: 0.16 },
+]
+
+/**
+ * O cenário de um ato da rota.
+ *
+ * Duas formas cabem na mesma pasta, e qual é decidido pelo conteúdo dela:
+ *
+ *   em camadas — tem um arquivo começando por "CÉU". Sai um panorama com
+ *                parallax, como o do ato 1.
+ *   inteiriço  — qualquer outra imagem. Sai uma imagem só, que o palco
+ *                repete espelhada enquanto o personagem anda. É o formato
+ *                dos andares do Abismo, e é o que basta para um ato.
+ *
+ * O palco desenha os dois a partir do manifesto, sem saber de antemão qual
+ * é qual: pôr uma imagem nova numa pasta de ato e rodar `npm run arte`
+ * basta para o ato ganhar cenário.
+ */
+/**
+ * Cenários inteiriços já escritos, por conteúdo do arquivo de origem.
+ *
+ * Os atos que ainda não têm imagem recebem todos a MESMA placa preta, e sem
+ * isto ela sairia 40 vezes em `public/arte`. Com isto sai uma vez e os
+ * outros apontam para ela; quando cada ato ganhar a sua imagem, cada um
+ * volta a ter o seu arquivo sozinho, sem ninguém precisar mexer aqui.
+ */
+const cenariosJaEscritos = new Map()
+
+/** A impressão digital de uma imagem de cenário: conteúdo + como ela é cortada. */
+const impressaoDe = (fonte, ato) =>
+  `${createHash('sha1').update(readFileSync(fonte)).digest('hex')}:${RECORTE_DO_TOPO[ato.cenario] ?? 0}`
+
+/** As impressões que mais de um ato usa. Preenchida antes do laço principal. */
+const compartilhados = new Set()
+
+/**
+ * Descobre, antes de escrever qualquer coisa, quais imagens se repetem entre
+ * atos. É o que permite dar ao arquivo compartilhado um nome que se explica.
+ */
+function acharCenariosCompartilhados(pastaDeCenario) {
+  const vistos = new Set()
+  for (const ato of ATOS) {
+    const pasta = pastaDeCenario.get(ato.cenario)
+    if (!pasta) continue
+    const arquivos = readdirSync(pasta).filter(ehImagem)
+    if (!arquivos.length || arquivos.some((n) => n.toUpperCase().startsWith('CÉU'))) continue
+
+    const impressao = impressaoDe(path.join(pasta, arquivos[0]), ato)
+    if (vistos.has(impressao)) compartilhados.add(impressao)
+    vistos.add(impressao)
+  }
+}
+
+async function cenarioDoAto(ato, pasta, escrever) {
+  const arquivos = readdirSync(pasta).filter(ehImagem)
+  if (!arquivos.length) return null
+
+  const comCamadas = arquivos.find((n) => n.toUpperCase().startsWith('CÉU'))
+  const linhaDoChao = LINHA_DO_CHAO[ato.cenario] ?? LINHA_DO_CHAO.padrao
+
+  if (comCamadas) {
+    const arquivoDe = (pedaco) => achar(pasta, (n) => n.toUpperCase().startsWith(pedaco))
+    const proporcao = await sharp(arquivoDe('CÉU')).metadata().then((m) => m.width / m.height)
+    const camadas = []
+
+    for (const c of CAMADAS_DO_CENARIO) {
+      const relativo = `cenario/ato-${ato.cenario}-${c.nome}.webp`
+      escrever(relativo, await camada(arquivoDe(c.fonte), { ...c, largura: 1600 }))
+      camadas.push({ arquivo: relativo, de: c.de, ate: c.ate, velocidade: c.velocidade })
+    }
+
+    // Proporção do panorama inteiro: as camadas são pedaços dele.
+    return { proporcao, linhaDoChao: LINHA_DO_CHAO[ato.cenario] ?? 0.94, camadas }
+  }
+
+  const fonte = path.join(pasta, arquivos[0])
+  const impressao = impressaoDe(fonte, ato)
+  const repetido = cenariosJaEscritos.get(impressao)
+  if (repetido) {
+    console.log(`  ${ato.nome.padEnd(32)} = ${path.basename(repetido.arquivo)}`)
+    return { ...repetido, linhaDoChao }
+  }
+
+  // O arquivo leva o nome do ATO quando é só dele, e o nome da IMAGEM quando
+  // vários atos dividem a mesma — senão a placa preta que 17 atos usam sairia
+  // batizada de "ato-portoes-de-malgor", que é só o primeiro da fila.
+  const relativo = compartilhados.has(impressao)
+    ? `cenario/ato-${chaveDeArte(path.basename(fonte))}.webp`
+    : `cenario/ato-${ato.cenario}.webp`
+  const feito = await cenaInteira(fonte, {
+    recorteDoTopo: RECORTE_DO_TOPO[ato.cenario] ?? 0,
+    largura: 1600,
+  })
+  escrever(relativo, feito.buffer)
+  cenariosJaEscritos.set(impressao, { arquivo: relativo, proporcao: feito.proporcao })
+  return { arquivo: relativo, proporcao: feito.proporcao, linhaDoChao }
+}
+
 async function principal() {
   if (!existsSync(ENTRADA)) throw new Error(`não achei a pasta ${ENTRADA}`)
   rmSync(SAIDA, { recursive: true, force: true })
@@ -1327,40 +1442,34 @@ async function principal() {
     }
   }
 
-  console.log('\nCenário')
-  const batalha = path.join(ENTRADA, 'CENARIOS', 'cenario de batalha')
-  const arquivoDe = (pedaco) => achar(batalha, (n) => n.toUpperCase().startsWith(pedaco))
+  console.log('\nCenário — os atos da rota')
 
-  // Cada camada vem com o chão desenhado no rodapé; se todas ficassem
-  // inteiras, o mesmo chão apareceria três vezes, em velocidades diferentes,
-  // assim que a câmera andasse. Cada uma fica só com a parte que lhe cabe, e
-  // o manifesto guarda onde ela entra no panorama — é o que deixa o cliente
-  // empilhar tudo alinhado.
-  const CAMADAS = [
-    { nome: 'ceu', de: 0, ate: 0.7, velocidade: 0.18, fonte: 'CÉU' },
-    { nome: 'longe', de: 0, ate: 0.7, velocidade: 0.42, fonte: 'ESTRUTURAS MAIS', transparente: true },
-    { nome: 'perto', de: 0, ate: 0.72, velocidade: 0.68, fonte: 'ESTRUTURAS.', transparente: true },
-    { nome: 'chao', de: 0.66, ate: 1, velocidade: 1, fonte: 'CÉU', desvanecerTopo: 0.16 },
-  ]
-
-  const proporcao = await sharp(arquivoDe('CÉU')).metadata().then((m) => m.width / m.height)
-  const camadas = []
-  for (const c of CAMADAS) {
-    const relativo = `cenario/batalha-${c.nome}.webp`
-    escrever(relativo, await camada(arquivoDe(c.fonte), { ...c, largura: 1600 }))
-    camadas.push({ arquivo: relativo, de: c.de, ate: c.ate, velocidade: c.velocidade })
+  // Um cenário por ato (server/rpg/rota.js), achado pelo NOME DA PASTA: a
+  // chave de arte de "Ruínas de Valkhar" é a mesma dos dois lados. Ato sem
+  // pasta não entra no manifesto, e o palco segue desenhando o cenário que
+  // já estava em cena — é o que deixa a rota inteira montada enquanto as
+  // imagens não chegam.
+  const pastaDeCenario = new Map()
+  for (const e of readdirSync(path.join(ENTRADA, 'CENARIOS'), { withFileTypes: true })) {
+    if (e.isDirectory()) pastaDeCenario.set(chaveDeArte(e.name), path.join(ENTRADA, 'CENARIOS', e.name))
   }
 
-  manifesto.cenario.batalha = {
-    // Proporção do panorama inteiro: as camadas são pedaços dele.
-    proporcao,
-    // Onde ficam os pés de quem está em cena, em fração da altura do panorama.
-    linhaDoChao: 0.94,
-    camadas,
+  acharCenariosCompartilhados(pastaDeCenario)
+
+  manifesto.cenario.atos = {}
+  for (const ato of ATOS) {
+    const pasta = pastaDeCenario.get(ato.cenario)
+    if (!pasta) {
+      console.log(`  (sem cenário: ${ato.nome})`)
+      continue
+    }
+    const feito = await cenarioDoAto(ato, pasta, escrever)
+    if (feito) manifesto.cenario.atos[ato.cenario] = feito
   }
 
   // Os andares do Abismo: uma imagem por profundidade, e o palco troca de
   // uma para a outra conforme a descida muda de faixa.
+  console.log('\nCenário — o Abismo')
   const abismo = path.join(ENTRADA, 'CENARIOS', 'abismo')
   manifesto.cenario.abismo = {}
   for (const nome of readdirSync(abismo).filter(ehImagem)) {

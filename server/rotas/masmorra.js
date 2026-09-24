@@ -137,7 +137,7 @@ masmorraRotas.post(
     }
 
     const participantes = sala.participantes.map((id) => store.buscarPersonagem(id)).filter(Boolean)
-    // A condição é conferida de novo: alguém pode ter se ferido ou saído em
+    // A condição é conferida de novo: alguém pode ter saído em
     // expedição enquanto esperava na sala.
     for (const p of participantes) {
       const erro = masmorra.impedimento(p)

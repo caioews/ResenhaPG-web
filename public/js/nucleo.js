@@ -195,6 +195,45 @@ export function barra(classe, atual, maximo, rotulo) {
   )
 }
 
+// -------------------------------------------------- a vida em cena
+
+/**
+ * A vida que a ficha mostra ENQUANTO uma luta esta sendo narrada.
+ *
+ * A ficha vem pronta do servidor, e fora de combate a vida e sempre cheia —
+ * entao, sozinha, a barra lateral ficaria parada no maximo enquanto o placar
+ * da luta sangra. Quem narra avisa aqui a cada golpe e as duas passam a
+ * contar a mesma historia.
+ *
+ * `null` = nao ha luta em cena, e vale o que o servidor disse. E por isso que
+ * a barra volta sozinha ao maximo quando a fase acaba: ninguem precisa
+ * lembrar de desfazer nada.
+ */
+let vidaEmCena = null
+
+/** A vida que a ficha deve desenhar agora. */
+export const vidaDaFicha = (p) => (vidaEmCena === null ? p?.hp ?? 0 : vidaEmCena)
+
+/** Pinta a barra da ficha no lugar — redesenhar a ficha inteira piscaria. */
+function pintarVida(hp, hpMax) {
+  const alvo = document.querySelector('#ficha .barra.vida')
+  if (!alvo) return
+  alvo.querySelector('.preenchida').style.width = `${pct(hp, hpMax)}%`
+  alvo.querySelector('.rotulo').textContent = `${num(Math.max(0, hp))} / ${num(hpMax)}`
+}
+
+/** A luta mexeu na vida de quem esta jogando: a ficha acompanha. */
+export function mostrarVidaEmCena(hp, hpMax) {
+  vidaEmCena = Math.max(0, Math.round(hp))
+  pintarVida(vidaEmCena, hpMax)
+}
+
+/** Acabou a luta: a ficha volta a mostrar o que o servidor diz. */
+export function limparVidaEmCena() {
+  vidaEmCena = null
+  if (estado.p) pintarVida(estado.p.hp, estado.p.hpMax)
+}
+
 export function linhaDeBarra(sigla, classe, atual, maximo, rotulo) {
   return el(
     'div',
@@ -231,7 +270,7 @@ export function nomeDoItem(item) {
 }
 
 export function etiquetaDeRaridade(item) {
-  if (!item || item.consumivel) return null
+  if (!item) return null
   return el('span', { class: `etiqueta r-${item.raridade}` }, item.raridadeNome)
 }
 
@@ -265,7 +304,6 @@ export function linhaDeItem(
       etiquetaDeRaridade(item),
       item.nivel ? el('span', {}, `nv ${item.nivel}`) : null,
       item.nomeDoSlot ? el('span', {}, item.nomeDoSlot) : null,
-      item.consumivel ? el('span', {}, 'consumível') : null,
       textoDeBonus(item) ? el('span', { class: 'bonus' }, textoDeBonus(item)) : null,
       ...detalhes.map((d) => (d instanceof Node ? d : el('span', {}, d))),
     ),

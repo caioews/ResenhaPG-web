@@ -26,8 +26,8 @@ taxas de vitória sem ninguém perceber.
 | 75 habilidades declarativas (70 do bot + 5 passivas de classe base) e a regra de fusão de efeitos | `server/rpg/habilidades.js` |
 | Motor de combate (golpe, luta individual, luta em grupo) | `server/rpg/combate.js` |
 | 25 tipos de equipamento, raridades, materiais por nível, drop | `server/rpg/itens.js` |
-| 20 espécies, elites, 19 chefes de marco + rodízio infinito, escala de fim de jogo | `server/rpg/monstros.js` |
-| Encontro completo: recompensa, drop, titanita, feitiço, punição da derrota | `server/rpg/encontro.js` |
+| 20 espécies, elites, 19 chefes nomeados + rodízio infinito, escala de fim de jogo | `server/rpg/monstros.js` |
+| O que se leva para a luta e o que se tira de um inimigo caído | `server/rpg/encontro.js` |
 | O Abismo | `server/rpg/abismo.js` |
 | Raids (10 chefes em dois escalões, golpe em área) | `server/rpg/raid.js` |
 | PvP com ranking Elo | `server/rpg/pvp.js` |
@@ -49,7 +49,10 @@ mesmos.
 
 | O que mudou | No bot | Aqui |
 | --- | --- | --- |
-| **Fogueira** | a vida regenerava no ritmo normal e **saltava** para o máximo quando os minutos acabavam | a vida sobe **em rampa**, do que havia quando o fogo foi aceso até o máximo no instante do fim. Levantar antes da hora congela o que já subiu, em vez de perder |
+| **Caçar** | um monstro do seu nível por comando, sem fim e sem destino | a **rota**: 5 arcos × 10 atos × 10 fases, mais o ato final. Quem decide a dificuldade é a fase, não o seu nível. Ver [A rota](#a-rota-arcos-atos-e-fases) |
+| **Vida fora de combate** | regenerava com o relógio; fogueira, poção e bandagem administravam a espera | é **sempre cheia**. A fase começa inteira, o Abismo começa inteiro, a raid começa inteira. A vida importa *dentro* da fase, onde não volta entre um inimigo e o outro |
+| **Estado ferido, fogueira, poções e bandagens** | existiam | **saíram**. Eles resolviam o intervalo entre duas lutas, e esse intervalo deixou de existir. Quem tinha poção guardada simplesmente não a encontra mais (`store.js`, `itemAposentado`) |
+| **Travas de nível a cada 5 níveis** | o nível travava até o chefe do marco cair | **saíram**. Os 19 chefes viraram os **chefes de ato**, um por ato, sempre na fase 10 de 10. Quem trava a progressão agora é a fase, não o nível |
 | **Presente de item** | `/daritem` entregava na hora | vira uma oferta de preço 0, que ainda precisa ser aceita — assim ninguém recebe item com a mochila cheia |
 | **Clérigo no fim da árvore** | Ministro da Luz → Mão Viva do Divino (habilidade Mão Viva) | **A Última Luz** → **O Homem Mais Próximo de Deus** (habilidade **Milagre**). Os ids internos continuam os antigos, então quem já evoluiu não perde nada |
 | **Milagre** | — | regenera 2% por turno, leva 9% menos dano e soma a **cura do grupo**: em raid e evento de grupo, a cada turno dele, cura em 5% da vida máxima todos os aliados que ainda estão de pé |
@@ -60,11 +63,11 @@ mesmos.
 | **Baú** | — | 20 espaços fora da mochila, e mais espaços à venda um a um: 50 mil de gold o primeiro, 50 mil a mais a cada compra. Ver [Como se joga](#como-se-joga) |
 | **Balanceamento das classes** | as habilidades do bot | recalibradas por simulação para as classes de um mesmo degrau terem força parecida. Ver [Balanceamento das classes](#balanceamento-das-classes) |
 
-A rampa da fogueira continua sem temporizador nenhum: o que existe é o par
-(vida, instante) gravado no acender e o horário de término, e a conta é feita
-na leitura (`vidaAtual`, em `server/rpg/jogador.js`). O servidor pode cair e
-voltar no meio do descanso sem perder nada, e o navegador refaz exatamente a
-mesma conta a cada segundo só para a barra subir na tela.
+Tirar a regeneração com relógio simplificou a ficha inteira: `hp`, `hpEm`,
+`feridoAte` e `fogueiraAte` sumiram dela, e `vidaAtual()` (em
+`server/rpg/jogador.js`) virou uma linha. A vida continua sendo o recurso
+central do jogo — só que dentro da fase, onde o desgaste de uma onda para a
+outra é o que decide se a horda cai.
 
 ### Balanceamento das classes
 
@@ -111,7 +114,8 @@ No nível **250** aparece no menu, acima de "Status do personagem", o botão
 | --- | --- |
 | Todos os itens, equipados e na mochila | A árvore de evolução: volta para a classe base |
 | Gold, titanitas e feitiços | As habilidades da árvore (a passiva da classe base fica) |
-| Os chefes de marco já derrubados | O nível, que volta para 1 |
+| O recorde da rota (até onde já chegou) | O nível, que volta para 1 |
+| | A posição na rota, que volta para o ato 1, fase 1 |
 | Ranking de PvP, recorde do Abismo e o histórico | |
 
 Em troca, o contador sobe, e cada ponto vale para sempre:
@@ -122,9 +126,10 @@ Em troca, o contador sobe, e cada ponto vale para sempre:
 - **+30% em todo XP ganho** (`bonusXp`), em caçada, chefe, Abismo, raid,
   evento e expedição.
 
-Como os marcos de chefe já vencidos continuam vencidos, a subida de volta não
-trava em nenhum deles. É por isso que o segundo ciclo é rápido: equipamento de
-fim de jogo, sem travas de marco e com XP aumentado.
+A rota recomeça junto — um personagem de nível 1 não tem o que fazer no ato
+40 — mas o segundo ciclo é bem mais rápido: equipamento de fim de jogo na
+mochila desde a primeira fase, e XP aumentado. O recorde de até onde este
+personagem já chegou fica guardado; o prestígio não apaga isso.
 
 Quem prestigiou aparece com **⭐N** ao lado do nome na ficha, nos rankings e na
 tela de personagens, e o Ranking do servidor ganhou a aba **Prestígio**.
@@ -205,6 +210,27 @@ elite e chefe, imprimindo a taxa de vitória de cada cruzamento. Use
 mexer em algum número do `config.js`, rode isso antes de dar por encerrado.
 
 ```bash
+npm run rota
+```
+
+Joga a **rota inteira** por simulação, do ato 1 nível 1 até onde der: uma
+fase por vez, a horda completa, XP entrando, nível subindo e voltando uma
+fase toda vez que cai. Imprime, ato a ato, com que nível se chega lá e
+quantas fases foram precisas. É a régua de `config.rpg.cacada` — em especial
+do `escalaDeDificuldade`. Os botões também vêm por variável de ambiente, para
+comparar duas calibragens sem editar o arquivo no meio:
+
+```bash
+ESCALA=1.5 npm run rota      # e se a dificuldade subisse 50%?
+ATE=20 npm run rota          # só os 20 primeiros atos, para iterar rápido
+RARIDADE=raro npm run rota   # outro equipamento de referência
+```
+
+Na calibragem de hoje a rota inteira sai em **~1.800 fases**, do nível 1 ao
+506: os oito primeiros atos passam quase sem tropeço e a fricção aparece do
+nono em diante, entre 30 e 70 fases por ato.
+
+```bash
 npm run classes
 ```
 
@@ -224,6 +250,23 @@ Recorta a arte crua de `Assets/` e escreve `public/arte/`: os sprites com
 fundo transparente, os cenários em camadas e o `arte.json` que o palco lê. Só
 precisa rodar quando entrar arte nova — ver
 [O palco](#o-palco-cenários-personagens-e-animações).
+
+```bash
+npm run especificacao
+```
+
+Gera a **especificação técnica** do jogo em `dados/especificacao.html`: 31
+partes com as fórmulas, as decisões de balanceamento e todas as tabelas —
+classes, habilidades, itens, espécies, chefes, feitiços, a configuração
+inteira e a lista de rotas da API. As tabelas não são transcritas: saem dos
+mesmos módulos que o servidor carrega, então rodar de novo depois de mexer no
+jogo basta para o documento estar certo.
+
+Para o PDF, imprima o HTML com um navegador em modo headless:
+
+```bash
+msedge --headless --no-pdf-header-footer --print-to-pdf="Especificacao.pdf" "file:///CAMINHO/dados/especificacao.html"
+```
 
 ---
 
@@ -255,15 +298,17 @@ ResenhaPG web/
 │   ├── realtime.js     Chat, quem está on-line, avisos
 │   ├── rotas/          contas · combate · mochila · bau · cidade · social · mercado
 │   │                   · eventos · missoes · chefeMundial · masmorra · leilao · fotos
-│   └── rpg/            O motor, portado do bot (+ prestigio.js e bau.js, novos aqui)
+│   └── rpg/            O motor, portado do bot
+│                       (+ rota.js, cacada.js, prestigio.js e bau.js, novos aqui)
 ├── public/
 │   ├── index.html
 │   ├── css/estilo.css
-│   ├── js/             nucleo · narrativa · palco · paineis · perfil · eventos
-│   │                   · aventuras · som · app
+│   ├── js/             nucleo · narrativa · palco · mapa · paineis · perfil
+│   │                   · eventos · aventuras · som · app
 │   └── arte/           A arte pronta para o navegador (gerada; versionada)
 ├── Assets/             A arte crua, como saiu do gerador (não versionada)
-├── scripts/            conformidade.js · simulador.js · classes.js · arte.js · atualizar.sh
+├── scripts/            conformidade.js · simulador.js · rota.js · classes.js
+│                       · arte.js · especificacao.js · atualizar.sh
 └── dados/              O banco (criado sozinho; não versione)
 ```
 
@@ -728,9 +773,12 @@ Alguns que você talvez queira mexer:
 
 | Parâmetro | Padrão | Efeito |
 | --- | --- | --- |
-| `rpg.cooldownSummonSeconds` | `10` | Espera entre duas caçadas |
-| `rpg.fogueiraMinutos` | `1` | Quanto a rampa da fogueira leva para encher a vida |
-| `rpg.feridoMinutos` | `2` | Quanto tempo a derrota deixa o personagem ferido |
+| **`rpg.cacada.escalaDeDificuldade`** | **`1`** | **O botão da rota.** 1 é a rampa calibrada; 1,5 deixa o excedente 50% maior; 0 desliga a rampa e deixa só o nível da fase. Mexeu, rode `npm run rota` |
+| `rpg.cacada.nivelPorFase` | `0.5` | Quanto o nível do inimigo sobe por fase (0,5 = a fase 1 nasce no nível 1 e a 510, no 255) |
+| `rpg.cacada.forcaPorFase` | `0.001` | A rampa crua que o botão acima multiplica |
+| `rpg.cacada.inimigos` | `base 3` | Tamanho da horda de uma fase comum, e quanto ela cresce por fase e por ato |
+| `rpg.cacada.curaEntreInimigos` | `0.35` | O respiro entre uma onda e a seguinte. Em 0 a horda vira execução — ver o comentário no `config.js` |
+| `rpg.cacada.fasesPorAto` | `10` | Fases em cada ato. A última é sempre o chefe |
 | `rpg.ofertaMinutos` | `5` | Quanto uma oferta de item fica de pé |
 | `rpg.goldInicial` | `200` | Com o que o novato começa |
 | `rpg.tamanhoMochila` | `40` | Itens que cabem na mochila |
@@ -754,10 +802,6 @@ Alguns que você talvez queira mexer:
 | `eventos.intervaloMinimo` / `Maximo` | `60` / `180` | Minutos sorteados entre um evento e o próximo |
 | `eventos.inscricaoMinutos` | `3` | Quanto tempo a chamada fica aberta |
 
-> `fogueiraMinutos` e `feridoMinutos` estão em 1 e 2 (no bot eram 2 e 5) —
-> foram baixados para testar sem esperar. Suba de volta quando o servidor
-> entrar em uso de verdade, se quiser o ritmo original.
-
 Se a transferência de gold entre jogadores não fizer sentido no seu grupo
 (uma conta pode ter 10 personagens, e dá para empilhar gold em um deles),
 basta remover a rota `/mercado/pagar` em
@@ -766,8 +810,9 @@ painel.
 
 Depois de mexer em qualquer coisa do `rpg`, rode `npm run balance` e compare
 com os alvos do jogo: **~70%** de vitória contra monstro comum, **~55%**
-contra elite e **~50%** contra chefe de marco, com equipamento raro acima do
-nível 40.
+contra elite e **~50%** contra chefe, com equipamento raro acima do nível 40.
+Se mexeu em `rpg.cacada`, rode também `npm run rota` — é ela que diz se a
+rota continua sendo uma subida ou virou parede.
 
 ---
 
@@ -784,11 +829,13 @@ compra o terceiro item, `[3]` na mochila usa ou equipa o terceiro); sem
 painel, no menu de ações. `Esc` fecha o que estiver por cima. No celular as
 dicas `[n]` não aparecem — ocupariam a largura que o nome do item precisa.
 
-**O laço do jogo.** Caçar dá XP, gold e equipamento. A cada 5 níveis, a
-partir do 10, o nível **trava** até você derrubar o chefe daquele marco — o
-XP continua entrando, mas o nível não sobe. O gold vai para a loja, o
-ferreiro e o feiticeiro. Nos níveis 50, 150 e 200 abre o Rito, e cada degrau
-dá uma habilidade que **acumula** com as anteriores.
+**O laço do jogo.** "Ir à caçada" tira o personagem da taberna e ele não para
+mais: fase após fase, horda após horda, até você mandar voltar. Vencer leva à
+fase seguinte com a vida cheia; cair devolve à fase anterior, também com a
+vida cheia, e dali ele fica repetindo o que consegue vencer até você mandar
+seguir em frente. O gold vai para a loja, o ferreiro e o feiticeiro. Nos
+níveis 50, 150 e 200 abre o Rito, e cada degrau dá uma habilidade que
+**acumula** com as anteriores.
 
 **Em paralelo.** Expedições rendem com o navegador fechado. Raids juntam de 3
 a 10 pessoas contra um chefe grande. PvP é duelo com ranking Elo e aposta
@@ -810,9 +857,96 @@ minutos; **nada é retido** até o aceite: o item continua com quem vende e o
 gold com quem compra. Preço 0 é presente, e ainda assim precisa ser aceito.
 Gold avulso vai direto, sem aceite.
 
-**Estados que bloqueiam.** Ferido (5 min, ou uma bandagem), descansando na
-fogueira (2 min até a vida cheia), em expedição (não luta), travado por chefe
-(não sobe de nível). A vida regenera sozinha, 5% do máximo por minuto.
+**Vida.** Fora de combate é sempre cheia — não há o que administrar entre
+duas fases, e é por isso que poção, bandagem, fogueira e o estado ferido
+saíram do jogo. Dentro da fase ela é tudo: só volta um respiro entre um
+inimigo e o outro, e o que a primeira onda tirou pesa contra a última.
+
+**O que bloqueia.** Só a expedição: enquanto o personagem está fora, ele não
+caça, não duela e não desce o Abismo.
+
+---
+
+## A rota: arcos, atos e fases
+
+O jogo inteiro acontece num caminho em linha reta. **Cinco arcos**, dez atos
+cada, dez fases cada ato — mais o ato final, o 51. São **510 fases**, e a
+fase é a única coisa que decide o que aparece: o nível do inimigo, quantos
+vêm e quanto eles batem saem dela, nunca do nível de quem está jogando.
+
+| Arco | Atos | O que é |
+| --- | --- | --- |
+| I — Terras Perdidas | 1 a 10 | De Valkhar a Arkanis |
+| II — Fronteira Sombria | 11 a 20 | De Umbrafolha aos Portões de Malgor |
+| III — Terras Corrompidas | 21 a 30 | Das Planícies Escarlates ao Bastião de Vharok |
+| IV — Domínio Infernal | 31 a 40 | Dos Campos de Lava à Cidadela de Azrakhul |
+| V — Profundezas do Abismo | 41 a 50 | Das Fendas do Vazio ao Caminho do Fim dos Tempos |
+| Ato Final | 51 | Coração do Abismo Demoníaco |
+
+A lista inteira, com os nomes de cada ato, está em
+[server/rpg/rota.js](server/rpg/rota.js) — é de lá que sai tudo, inclusive o
+nome da pasta de cenário que cada ato procura.
+
+### Como uma fase acontece
+
+"Ir à caçada" tira o personagem da taberna e ele **não para mais**. Uma volta
+do laço é uma fase inteira:
+
+1. Nas fases **1 a 9** vem uma horda de três a seis inimigos, um atrás do
+   outro, sem parar. A vida só volta um respiro entre um e o outro — o que a
+   primeira onda tirou pesa contra a última, e é esse desgaste que faz a fase
+   ser uma prova em vez de três lutas soltas.
+2. A fase **10 de 10** é o **chefe do ato**. São os mesmos 19 chefes de
+   antes, redistribuídos: o Rei Goblin fecha o ato 1, o Primordial fecha o
+   19, e dali para frente eles voltam como eco, cada volta com uma estrela a
+   mais. O ato 51 tem chefe próprio.
+3. **Vencendo**, a rota anda sozinha: a fase seguinte começa com a vida
+   cheia. Chegando a um ato novo, o nome do lugar aparece por cima do palco e
+   some — à moda de Dark Souls.
+4. **Caindo**, a rota recua uma fase e o avanço automático desliga. O
+   personagem fica repetindo o que consegue vencer (ganhando XP, gold e
+   equipamento) até você apertar **Ir para a próxima fase**, que o manda
+   encarar de novo a fase que o derrubou.
+
+O laço só para quando você manda **Voltar para a taberna** — e mesmo esse
+espera a fase em curso terminar. Nada é abortado no meio: o servidor já
+resolveu aquela fase quando a animação começou, e o resultado dela vale.
+
+### O mapa
+
+Logo abaixo do palco fica o mapa do ato: o arco, o nome do ato, as dez fases
+dele (a décima com a caveira do chefe) e o contador `05-10`. As vencidas
+ficam acesas, a atual pulsa, e a fase que derrubou o personagem fica marcada
+em vermelho. É só leitura — quem anda na rota é a caçada.
+
+Enquanto uma fase está sendo contada, o mapa fica **congelado no estado de
+antes dela**. Se ele desenhasse a resposta do servidor direto, a luz pularia
+para a fase seguinte antes de a luta ser narrada, entregando o resultado.
+
+### A dificuldade, e o botão dela
+
+Duas coisas endurecem a rota, e as duas crescem com a fase:
+
+- **o nível do inimigo** — `nivelPorFase: 0.5`, ou seja, a fase 1 nasce no
+  nível 1 e a 510 no 255;
+- **a força da fase** — um multiplicador em cima disso:
+  `forca = 1 + (fase − 1) × forcaPorFase × escalaDeDificuldade`.
+
+`config.rpg.cacada.escalaDeDificuldade` é o botão. Em **1** vale a rampa
+calibrada; em **1,5** o excedente fica 50% maior; em **0** a rota vira nível
+puro. É o único número que se precisa mexer para a rota inteira ficar mais
+dura ou mais mansa — e `npm run rota` mede o resultado antes de qualquer
+jogador sentir.
+
+> Os inimigos da rota **não** recebem a escala de fim de jogo
+> (`escalaDeNivel`, spec 8.4), e isso é de propósito. Aquela escala foi
+> escrita para o caso em que o monstro nasce no nível do jogador, para
+> compensar o fato de o jogador crescer duas vezes (nível e equipamento) e o
+> monstro só uma. Na rota o nível do inimigo é uma régua fixa: aplicar os
+> dois termos multiplicaria uma compensação que ali não existe, e a
+> dificuldade deixaria de ser linear na fase — medido, a rota virava parede
+> por volta do ato 9 e não saía mais de lá. Abismo, raid, masmorra e chefe
+> mundial continuam com a escala.
 
 ---
 
@@ -838,7 +972,7 @@ Aparece uma vez por dia, numa hora sorteada entre 12h e 21h, e fica 3 horas.
 A vida é compartilhada pelo servidor inteiro e cresce com o número de contas
 ativas. Cada ataque é uma investida contra uma projeção do chefe **no nível de
 quem ataca**, então iniciante e veterano contribuem na mesma régua; cair só
-encerra a investida, ninguém sai ferido. 10 minutos entre ataques.
+encerra a investida, e nada disso custa nada. 10 minutos entre ataques.
 
 Quando ele cai, todo mundo que bateu leva XP e gold na proporção do dano — o
 maior dano leva um item lendário, o segundo e o terceiro, épicos, e quem passou
@@ -907,21 +1041,30 @@ texto. O palco só desenha o que já aconteceu, uma linha de cada vez.
 está on-line aparece sentado pelas mesas, com o sprite da classe de origem e
 o nome por cima. É a mesma lista de "Na taverna", só que em gente.
 
-**As ruínas** entram quando se clica em Caçar: a tela escurece, o personagem
-entra pela esquerda andando, o bicho vem pela direita, e a luta acontece com
-o boneco trocando de animação conforme o log — golpe, defesa, esquiva, o
-número do dano subindo, e quem perde cai no chão. O cenário tem quatro
-camadas que andam em velocidades diferentes (céu, ruínas ao longe, ruínas de
-perto e o chão), o que dá a sensação de movimento; elas se repetem em espelho,
-então dá para andar para sempre. Caçadas seguidas continuam de onde parou, e
-o corpo do bicho anterior fica para trás até sair de cena. Abaixo de "Caçar"
-existe **Voltar para a taberna**.
+**A rota** entra quando se clica em Ir à caçada: a tela escurece, o
+personagem entra pela esquerda andando, o bicho vem pela direita, e a luta
+acontece com o boneco trocando de animação conforme o log — golpe, defesa,
+esquiva, o número do dano subindo, e quem perde cai no chão. Um inimigo
+atrás do outro dentro da fase, e o corpo do anterior fica para trás até a
+câmera passar.
 
-**O Abismo** tem cena própria, e ela muda com a profundidade: Boca do Abismo,
-Galerias, Fossa, Raiz do Mundo, Silêncio e Fundo — as mesmas faixas que já
-apareciam no texto. Cada andar é uma imagem inteira (sem camadas), repetida
-em espelho enquanto o personagem anda; quando a descida passa de uma faixa
-para a outra, o cenário novo entra por cima do velho sem piscar. Os sete
+Cada ato tem seu cenário, e o palco desenha duas formas sem precisar saber de
+antemão qual é qual:
+
+- **em camadas** — várias imagens em velocidades diferentes, o parallax. É
+  como as Ruínas de Valkhar (o ato 1) foram desenhadas: céu, estruturas ao
+  longe, estruturas de perto e o chão;
+- **inteiriço** — uma imagem só. É o que basta para um ato, e é como vêm os
+  andares do Abismo.
+
+Nos dois casos o panorama se repete em espelho enquanto o personagem anda,
+então dá para andar para sempre; e quando a rota muda de ato, o cenário novo
+entra por cima do velho sem piscar preto no meio, com o nome do lugar
+aparecendo e sumindo por cima.
+
+**O Abismo** usa exatamente o mesmo palco, com outro conjunto de cenários:
+Boca do Abismo, Galerias, Fossa, Raiz do Mundo, Silêncio e Fundo — as mesmas
+faixas que já apareciam no texto. Os sete
 habitantes têm sprite próprio, e o da vez entra pela direita como o bicho da
 caçada — a Sentinela de Ossos, o Carrasco Cego, a Coisa Sem Nome, o Vigia do
 Poço, a Fera Acorrentada, o Eco do Rei Morto e o Devorador de Luz. Quem
@@ -952,8 +1095,8 @@ o Git; o servidor não gera nada, só serve. O navegador baixa só o que a cena
 pede: o sprite da sua classe e o do bicho da vez.
 
 As 20 espécies comuns e os 7 habitantes do Abismo têm folha. Os chefes de
-marco ainda entram em cena com o goblin, que é o sprite de reserva de quem
-não tem arte própria.
+ato ainda entram em cena com o goblin, que é o sprite de reserva de quem não
+tem arte própria.
 
 Para um monstro novo, ponha a folha em `Assets/inimigos/` com o **id da
 espécie** no nome — `lobo.png`, ou uma pasta `lobo/`; vale também o nome que
@@ -965,14 +1108,31 @@ Uma classe nova segue a mesma ideia: uma pasta `Assets/PERSONAGENS/sprites
 <classe>/` com a folha de animações e um arquivo `<classe> sentado` para a
 taberna.
 
-**O Abismo casa a arte pelo NOME**, e não por um id: a folha
-`Assets/inimigos/chefes abismo/Vigia do Poço.jfif` vira a chave
-`vigia-do-poco`, que é o que o servidor manda para o palco quando esse
-habitante aparece. O mesmo vale para os andares:
-`Assets/CENARIOS/abismo/raiz do mundo.jfif` atende a profundidade "Raiz do
-Mundo". Renomear um habitante ou uma profundidade em
-[server/rpg/abismo.js](server/rpg/abismo.js) pede renomear o arquivo — senão
-o chefe entra com o sprite de reserva e o andar fica sem cenário.
+**A rota e o Abismo casam a arte pelo NOME**, e não por um id. A conta é a
+mesma dos dois lados (`chaveDeArte`, em
+[server/rpg/arte.js](server/rpg/arte.js) e em `scripts/arte.js`): minúsculo,
+sem acento, hífen no lugar do espaço.
+
+| O que | Onde a arte fica | Vira |
+| --- | --- | --- |
+| O cenário de um ato | `Assets/CENARIOS/Ruínas de Valkhar/` | `ruinas-de-valkhar` |
+| Um andar do Abismo | `Assets/CENARIOS/abismo/raiz do mundo.jfif` | `raiz-do-mundo` |
+| Um habitante do Abismo | `Assets/inimigos/chefes abismo/Vigia do Poço.jfif` | `vigia-do-poco` |
+
+Para dar cenário a um ato, basta pôr a imagem na pasta com **o nome exato do
+ato** (a lista está em [server/rpg/rota.js](server/rpg/rota.js)) e rodar `npm
+run arte`. Uma imagem só na pasta vira um panorama inteiriço; uma pasta com
+um arquivo começando por `CÉU` vira um panorama em camadas, com parallax,
+como o do ato 1.
+
+As 51 pastas já existem. As que ainda não têm arte guardam uma placa preta de
+`placeholder-preto.jpg` — o script percebe que é sempre a mesma imagem e
+escreve **um** arquivo em `public/arte/` para todas elas, em vez de quarenta
+cópias. Quando cada ato ganhar a sua imagem, cada um volta a ter arquivo
+próprio, sem ninguém precisar mexer no script.
+
+Renomear um ato, um habitante ou uma profundidade no código pede renomear a
+pasta ou o arquivo — senão a cena entra com a arte de reserva.
 
 ### Quando a medição erra
 
@@ -1040,11 +1200,11 @@ Regras:
 
 - **Um personagem por conta** em cada evento — senão a conta com dez
   personagens levaria dez vezes o espólio.
-- Ferido ou em expedição não entra em evento de luta. A condição é conferida
+- Quem está em expedição não entra em evento de luta. A condição é conferida
   de novo quando a chamada fecha.
-- Luta de grupo funciona como a raid: todo mundo entra com a vida cheia, o
-  inimigo ganha vida com o tamanho do grupo, e derrota deixa todos feridos.
-  Não conta no cooldown nem no placar de raids.
+- Luta de grupo funciona como a raid: todo mundo entra com a vida cheia e o
+  inimigo ganha vida com o tamanho do grupo. Não conta no cooldown nem no
+  placar de raids.
 - Com ninguém on-line, o evento espera e tenta de novo mais tarde.
 - Como as salas de raid, nada fica retido: se o servidor reiniciar com a
   chamada aberta, o evento só some.

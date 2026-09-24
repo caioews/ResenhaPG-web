@@ -20,10 +20,10 @@
  * Complementa o `npm run balance`, que mede o jogador contra o mundo; este
  * mede as classes umas contra as outras.
  */
-import { referencia } from './simulador.js'
+import { pontoDaRota, referencia } from './simulador.js'
 import { CLASSES, NOMES_DE_CLASSE, especialidadesDe } from '../server/rpg/classes.js'
 import { lutar } from '../server/rpg/combate.js'
-import { criarBoss, sortearMonstro } from '../server/rpg/monstros.js'
+import { sortearMonstro } from '../server/rpg/monstros.js'
 
 const N = Number(process.env.N ?? 120)
 const RARIDADE = process.env.RARIDADE ?? 'raro'
@@ -75,16 +75,16 @@ function pvp(nivel, elenco) {
 
 function pve(id, nivel) {
   const eu = referencia(id, nivel, RARIDADE)
-  const chefe = criarBoss(Math.floor(nivel / 5) * 5)
+  const ponto = pontoDaRota(nivel)
   const taxa = (fabrica) => {
     let v = 0
     for (let i = 0; i < N; i++) if (lutar(copia(eu), { ...fabrica() }).vencedor === 'a') v++
     return v / N
   }
   return {
-    comum: taxa(() => sortearMonstro(nivel, 0)),
-    elite: taxa(() => sortearMonstro(nivel, 1)),
-    chefe: taxa(() => chefe),
+    comum: taxa(() => sortearMonstro(nivel, 0, Math.random, { forca: ponto.forca, daRota: true })),
+    elite: taxa(() => sortearMonstro(nivel, 1, Math.random, { forca: ponto.forca, daRota: true })),
+    chefe: taxa(() => ponto.chefe),
   }
 }
 

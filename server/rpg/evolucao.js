@@ -20,7 +20,7 @@ import * as store from '../store.js'
 import { CLASSES, especialidadesDe, nivelDoProximoDegrau, tierDe } from './classes.js'
 import { lutar } from './combate.js'
 import { comoLutador } from './encontro.js'
-import { atributos, darGold, desequiparIncompativeis, ferir } from './jogador.js'
+import { atributos, darGold, desequiparIncompativeis } from './jogador.js'
 
 /**
  * O guardiao final do Rito de especialidade. Dos degraus de 150 e 200 em
@@ -164,7 +164,6 @@ export function encarar(player, alvoId, sorte = Math.random) {
   if (!venceuTudo) {
     ficha.evolucao.esperaAte = Date.now() + e.esperaHoras * 3_600_000
     ficha.evolucao.tentativas++
-    ferir(player)
     store.save()
     return { venceu: false, etapas, alvoId, custo, tier: tierDe(alvoId) }
   }

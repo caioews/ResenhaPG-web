@@ -752,35 +752,287 @@
     "mago": "sentados/mago.webp"
   },
   "cenario": {
-    "batalha": {
-      "proporcao": 2.357142857142857,
-      "linhaDoChao": 0.94,
-      "camadas": [
-        {
-          "arquivo": "cenario/batalha-ceu.webp",
-          "de": 0,
-          "ate": 0.7,
-          "velocidade": 0.18
-        },
-        {
-          "arquivo": "cenario/batalha-longe.webp",
-          "de": 0,
-          "ate": 0.7,
-          "velocidade": 0.42
-        },
-        {
-          "arquivo": "cenario/batalha-perto.webp",
-          "de": 0,
-          "ate": 0.72,
-          "velocidade": 0.68
-        },
-        {
-          "arquivo": "cenario/batalha-chao.webp",
-          "de": 0.66,
-          "ate": 1,
-          "velocidade": 1
-        }
-      ]
+    "atos": {
+      "ruinas-de-valkhar": {
+        "proporcao": 2.357142857142857,
+        "linhaDoChao": 0.94,
+        "camadas": [
+          {
+            "arquivo": "cenario/ato-ruinas-de-valkhar-ceu.webp",
+            "de": 0,
+            "ate": 0.7,
+            "velocidade": 0.18
+          },
+          {
+            "arquivo": "cenario/ato-ruinas-de-valkhar-longe.webp",
+            "de": 0,
+            "ate": 0.7,
+            "velocidade": 0.42
+          },
+          {
+            "arquivo": "cenario/ato-ruinas-de-valkhar-perto.webp",
+            "de": 0,
+            "ate": 0.72,
+            "velocidade": 0.68
+          },
+          {
+            "arquivo": "cenario/ato-ruinas-de-valkhar-chao.webp",
+            "de": 0.66,
+            "ate": 1,
+            "velocidade": 1
+          }
+        ]
+      },
+      "estrada-dos-exilados": {
+        "arquivo": "cenario/ato-estrada-dos-exilados.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "bosque-dos-ecos": {
+        "arquivo": "cenario/ato-bosque-dos-ecos.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "campos-de-eredun": {
+        "arquivo": "cenario/ato-campos-de-eredun.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "pantano-das-lamentacoes": {
+        "arquivo": "cenario/ato-pantano-das-lamentacoes.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "garganta-de-ferro-negro": {
+        "arquivo": "cenario/ato-garganta-de-ferro-negro.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "deserto-de-ashkar": {
+        "arquivo": "cenario/ato-deserto-de-ashkar.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "oasis-dos-condenados": {
+        "arquivo": "cenario/ato-oasis-dos-condenados.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "penhascos-de-skaroth": {
+        "arquivo": "cenario/ato-penhascos-de-skaroth.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "fortaleza-de-arkanis": {
+        "arquivo": "cenario/ato-fortaleza-de-arkanis.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "floresta-de-umbrafolha": {
+        "arquivo": "cenario/ato-floresta-de-umbrafolha.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "vale-das-bruxas": {
+        "arquivo": "cenario/ato-vale-das-bruxas.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "cripta-dos-reis-caidos": {
+        "arquivo": "cenario/ato-cripta-dos-reis-caidos.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "colinas-da-nevoa-eterna": {
+        "arquivo": "cenario/ato-colinas-da-nevoa-eterna.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "minas-de-kar-dur": {
+        "arquivo": "cenario/ato-minas-de-kar-dur.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "cidade-abandonada-de-nyr": {
+        "arquivo": "cenario/ato-cidade-abandonada-de-nyr.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "lago-da-lua-negra": {
+        "arquivo": "cenario/ato-lago-da-lua-negra.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "campos-de-ossos": {
+        "arquivo": "cenario/ato-campos-de-ossos.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "torre-do-vigia-morto": {
+        "arquivo": "cenario/ato-torre-do-vigia-morto.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "portoes-de-malgor": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "planicies-escarlates": {
+        "arquivo": "cenario/ato-planicies-escarlates.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "bosque-das-cinzas": {
+        "arquivo": "cenario/ato-bosque-das-cinzas.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "vale-da-praga": {
+        "arquivo": "cenario/ato-vale-da-praga.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "rio-sangrento": {
+        "arquivo": "cenario/ato-rio-sangrento.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "desfiladeiro-dos-mil-gritos": {
+        "arquivo": "cenario/ato-desfiladeiro-dos-mil-gritos.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "ruinas-de-thal-mor": {
+        "arquivo": "cenario/ato-ruinas-de-thal-mor.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "picos-da-tempestade-negra": {
+        "arquivo": "cenario/ato-picos-da-tempestade-negra.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "catedral-profanada": {
+        "arquivo": "cenario/ato-catedral-profanada.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "jardim-dos-enforcados": {
+        "arquivo": "cenario/ato-jardim-dos-enforcados.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "bastiao-de-vharok": {
+        "arquivo": "cenario/ato-bastiao-de-vharok.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "campos-de-lava-de-ghor": {
+        "arquivo": "cenario/ato-campos-de-lava-de-ghor.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "forjas-do-inferno": {
+        "arquivo": "cenario/ato-forjas-do-inferno.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "trilha-das-almas-perdidas": {
+        "arquivo": "cenario/ato-trilha-das-almas-perdidas.webp",
+        "proporcao": 1.7916666666666667,
+        "linhaDoChao": 0.93
+      },
+      "labirinto-carmesim": {
+        "arquivo": "cenario/ato-labirinto-carmesim.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "trono-dos-hereges": {
+        "arquivo": "cenario/ato-trono-dos-hereges.webp",
+        "proporcao": 1.8333333333333333,
+        "linhaDoChao": 0.93
+      },
+      "abismo-de-kor-mal": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "fortaleza-das-correntes": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "deserto-de-enxofre": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "mar-de-chamas-eternas": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "cidadela-de-azrakhul": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "fendas-do-vazio": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "vale-das-sombras-eternas": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "covil-dos-devoradores": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "ruinas-do-primeiro-pecado": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "ponte-dos-mil-condenados": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "cavernas-do-caos": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "dominio-de-belzhar": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "trono-da-escuridao": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "nucleo-do-abismo": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "caminho-do-fim-dos-tempos": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      },
+      "coracao-do-abismo-demoniaco": {
+        "arquivo": "cenario/ato-placeholder-preto.webp",
+        "proporcao": 0.5625,
+        "linhaDoChao": 0.93
+      }
     },
     "abismo": {
       "boca-do-abismo": {

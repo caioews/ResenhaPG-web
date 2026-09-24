@@ -18,7 +18,7 @@
 import { config } from '../config.js'
 import * as store from '../store.js'
 import { classeRaiz } from './classes.js'
-import { atributos, definirVida, desequiparIncompativeis } from './jogador.js'
+import { desequiparIncompativeis } from './jogador.js'
 import { emExpedicao } from './expedicao.js'
 
 export const prestigioDe = (player) => player.rpg.prestigio ?? 0
@@ -64,17 +64,24 @@ export function prestigiar(player) {
   ficha.classe = raiz
   ficha.nivel = 1
   ficha.xp = 0
-  ficha.bossPendente = 0
   ficha.evolucao = { esperaAte: 0, tentativas: 0, evoluiuEm: 0 }
 
-  // O corpo é novo: sem ferimento, sem fogueira acesa, com a vida cheia.
-  ficha.feridoAte = 0
-  ficha.fogueiraAte = 0
+  // A rota recomeça junto: um personagem de nível 1 não tem o que fazer no
+  // ato 40. O recorde (maiorAto/maiorFase) fica — ele é a lembrança de até
+  // onde este personagem já chegou, e o prestígio não apaga isso.
+  const marca = ficha.cacada ?? {}
+  ficha.cacada = {
+    ...marca,
+    ato: 1,
+    fase: 1,
+    repetindo: false,
+    travada: null,
+    ultimaFaseEm: 0,
+  }
 
   // As armas exclusivas da especialidade (pistola, machado, caveira, rede)
   // saem de uso — continuam na mochila, esperando a próxima evolução.
   const tirados = desequiparIncompativeis(player)
-  definirVida(player, atributos(player).hp)
 
   store.save()
 

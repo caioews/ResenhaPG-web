@@ -1,11 +1,10 @@
-/** A mochila: equipar, desequipar, usar consumível e soltar item. */
+/** A mochila: equipar, desequipar e soltar item. */
 import { Router } from 'express'
 import { exigirLogin } from '../auth.js'
 import { exigirClasse, exigirPersonagem, responder, rota } from '../contexto.js'
 import { desequipar, equipar, itemEquipado, removerItem } from '../rpg/jogador.js'
 import { SLOTS } from '../rpg/itens.js'
 import { verItem } from '../visao.js'
-import { usarConsumivel } from './combate.js'
 import * as store from '../store.js'
 
 export const mochila = Router()
@@ -42,22 +41,6 @@ mochila.post(
     if (!item) return res.status(409).json({ erro: 'Não há nada nesse slot.' })
 
     responder(res, player, { texto: `${item.nome} guardado na mochila.` })
-  }),
-)
-
-mochila.post(
-  '/usar',
-  rota((req, res) => {
-    const player = req.player
-    const item = acharPorUid(player, String(req.body?.uid ?? ''))
-    if (!item) return res.status(404).json({ erro: 'Item não encontrado na mochila.' })
-    if (item.slot) return res.status(409).json({ erro: 'Esse item é equipamento, não consumível.' })
-
-    const feito = usarConsumivel(player, item)
-    if (feito.erro) return res.status(409).json({ erro: feito.erro })
-
-    removerItem(player, item.uid)
-    responder(res, player, { texto: feito.texto })
   }),
 )
 

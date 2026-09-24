@@ -10,19 +10,64 @@ export const config = {
     // Gold que o jogador recebe ao escolher a classe. Sem isso o novato
     // entra sem equipamento nenhum e sem como comprar a primeira peca.
     goldInicial: 200,
-    // Espera entre uma invocacao e outra, em segundos
-    cooldownSummonSeconds: 10,
     // Chance do monstro vir elite (tres niveis acima e bem mais forte)
     chanceElite: 0.12,
-    // Derrota: tempo ferido e fatia do gold perdida
-    feridoMinutos: 2,
-    goldPerdidoAoPerder: 0.05,
-    // Descanso na fogueira: tempo sentado ate a vida voltar cheia
-    fogueiraMinutos: 1,
-    // Vida que volta por minuto (0.05 = 5% do maximo)
-    regenPorMinuto: 0.05,
     // Itens que cabem na mochila
     tamanhoMochila: 40,
+
+    // ------------------------------------------------------------ a rota
+    //
+    // A caçada (server/rpg/cacada.js) percorre a rota de rpg/rota.js: cinco
+    // arcos, dez atos cada, dez fases cada ato, mais o ato final. Quem
+    // decide a dificuldade e a FASE, nunca o nivel do jogador — e por isso
+    // que da para empacar.
+    cacada: {
+      // Fases em cada ato. A ultima e sempre o chefe do ato.
+      fasesPorAto: 10,
+      // Quanto o nivel do inimigo sobe por fase. Em 0.5 a fase 1 nasce no
+      // nivel 1 e a ultima (510) no 255, que e onde o prestigio abre.
+      nivelPorFase: 0.5,
+      // Quantos niveis acima da propria fase o chefe do ato luta.
+      chefeNiveisAcima: 2,
+
+      // A horda de uma fase comum: quantos inimigos entram, um atras do
+      // outro, sem parar.
+      inimigos: { base: 3, porFase: 0.25, porAto: 0.04, maximo: 6 },
+      // Vida devolvida entre um inimigo e outro DA MESMA horda: o respiro
+      // entre uma onda e a seguinte. O que sobra da luta anterior e o que
+      // entra na proxima, e e esse desgaste acumulado que faz a fase ser uma
+      // prova, e nao tres lutas soltas.
+      //
+      // Em 0 a horda vira execucao: medido por simulacao (npm run rota), tres
+      // inimigos seguidos sem respiro nenhum exigem o personagem tres vezes
+      // acima do nivel da fase, e como o XP sai do nivel do INIMIGO, quem
+      // fica tres vezes acima nunca mais alcanca a rota. 0.35 e o ponto em
+      // que a fase continua dura e o jogador continua subindo.
+      curaEntreInimigos: 0.35,
+
+      // ------------------------------------------------ a rampa e o botao
+      //
+      // O inimigo ganha, alem do nivel, um multiplicador que cresce a cada
+      // fase: forca = 1 + (fase - 1) x forcaPorFase x escalaDeDificuldade.
+      //
+      // escalaDeDificuldade e o botao: 1 e a rampa calibrada, 1.5 deixa o
+      // excedente 50% maior, 0 desliga a rampa e deixa so o nivel. E o
+      // unico numero que se precisa mexer para a rota inteira ficar mais
+      // dura ou mais mansa.
+      escalaDeDificuldade: 1,
+      // Calibrado em npm run rota: com 0.001 a rota inteira sai em ~1.800
+      // fases, do nivel 1 ao 506, com os oito primeiros atos passando quase
+      // sem tropeco e a friccao aparecendo do nono em diante.
+      forcaPorFase: 0.001,
+      // Quanto da rampa vira recompensa: o que endurece tambem paga melhor.
+      bonusDeRecompensa: 0.6,
+
+      // Piso entre duas fases resolvidas pelo servidor, em segundos. Nao e
+      // mecanica: a animacao de uma fase leva bem mais que isto. E so uma
+      // trava para o laco automatico nao virar torneira aberta se alguem
+      // chamar a rota direto.
+      esperaEntreFasesSegundos: 2,
+    },
 
     // O bau (server/rpg/bau.js): um deposito que nao ocupa a mochila. Comeca
     // com `espacos` e cada espaco a mais e comprado um a um, cada vez mais
@@ -134,9 +179,6 @@ export const config = {
     provaCustoPorNivel: 120,
     provaEsperaHoras: 24,
     // Loja
-    precoPocaoPequena: 60,
-    precoPocaoGrande: 150,
-    precoBandagem: 120,
     precoEquipamentoPorNivel: 40,
     // A loja compra barato e vende caro — a diferenca entre os dois precos
     // e o que faz valer a pena negociar com outro jogador em vez de

@@ -19,7 +19,7 @@ import { config } from './config.js'
 import * as store from './store.js'
 import { escalaDeNivel, sortearMonstro } from './rpg/monstros.js'
 import { resolver } from './rpg/encontro.js'
-import { atributos, darGold, definirVida, feridoRestante, ganharXp, levantarDaFogueira, vidaAtual } from './rpg/jogador.js'
+import { darGold, ganharXp, vidaAtual } from './rpg/jogador.js'
 import { emExpedicao } from './rpg/expedicao.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
@@ -158,7 +158,7 @@ export const EVENTOS = {
     emoji: '🍺',
     chamada: 'O taverneiro abriu os barris: festa na taverna!',
     descricao:
-      'Música, comida e cerveja por conta da casa. Quem aparecer sai curado, sem ferimento e com o bolso um pouco mais pesado.',
+      'Música, comida e cerveja por conta da casa. Quem aparecer sai com o bolso bem mais pesado.',
     ninguem: 'Ninguém apareceu. O taverneiro fechou os barris de novo, emburrado.',
   },
 
@@ -177,9 +177,9 @@ export const EVENTOS = {
 
 const REGRAS = {
   grupo:
-    'Luta em grupo, como uma raid: quando a chamada fechar, todos entram juntos com a vida cheia. Quanto mais gente, mais vida o inimigo tem — mas o dano dele se espalha. Derrota deixa todo mundo ferido.',
+    'Luta em grupo, como uma raid: quando a chamada fechar, todos entram juntos com a vida cheia. Quanto mais gente, mais vida o inimigo tem — mas o dano dele se espalha.',
   individual:
-    'Cada um luta sozinho contra uma criatura de elite do próprio nível, com a vida que tiver na hora. Vitória paga o dobro; derrota fere como numa caçada.',
+    'Cada um luta sozinho contra uma criatura de elite do próprio nível, com a vida cheia. Vitória paga o dobro; derrota só não paga nada.',
   bencao: 'Sem luta. Basta estar na lista quando a chamada fechar.',
 }
 
@@ -342,9 +342,6 @@ export function dispararEvento(chave = sortearChave(), { segundos = null } = {})
 function impedimento(player, def) {
   if (!player.rpg.classe) return 'Esse personagem ainda não tem classe.'
   if (emExpedicao(player)) return 'Seu personagem está em expedição.'
-  if (def.tipo !== 'bencao' && feridoRestante(player) > 0) {
-    return 'Você está ferido demais para lutar. Uma bandagem resolve na hora.'
-  }
   return null
 }
 
@@ -401,8 +398,8 @@ export function encerrarEvento() {
   const def = EVENTOS[evento.chave]
   const visto = { ...verEvento(evento), encerrado: true }
 
-  // A condição é conferida de novo: dá para ter se ferido ou saído em
-  // expedição entre atender e a chamada fechar.
+  // A condição é conferida de novo: dá para ter saído em expedição entre
+  // atender e a chamada fechar.
   const inscritos = evento.participantes.map((x) => store.buscarPersonagem(x.personagemId)).filter(Boolean)
   const presentes = inscritos.filter((p) => !impedimento(p, def))
   for (const p of presentes) registrar(p, 'evento')
@@ -448,7 +445,6 @@ function resolverGrupo(evento, def, presentes, visto, ausentes) {
   const raid = resolverLutaDeGrupo(presentes, chefe, {
     recompensa: def.recompensa,
     materiais: def.materiais,
-    ferirNaDerrota: true,
   })
 
   for (const p of presentes) emitirPara(p.id, 'evento:resultado', { evento: visto, ausentes, raid })
@@ -507,13 +503,10 @@ function resolverBencao(evento, def, presentes, visto, ausentes) {
     const ganhos = []
 
     if (evento.chave === 'festa') {
-      levantarDaFogueira(p)
-      if (p.rpg.feridoAte > Date.now()) ganhos.push('o ferimento sarou')
-      p.rpg.feridoAte = 0
-      definirVida(p, atributos(p).hp)
-      ganhos.push('vida cheia')
-
-      const gold = Math.round(40 + p.rpg.nivel * 15)
+      // A festa pagava em vida cheia, que hoje todo mundo ja tem. Virou uma
+      // bolsa maior de gold — continua sendo o evento de quem so passou para
+      // beber alguma coisa.
+      const gold = Math.round(80 + p.rpg.nivel * 30)
       darGold(p, gold)
       ganhos.push(`+${milhar(gold)} de gold`)
     } else {

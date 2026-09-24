@@ -21,7 +21,7 @@ import * as store from './store.js'
 import { lutarEmGrupo } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
 import { criarHabitante, recompensaDaDescida, vidaEntreAndares } from './rpg/abismo.js'
-import { atributos, darGold, feridoRestante, ferir, ganharXp } from './rpg/jogador.js'
+import { atributos, darGold, ganharXp } from './rpg/jogador.js'
 import { emExpedicao } from './rpg/expedicao.js'
 import { criarItem, tiposDaClasse } from './rpg/itens.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
@@ -65,7 +65,6 @@ export function impedimento(player) {
   if (!player.rpg.classe) return 'Esse personagem ainda não tem classe.'
   if (player.rpg.nivel < cfg().nivelMinimo) return `A masmorra abre no nível ${cfg().nivelMinimo}.`
   if (emExpedicao(player)) return 'Seu personagem está em expedição.'
-  if (feridoRestante(player) > 0) return 'Você está ferido demais para descer.'
   const espera = esperaDaMasmorra(player)
   if (espera > 0) return `Você ainda se recupera da última descida (${Math.ceil(espera / 60_000)} min).`
   return null
@@ -227,9 +226,6 @@ export function descer(participantes) {
         if (feitico) darFeitico(p, feitico)
       }
     }
-
-    // Sai da masmorra carregado: todo mundo termina caído, como no Abismo.
-    ferir(p)
 
     return {
       player: p,

@@ -9,7 +9,7 @@
  * ataca, e o dano conta em "unidades": a vida de um monstro comum daquele
  * nível. É o que deixa um nível 20 e um nível 220 contribuírem na mesma
  * régua — cada um apanha e bate na própria faixa. Cair só encerra a
- * investida; ninguém sai ferido de um ataque ao chefe mundial.
+ * investida; atacar o chefe mundial não custa nada.
  *
  * A vida total é proporcional às contas ativas nos últimos dias. Quando
  * zera, o espólio sai para todo mundo que bateu, na proporção do dano. Se o
@@ -25,7 +25,7 @@ import * as store from './store.js'
 import { lutar } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
 import { atributosDeMonstro } from './rpg/monstros.js'
-import { atributos, darGold, feridoRestante, ganharXp } from './rpg/jogador.js'
+import { atributos, darGold, ganharXp } from './rpg/jogador.js'
 import { emExpedicao } from './rpg/expedicao.js'
 import { criarItem, tiposDaClasse } from './rpg/itens.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
@@ -191,7 +191,6 @@ export function impedimentoDeAtaque(player) {
   if (!ativo()) return 'Não tem chefe mundial no ar agora.'
   if (!player.rpg.classe) return 'Esse personagem ainda não tem classe.'
   if (emExpedicao(player)) return 'Seu personagem está em expedição.'
-  if (feridoRestante(player) > 0) return 'Você está ferido. Cure-se antes de encarar o chefe.'
   const meu = atual.contribuicoes[player.id]
   const espera = meu ? meu.ultimoAtaque + cfg().esperaEntreAtaquesMinutos * 60_000 - Date.now() : 0
   if (espera > 0) return `Recupere o fôlego: próximo ataque em ${Math.ceil(espera / 60_000)} min.`

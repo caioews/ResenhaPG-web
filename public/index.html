@@ -80,7 +80,17 @@
             <div class="cena" id="cena">
               <div class="narrativa" id="narrativa"></div>
             </div>
-            <div class="palco" id="palco"><canvas aria-hidden="true"></canvas></div>
+            <!-- O palco e, logo abaixo dele, o mapa da rota: onde o
+                 personagem está e o que falta para fechar o ato. -->
+            <div class="palco-coluna">
+              <div class="palco" id="palco">
+                <canvas aria-hidden="true"></canvas>
+                <!-- O nome do lugar, à moda de Dark Souls: aparece, fica um
+                     segundo e some. -->
+                <div class="anuncio-ato" id="anuncio-ato" hidden aria-live="polite"></div>
+              </div>
+              <div class="mapa" id="mapa" hidden></div>
+            </div>
           </div>
           <div class="acoes" id="acoes"></div>
         </div>

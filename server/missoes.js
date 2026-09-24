@@ -26,13 +26,13 @@ const milhar = (n) => Math.round(n).toLocaleString('pt-BR')
  * que o personagem ainda não consegue fazer (Abismo e masmorra abrem no 40).
  */
 export const TIPOS_DE_MISSAO = {
-  cacar: { emoji: '⚔️', peso: 5, alvo: () => 12, texto: (n) => `Vença ${n} caçadas` },
+  cacar: { emoji: '⚔️', peso: 5, alvo: () => 6, texto: (n) => `Vença ${n} fases da rota` },
   elite: { emoji: '💀', peso: 4, alvo: () => 3, texto: (n) => `Derrote ${n} monstros de elite` },
   gold: {
     emoji: '💰',
     peso: 3,
-    // Umas dez caçadas do nível.
-    alvo: (nivel) => Math.round((8 + nivel * 4) * 10),
+    // Umas três fases do nível — cada fase já é uma horda inteira.
+    alvo: (nivel) => Math.round((8 + nivel * 4) * 12),
     texto: (n) => `Junte ${milhar(n)} de gold caçando`,
   },
   abismo: { emoji: '🕳️', peso: 3, nivelMinimo: 40, alvo: () => 5, texto: (n) => `Vença ${n} andares do Abismo` },

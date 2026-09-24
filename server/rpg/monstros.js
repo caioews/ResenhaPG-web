@@ -37,15 +37,16 @@ export const ESPECIES = [
 const TITULOS_ELITE = ['Veterano', 'Sombrio', 'Ancião', 'Sanguinário', 'Amaldiçoado']
 
 /**
- * Bosses dos marcos. A chave e o nivel em que o jogador trava.
+ * Os chefes, em ordem de dificuldade. A chave e o nivel de marco para o qual
+ * cada um foi calibrado — e por isso que a tabela continua indexada assim,
+ * mesmo depois de os marcos terem saido do jogo.
  *
- * O chefe luta NIVEIS_ACIMA niveis acima do marco: e de la que vem a
- * dificuldade. Ate o 30 os multiplicadores sao os originais — aquela faixa
- * ja estava calibrada e nao havia motivo para mexer. Do 35 para cima eles
- * sobem junto com a escala de fim de jogo (ver escalaEndgame no config).
+ * Hoje quem os distribui e a rota (rpg/rota.js): um por ato, na ordem desta
+ * tabela, na ultima fase de cada um. Ate o 30 os multiplicadores sao os
+ * originais — aquela faixa ja estava calibrada e nao havia motivo para
+ * mexer. Do 35 para cima eles sobem junto com a escala de fim de jogo (ver
+ * escalaEndgame no config).
  */
-export const NIVEIS_ACIMA = 3
-
 export const BOSSES = {
   10: { nome: 'Rei Goblin', emoji: '👑', mult: { hp: 0.68, atq: 1.3, def: 1.3, agi: 1.0 } },
   15: { nome: 'Cavaleiro Caído', emoji: '🏴', mult: { hp: 0.66, atq: 1.35, def: 1.4, agi: 1.1 } },
@@ -70,60 +71,8 @@ export const BOSSES = {
   100: { nome: 'O Primordial', emoji: '🌌', mult: { hp: 0.75, atq: 1.85, def: 1.75, agi: 1.4 } },
 }
 
-/** Os marcos que tem chefe proprio, com nome e multiplicadores na tabela. */
+/** Os chefes nomeados, na ordem em que a rota os distribui pelos atos. */
 export const NIVEIS_DE_BOSS = Object.keys(BOSSES).map(Number).sort((a, b) => a - b)
-
-/** O primeiro marco do jogo e o ultimo com chefe de nome proprio. */
-export const PRIMEIRO_MARCO = NIVEIS_DE_BOSS[0]
-export const ULTIMO_MARCO_NOMEADO = NIVEIS_DE_BOSS.at(-1)
-
-/** De quanto em quanto nivel aparece um chefe. */
-export const PASSO_DO_MARCO = 5
-
-/**
- * Os chefes reaproveitados depois do ultimo marco nomeado. So os de fim de
- * jogo entram no rodizio: um Rei Goblin no nivel 130 nao assusta ninguem,
- * mesmo com os atributos daquela faixa.
- */
-const RODIZIO = NIVEIS_DE_BOSS.filter((n) => n >= 35)
-
-/**
- * O proximo marco a partir de um nivel.
- *
- * Depois do ultimo chefe nomeado a conta continua: marco a cada cinco
- * niveis, para sempre. Nunca devolve null — a progressao nao tem teto.
- */
-export function proximoBoss(nivel) {
-  const proximo = (Math.floor(nivel / PASSO_DO_MARCO) + 1) * PASSO_DO_MARCO
-  return Math.max(PRIMEIRO_MARCO, proximo)
-}
-
-export const ehNivelDeBoss = (nivel) => nivel >= PRIMEIRO_MARCO && nivel % PASSO_DO_MARCO === 0
-
-/**
- * O chefe de um marco alem da tabela: um dos chefes de fim de jogo voltando
- * como eco, com os atributos do marco novo. E o que mantem a mecanica de
- * chefe a cada cinco niveis funcionando sem fim.
- */
-function chefeEcoado(nivelMarco) {
-  const passos = (nivelMarco - ULTIMO_MARCO_NOMEADO) / PASSO_DO_MARCO - 1
-  const marcoOriginal = RODIZIO[passos % RODIZIO.length]
-  const volta = Math.floor(passos / RODIZIO.length)
-  const original = BOSSES[marcoOriginal]
-
-  return {
-    ...original,
-    marcoOriginal,
-    nome: `${original.nome} Ecoado${volta > 0 ? ' ' + '★'.repeat(Math.min(3, volta)) : ''}`,
-    eco: true,
-  }
-}
-
-/** A ficha de tabela do chefe de um marco, nomeado ou ecoado. */
-export function chefeDoMarco(nivelMarco) {
-  if (!ehNivelDeBoss(nivelMarco)) return null
-  return BOSSES[nivelMarco] ?? chefeEcoado(nivelMarco)
-}
 
 /**
  * Quanto os atributos de monstro crescem acima do limiar.
@@ -163,9 +112,24 @@ export function escalaDeNivel(nivel) {
   }
 }
 
-export function atributosDeMonstro(nivel, mult) {
-  const escala = escalaDeNivel(nivel)
+/** A escala neutra: usada por quem nao quer o termo de fim de jogo. */
+const SEM_ESCALA = { hp: 1, atq: 1, def: 1, agi: 1 }
 
+/**
+ * Os atributos de um monstro. `escala` e o termo de fim de jogo (8.4); quem
+ * passa SEM_ESCALA fica com a conta crua.
+ *
+ * Quem faz isso e a rota (rpg/rota.js), e por um motivo: escalaDeNivel foi
+ * escrita para o caso em que o monstro nasce NO NIVEL DO JOGADOR, e serve
+ * para compensar o fato de o jogador crescer duas vezes (nivel e
+ * equipamento) e o monstro so uma. Na rota o nivel do inimigo e uma regua
+ * fixa, independente de quem esta jogando — aplicar os dois termos
+ * multiplicaria uma compensacao que ali nao existe, e a dificuldade deixaria
+ * de ser linear na fase. Quem compensa o crescimento do jogador na rota e a
+ * propria rampa dela (`forcaPorFase`), que e o que o botao de dificuldade
+ * mexe.
+ */
+export function atributosDeMonstro(nivel, mult, escala = escalaDeNivel(nivel)) {
   return {
     hp: Math.round((56 + nivel * 20.8) * mult.hp * escala.hp),
     atq: Math.round((8.8 + nivel * 4.16) * mult.atq * escala.atq),
@@ -174,21 +138,40 @@ export function atributosDeMonstro(nivel, mult) {
   }
 }
 
-/** As especies liberadas para o nivel de um jogador. */
-export const especiesPara = (nivelJogador) => ESPECIES.filter((e) => nivelJogador >= (e.desde ?? 1))
+/** As especies liberadas para um nivel. */
+export const especiesPara = (nivel) => ESPECIES.filter((e) => nivel >= (e.desde ?? 1))
 
 /**
- * Sorteia um monstro para o nivel do jogador.
- * O normal e algo entre um nivel abaixo e um acima; de vez em quando
- * aparece um elite, tres niveis acima e bem mais perigoso.
+ * A forca da fase entrando nos multiplicadores da especie (rpg/rota.js).
+ *
+ * Vale cheia em vida, ataque e defesa; em agilidade vale um terco. A
+ * agilidade vira critico e esquiva, e as duas saturam: multiplicar agi pelo
+ * mesmo fator la no fim da rota so faria o inimigo desviar de tudo, o que e
+ * frustrante em vez de dificil. E a mesma escolha da escala de fim de jogo,
+ * onde o teto de agi e um terco do de hp.
  */
-export function sortearMonstro(nivelJogador, chanceElite = 0.12, sorte = Math.random) {
-  const pool = especiesPara(nivelJogador)
+function aplicarForca(mult, forca) {
+  if (forca === 1) return mult
+  const suave = 1 + (forca - 1) * 0.35
+  return { hp: mult.hp * forca, atq: mult.atq * forca, def: mult.def * forca, agi: mult.agi * suave }
+}
+
+/** A escala que vale para estas opcoes: a de fim de jogo, ou nenhuma. */
+const escalaPara = (nivel, daRota) => (daRota ? SEM_ESCALA : escalaDeNivel(nivel))
+
+/**
+ * Sorteia um monstro de um nivel.
+ * O normal e algo entre um nivel abaixo e um acima; de vez em quando
+ * aparece um elite, tres niveis acima e bem mais perigoso. `forca` e a rampa
+ * da fase em que ele aparece — 1 na fase 1, e crescendo dali em diante.
+ */
+export function sortearMonstro(nivel, chanceElite = 0.12, sorte = Math.random, { forca = 1, daRota = false } = {}) {
+  const pool = especiesPara(nivel)
   const especie = pool[Math.floor(sorte() * pool.length)]
   const variacao = Math.floor(sorte() * 3) - 1 // -1, 0 ou +1
   const elite = sorte() < chanceElite
 
-  const nivel = Math.max(1, nivelJogador + variacao + (elite ? 3 : 0))
+  const nivelDele = Math.max(1, nivel + variacao + (elite ? 3 : 0))
   const mult = { ...especie.mult }
 
   if (elite) {
@@ -201,35 +184,35 @@ export function sortearMonstro(nivelJogador, chanceElite = 0.12, sorte = Math.ra
     id: especie.id,
     nome: elite ? `${especie.nome} ${titulo}` : especie.nome,
     emoji: especie.emoji,
-    nivel,
+    nivel: nivelDele,
     elite,
     boss: false,
-    ...atributosDeMonstro(nivel, mult),
+    ...atributosDeMonstro(nivelDele, aplicarForca(mult, forca), escalaPara(nivelDele, daRota)),
   }
 }
 
-/** Monta o boss de um marco. */
-export function criarBoss(nivelMarco) {
-  const boss = chefeDoMarco(nivelMarco)
-  if (!boss) return null
-
-  const nivel = nivelMarco + NIVEIS_ACIMA
-
+/**
+ * Monta um chefe a partir da ficha de tabela (nome, emoji, multiplicadores).
+ * Quem escolhe QUAL chefe e a rota; aqui so se da corpo a ele.
+ */
+export function criarChefe(chefe, nivel, { forca = 1, daRota = false } = {}) {
   return {
-    id: `boss${nivelMarco}`,
-    nome: boss.nome,
-    emoji: boss.emoji,
-    eco: Boolean(boss.eco),
+    nome: chefe.nome,
+    emoji: chefe.emoji,
+    eco: Boolean(chefe.eco),
     nivel,
-    marco: nivelMarco,
     elite: false,
     boss: true,
-    ...atributosDeMonstro(nivel, boss.mult),
+    ...atributosDeMonstro(nivel, aplicarForca(chefe.mult, forca), escalaPara(nivel, daRota)),
   }
 }
 
-/** Recompensas de um monstro derrotado. */
-export function recompensas(monstro, sorte = Math.random) {
+/**
+ * Recompensas de um monstro derrotado. `forca` e a rampa da fase em que ele
+ * apareceu: o que endurece tambem paga melhor, senao a rota viraria um
+ * caminho em que cada passo custa mais e rende o mesmo.
+ */
+export function recompensas(monstro, sorte = Math.random, forca = 1) {
   const multXp = monstro.boss ? 6 : monstro.elite ? 2.2 : 1
   const multGold = monstro.boss ? 8 : monstro.elite ? 2.5 : 1
 
@@ -237,10 +220,11 @@ export function recompensas(monstro, sorte = Math.random) {
   // subir de nivel no fim de jogo viraria moagem pura.
   const escala = escalaDeNivel(monstro.nivel)
   const bonusEndgame = 1 + (escala.hp - 1) * 0.5
+  const bonusDaFase = 1 + (forca - 1) * config.rpg.cacada.bonusDeRecompensa
 
-  const xp = Math.round((18 + monstro.nivel * 8) * multXp * bonusEndgame)
+  const xp = Math.round((18 + monstro.nivel * 8) * multXp * bonusEndgame * bonusDaFase)
   const goldBase = 8 + monstro.nivel * 4
-  const gold = Math.round(goldBase * multGold * bonusEndgame * (0.7 + sorte() * 0.6))
+  const gold = Math.round(goldBase * multGold * bonusEndgame * bonusDaFase * (0.7 + sorte() * 0.6))
   const chanceDrop = monstro.boss ? 1 : monstro.elite ? 0.7 : 0.35
 
   return { xp, gold, chanceDrop }

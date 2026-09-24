@@ -11,7 +11,7 @@ import { config } from './config.js'
 import * as store from './store.js'
 import { lutarEmGrupo } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
-import { atributos, darGold, ferir, ganharXp, guardarItem, mochilaCheia } from './rpg/jogador.js'
+import { atributos, darGold, ganharXp, guardarItem, mochilaCheia } from './rpg/jogador.js'
 import { droparMateriais, droparRecompensas } from './rpg/raid.js'
 import { xpComPrestigio } from './rpg/prestigio.js'
 import { FEITICOS } from './rpg/feiticos.js'
@@ -26,12 +26,11 @@ export const nivelMedioDe = (participantes) =>
  * @param chefe          o inimigo pronto, no formato de criarChefeDeRaid
  * @param opcoes.recompensa  multiplicadores { xp, gold, itens } sobre a conta da raid
  * @param opcoes.materiais   se cai titanita e feitiço na vitória
- * @param opcoes.ferirNaDerrota  se o grupo derrotado sai ferido
  */
 export function resolverLutaDeGrupo(
   participantes,
   chefe,
-  { recompensa = {}, materiais = true, ferirNaDerrota = true } = {},
+  { recompensa = {}, materiais = true } = {},
 ) {
   const media = nivelMedioDe(participantes)
   const mult = { xp: 1, gold: 1, itens: 1, ...recompensa }
@@ -62,12 +61,10 @@ export function resolverLutaDeGrupo(
   }
 
   if (!resultado.venceu) {
-    if (ferirNaDerrota) for (const p of participantes) ferir(p)
     store.flush()
 
     return {
       ...cabecalho,
-      feridos: ferirNaDerrota,
       hpRestanteDoChefe: Math.round((resultado.chefe.hp / resultado.chefe.hpMax) * 100),
       porJogador: [],
       itens: [],

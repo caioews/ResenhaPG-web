@@ -59,8 +59,15 @@ export function definirCena(titulo) {
 
 // ------------------------------------------------------------- placar
 
-/** O placar com as duas barras de vida, atualizado a cada golpe. */
-function criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB) {
+/**
+ * O placar com as duas barras de vida, atualizado a cada golpe.
+ *
+ * `aoMudar` é avisado toda vez que um lado muda de vida. É por onde a barra
+ * da ficha lateral acompanha a luta: o valor sai daqui, de um lugar só, em
+ * vez de ser recalculado em cada quem-bateu-em-quem. São dois porque no duelo
+ * o jogador tanto pode ser o lado A quanto o B.
+ */
+function criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, aoMudar = {}) {
   const barraA = barra('vida', hpA, hpMaxA)
   const barraB = barra('vida', hpB, hpMaxB)
 
@@ -76,6 +83,7 @@ function criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB) {
     const alvo = lado === 'a' ? barraA : barraB
     alvo.querySelector('.preenchida').style.width = `${pct(hp, hpMax)}%`
     alvo.querySelector('.rotulo').textContent = `${num(Math.max(0, hp))} / ${num(hpMax)}`
+    aoMudar[lado]?.(hp, hpMax)
   }
 
   return { node, atualizar }
@@ -84,7 +92,7 @@ function criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB) {
 // ---------------------------------------------------------- vocabulário
 
 const VERBOS = ['acertou', 'atingiu', 'golpeou', 'alcançou', 'feriu']
-const VERBOS_ESQUIVA = ['desviou', 'saiu da linha do golpe', 'leu o movimento e escapou']
+const VERBOS_ESQUIVA = ['desviou', 'saiu da linha', 'leu o movimento e escapou']
 
 const sorteio = (lista, semente) => lista[semente % lista.length]
 
@@ -206,9 +214,25 @@ function descreverGrupo(entrada, i) {
  * Reproduz uma luta individual. Enquanto roda, clicar ou apertar uma tecla
  * pula para o fim — ninguém quer assistir 30 rodadas duas vezes.
  */
-export async function narrarLuta({ nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, log, aoEntrada }) {
-  const placar = criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB)
+export async function narrarLuta({
+  nomeA,
+  hpA,
+  hpMaxA,
+  nomeB,
+  hpB,
+  hpMaxB,
+  log,
+  aoEntrada,
+  aoVida,
+  aoVidaB,
+}) {
+  const placar = criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, { a: aoVida, b: aoVidaB })
   escrever(placar.node)
+  // A vida de entrada também conta: numa horda, a segunda luta começa com o
+  // que sobrou da primeira, e a ficha precisa mostrar isso antes do primeiro
+  // golpe.
+  aoVida?.(hpA, hpMaxA)
+  aoVidaB?.(hpB, hpMaxB)
 
   pulando = false
   emCurso = true

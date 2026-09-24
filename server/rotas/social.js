@@ -9,7 +9,7 @@ import * as store from '../store.js'
 import { rotuloClasse } from '../rpg/classes.js'
 import { lutar } from '../rpg/combate.js'
 import { comoLutador } from '../rpg/encontro.js'
-import { atributos, darGold, feridoRestante } from '../rpg/jogador.js'
+import { atributos, darGold } from '../rpg/jogador.js'
 import { emExpedicao } from '../rpg/expedicao.js'
 import { criarChefeDeRaid, TODOS_OS_CHEFES } from '../rpg/raid.js'
 import { chanceEsperada, esperaEntreDuelos, ranking as rankingPvp, registrarResultado } from '../rpg/pvp.js'
@@ -71,7 +71,6 @@ social.get(
 /** As checagens que valem para abrir e para entrar numa sala. */
 function impedimentoDeRaid(player) {
   if (emExpedicao(player)) return 'Seu personagem está em expedição.'
-  if (feridoRestante(player) > 0) return 'Você está ferido demais para uma raid.'
 
   const espera = (player.rpg.raid?.ultimaRaid ?? 0) + config.rpg.raid.cooldownMinutos * 60_000 - Date.now()
   if (espera > 0) return `Você ainda está se refazendo da última raid (${Math.ceil(espera / 60_000)} min).`

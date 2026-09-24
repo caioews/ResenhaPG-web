@@ -19,8 +19,10 @@ import {
   el,
   estado,
   fecharModal,
+  limparVidaEmCena,
   linhaDeDado,
   linhaDeItem,
+  mostrarVidaEmCena,
   mandar,
   nomeDoItem,
   nomeDoSlot,
@@ -41,13 +43,13 @@ import {
 } from './narrativa.js'
 import { abrirPerfil, retrato } from './perfil.js'
 import {
-  descerUmAndar,
   entrarOMonstro,
   esperarEmPosicao,
   fimDaLuta,
   golpe,
   irAoAbismo,
-  prepararAbismo,
+  prepararCenarios,
+  seguirViagem,
 } from './palco.js'
 
 const porcento = (v) => `${Math.round(v * 1000) / 10}%`
@@ -59,7 +61,6 @@ const porcento = (v) => `${Math.round(v * 1000) / 10}%`
  * cai na divisão; o que não cair em nenhuma vai para "Outros".
  */
 const DIVISOES_DA_MOCHILA = [
-  { id: 'usaveis', nome: 'Utilizáveis', pega: (i) => i.consumivel },
   { id: 'arma', nome: 'Armas', pega: (i) => i.slot === 'arma' },
   { id: 'secundario', nome: 'Secundárias', pega: (i) => i.slot === 'secundario' },
   { id: 'elmo', nome: 'Elmos', pega: (i) => i.slot === 'elmo' },
@@ -100,24 +101,7 @@ export async function abrirMochila(filtro = 'tudo') {
     const tecla = ++posicao <= 9 ? posicao : 0
     const acoes = []
 
-    if (item.consumivel) {
-      acoes.push(
-        el(
-          'button',
-          {
-            class: 'btn pequeno primario',
-            type: 'button',
-            onClick: (ev) =>
-              comBotao(ev.currentTarget, async () => {
-                const r = await mandar('/api/mochila/usar', { uid: item.uid })
-                avisarBom(r.texto)
-                abrirMochila(filtro)
-              }),
-          },
-          'Usar',
-        ),
-      )
-    } else if (equipados.has(item.uid)) {
+    if (equipados.has(item.uid)) {
       acoes.push(
         el(
           'button',
@@ -882,6 +866,7 @@ async function narrarRito(rito) {
       hpB: etapa.hpMaxInimigo,
       hpMaxB: etapa.hpMaxInimigo,
       log: etapa.log,
+      aoVida: mostrarVidaEmCena,
     })
     if (!etapa.venceu) {
       rico(forte('O Rito rejeitou você.', 'perigo'), ' Meia hora até poder tentar de novo.')
@@ -889,6 +874,10 @@ async function narrarRito(rito) {
     }
     rico(forte('Prova vencida.', 'cura'), ` Restaram ${num(etapa.hpFinal)} de vida.`)
   }
+
+  // As três provas são em sequência, sem cura cheia no meio — por isso a
+  // barra da ficha acompanha as três. Acabou, ela volta ao que o servidor diz.
+  limparVidaEmCena()
 
   if (rito.venceu) {
     tituloDeCena('Ascensão')
@@ -907,7 +896,7 @@ async function narrarEspelho(espelho) {
   limparNarrativa()
   definirCena('A Prova do Espelho')
   tituloDeCena('🪞 O espectro')
-  sussurro('Ele tem os seus atributos, as suas habilidades, e entra inteiro. Você entra como está.')
+  sussurro('Ele tem os seus atributos, as suas habilidades, e entra inteiro. Você também.')
 
   await narrarLuta({
     nomeA: 'Você',
@@ -917,7 +906,9 @@ async function narrarEspelho(espelho) {
     hpB: estado.p.hpMax,
     hpMaxB: estado.p.hpMax,
     log: espelho.log,
+    aoVida: mostrarVidaEmCena,
   })
+  limparVidaEmCena()
 
   if (espelho.venceu) {
     rico('Você derrotou o próprio espectro. Agora é ', forte(`${espelho.atual.emoji} ${espelho.atual.nome}`), '.')
@@ -1033,9 +1024,7 @@ export async function abrirAbismo() {
       ? `O Abismo só se abre a partir do nível ${dados.nivelMinimo}. Você é nível ${p.nivel}.`
       : dados.espera > 0
         ? `O Abismo se fecha por mais ${duracao(dados.espera)}.`
-        : p.estados.ferido > 0
-          ? 'Ninguém desce o Abismo ferido.'
-          : null
+        : null
 
   const corpo = el(
     'div',
@@ -1043,7 +1032,7 @@ export async function abrirAbismo() {
     el(
       'p',
       { class: 'sussurro', style: 'margin-top:0' },
-      'Um chefe por andar, sem cura cheia entre eles, até você cair — e você sempre cai. O que se mede é a profundidade. Cada andar é mais fundo e mais duro; ninguém entra num andar abaixo de 60% da vida. No fim, você sai ferido de qualquer jeito.',
+      'Um chefe por andar, sem cura cheia entre eles, até você cair — e você sempre cai. O que se mede é a profundidade. Cada andar é mais fundo e mais duro; ninguém entra num andar abaixo de 60% da vida. Você desce com a vida cheia, venha de onde vier.',
     ),
     el(
       'div',
@@ -1120,7 +1109,7 @@ async function narrarDescida(descida) {
   await noPalco(async () => {
     // Os andares desta descida já são conhecidos: dá para carregar os
     // cenários todos agora e não engasgar na troca.
-    prepararAbismo(descida.andares.map((a) => a.cenario))
+    prepararCenarios(descida.andares.map((a) => a.cenario), 'abismo')
     await irAoAbismo(classeBase(), descida.andares[0]?.cenario)
   })
 
@@ -1130,7 +1119,7 @@ async function narrarDescida(descida) {
     await noPalco(async () => {
       // Do segundo andar em diante o personagem segue andando, e o cenário
       // troca por baixo dele quando a descida muda de profundidade.
-      if (i > 0) descerUmAndar(andar.cenario)
+      if (i > 0) seguirViagem(andar.cenario)
       await entrarOMonstro(andar.inimigo.id)
       await esperarEmPosicao()
     })
@@ -1144,6 +1133,7 @@ async function narrarDescida(descida) {
       hpMaxB: andar.inimigo.hpMax,
       log: andar.log,
       aoEntrada: golpe,
+      aoVida: mostrarVidaEmCena,
     })
     fimDaLuta({ venceu: andar.venceu })
 
@@ -1152,6 +1142,9 @@ async function narrarDescida(descida) {
       break
     }
   }
+
+  // Saiu do Abismo: a ficha volta a mostrar a vida que o servidor diz.
+  limparVidaEmCena()
 
   tituloDeCena('O que sobe do fundo')
   rico(
@@ -1524,6 +1517,11 @@ export async function narrarDuelo(duelo) {
   tituloDeCena('Duelo')
   sussurro(duelo.aposta > 0 ? `Valendo ${num(duelo.aposta)} de gold.` : 'Sem aposta — só orgulho e pontos.')
 
+  // No duelo o jogador tanto pode ser o lado A (desafiante) quanto o B: a
+  // barra da ficha só acompanha o lado que é dele.
+  const euSouA = duelo.lados.a.id === estado.p?.id
+  const euSouB = duelo.lados.b.id === estado.p?.id
+
   await narrarLuta({
     nomeA: duelo.lados.a.nome,
     hpA: duelo.lados.a.hpMax,
@@ -1532,7 +1530,10 @@ export async function narrarDuelo(duelo) {
     hpB: duelo.lados.b.hpMax,
     hpMaxB: duelo.lados.b.hpMax,
     log: duelo.log,
+    aoVida: euSouA ? mostrarVidaEmCena : undefined,
+    aoVidaB: euSouB ? mostrarVidaEmCena : undefined,
   })
+  limparVidaEmCena()
 
   rico(
     forte(duelo.vencedor.nome, 'cura'),

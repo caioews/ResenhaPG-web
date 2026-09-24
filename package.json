@@ -11,9 +11,11 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "balance": "node scripts/simulador.js",
+    "rota": "node scripts/rota.js",
     "classes": "node scripts/classes.js",
     "conformidade": "node scripts/conformidade.js",
-    "arte": "node scripts/arte.js"
+    "arte": "node scripts/arte.js",
+    "especificacao": "node scripts/especificacao.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

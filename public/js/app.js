@@ -21,23 +21,24 @@ import {
   fecharModal,
   hora,
   limpar,
+  limparVidaEmCena,
   linhaDeBarra,
   linhaDeDado,
+  mostrarVidaEmCena,
   mandar,
   modalAberto,
   nomeDoSlot,
   num,
-  pct,
   pegar,
   personagemAtivo,
   recarregarPainel,
+  vidaDaFicha,
 } from './nucleo.js'
 import {
   definirCena,
   esperarNarracao,
   forte,
   limparNarrativa,
-  linha,
   narrando,
   narrarLuta,
   rico,
@@ -63,19 +64,22 @@ import {
 } from './paineis.js'
 import { abrirEditorDeFoto, abrirFicha, abrirPerfil, retrato } from './perfil.js'
 import {
-  andarUmTrecho,
   aoTrocarDeCena,
+  cenarioEmCena,
   entrarOMonstro,
   esperarEmPosicao,
   fimDaLuta,
   golpe,
-  irCacar,
+  irParaOAto,
   mostrarTaberna,
-  palcoEmBatalha,
   palcoEmCena,
+  palcoNaRota,
   pessoasNaTaberna,
+  prepararCenarios,
   prepararPalco,
+  seguirViagem,
 } from './palco.js'
+import { anunciarAto, desenharMapa } from './mapa.js'
 import {
   buscarEvento,
   configurarEventos,
@@ -467,7 +471,7 @@ function desenharFicha() {
         p.foto ? null : el('div', { class: 'sussurro dica-foto' }, 'Toque no quadro para pôr uma foto'),
       ),
     ),
-    linhaDeBarra('HP', 'vida', p.hp, p.hpMax),
+    linhaDeBarra('HP', 'vida', vidaDaFicha(p), p.hpMax),
     linhaDeBarra('XP', 'xp', p.xp, p.xpParaSubir, `${num(p.xp)} / ${num(p.xpParaSubir)}`),
     el('div', { class: 'separador' }),
     linhaDeDado('💰 Ouro', num(p.gold), 'ouro'),
@@ -478,20 +482,15 @@ function desenharFicha() {
 
   // Estados que mudam o que dá para fazer agora.
   const avisos = el('div', { style: 'display:flex;flex-direction:column;gap:5px' })
-  if (p.boss.pendente) {
+  if (p.cacada?.repetindo) {
     avisos.append(
       el(
         'div',
         { class: 'aviso-estado boss' },
-        `Nível travado no marco ${p.boss.pendente}. Derrube ${p.boss.chefe?.emoji ?? ''} ${p.boss.chefe?.nome ?? 'o chefe'} para voltar a subir.`,
+        `A rota parou na fase ${p.cacada.travada?.fase ?? p.cacada.fase} deste ato. ` +
+          'Fique repetindo até ficar mais forte, ou mande seguir em frente.',
       ),
     )
-  }
-  if (p.estados.ferido > 0) {
-    avisos.append(el('div', { class: 'aviso-estado ferido', dataset: { relogio: 'ferido' } }, ''))
-  }
-  if (p.estados.descansando > 0) {
-    avisos.append(el('div', { class: 'aviso-estado descanso', dataset: { relogio: 'descanso' } }, ''))
   }
   if (p.estados.expedicao) {
     avisos.append(el('div', { class: 'aviso-estado expedicao', dataset: { relogio: 'expedicao' } }, ''))
@@ -532,6 +531,7 @@ function desenharFicha() {
     )
   }
 
+  desenharMapa(p.cacada)
   desenharAcoes()
   atualizarRelogios()
 }
@@ -541,70 +541,59 @@ function desenharFicha() {
 function desenharAcoes() {
   const p = estado.p
   const caixa = limpar($('#acoes'))
+  const rota = p.cacada
 
-  const bloqueado =
-    p.estados.expedicao
-      ? 'em expedição'
-      : p.estados.ferido > 0
-        ? 'ferido'
-        : null
-
+  const bloqueado = p.estados.expedicao ? 'em expedição' : null
   const itens = []
 
-  if (p.boss.pendente) {
-    itens.push({
-      rotulo: `Enfrentar ${p.boss.chefe?.emoji ?? ''} ${p.boss.chefe?.nome ?? 'o chefe'}`,
-      nota: `nível ${p.boss.chefe?.nivel ?? ''} · destrava o nível`,
-      desabilitado: Boolean(bloqueado) || p.cooldowns.luta > 0,
-      acao: enfrentarChefe,
-    })
-  }
-
-  itens.push({
-    rotulo: 'Caçar',
-    nota: p.cooldowns.luta > 0 ? `${Math.ceil(p.cooldowns.luta / 1000)}s` : bloqueado ?? '',
-    desabilitado: Boolean(bloqueado) || p.cooldowns.luta > 0,
-    acao: cacar,
-    relogio: 'luta',
-  })
-
-  if (palcoEmCena()) {
+  // ----------------------------------------------------------- a caçada
+  //
+  // Um botão só, e o que ele diz depende de onde o personagem está: parado
+  // na taberna, ele convida; no meio da rota, ele é o jeito de sair.
+  if (cacando) {
+    if (rota?.repetindo) {
+      itens.push({
+        rotulo: 'Ir para a próxima fase',
+        nota: `tentar de novo a fase ${doisDigitos(rota.travada?.fase ?? rota.fase)}`,
+        acao: seguirEmFrente,
+      })
+    }
     itens.push({
       rotulo: 'Voltar para a taberna',
-      nota: 'a lareira, a mesa e quem estiver on-line',
-      acao: voltarParaTaberna,
+      nota: 'termina a fase e volta',
+      desabilitado: voltando,
+      acao: pedirParaVoltar,
     })
-  }
-
-  itens.push({
-    rotulo: p.estados.descansando > 0 ? 'Levantar da fogueira' : 'Descansar na fogueira',
-    nota: p.estados.descansando > 0 ? 'a vida está subindo' : 'a vida sobe até encher',
-    desabilitado: Boolean(p.estados.expedicao) || (p.estados.descansando === 0 && p.hp >= p.hpMax),
-    acao: p.estados.descansando > 0 ? levantar : descansar,
-  })
-
-  const pocao = p.inventario.find((i) => i.consumivel && i.cura)
-  const bandagem = p.inventario.find((i) => i.consumivel && i.tiraFerimento)
-
-  if (p.estados.ferido > 0 && bandagem) {
+  } else {
     itens.push({
-      rotulo: `Usar ${bandagem.nome}`,
-      nota: 'tira o ferimento na hora',
-      acao: () => usarConsumivel(bandagem),
+      rotulo: 'Ir à caçada',
+      nota: rota
+        ? `${rota.nomeDoAto} — fase ${doisDigitos(rota.fase)} de ${doisDigitos(rota.fasesPorAto)}`
+        : bloqueado ?? '',
+      desabilitado: Boolean(bloqueado),
+      acao: irACacada,
     })
-  }
-  if (pocao) {
-    itens.push({
-      rotulo: `Beber ${pocao.nome}`,
-      nota: `recupera ${Math.round(pocao.cura * 100)}% da vida`,
-      desabilitado: p.hp >= p.hpMax,
-      acao: () => usarConsumivel(pocao),
-    })
+    if (rota?.repetindo) {
+      itens.push({
+        rotulo: 'Ir para a próxima fase',
+        nota: `tentar de novo a fase ${doisDigitos(rota.travada?.fase ?? rota.fase)}`,
+        desabilitado: Boolean(bloqueado),
+        acao: seguirEmFrente,
+      })
+    }
+    if (palcoEmCena()) {
+      itens.push({
+        rotulo: 'Voltar para a taberna',
+        nota: 'a lareira, a mesa e quem estiver on-line',
+        acao: voltarParaTaberna,
+      })
+    }
   }
 
   itens.push({
     rotulo: p.estados.expedicao ? 'Ver a expedição' : 'Partir em expedição',
     nota: p.estados.expedicao ? '' : 'ganha XP com o navegador fechado',
+    desabilitado: cacando,
     acao: abrirExpedicao,
   })
 
@@ -616,7 +605,7 @@ function desenharAcoes() {
         : p.cooldowns.abismo > 0
           ? `fechado por ${duracao(p.cooldowns.abismo)}`
           : 'sem volta, só profundidade',
-    desabilitado: p.nivel < 40 || p.cooldowns.abismo > 0 || Boolean(bloqueado),
+    desabilitado: p.nivel < 40 || p.cooldowns.abismo > 0 || Boolean(bloqueado) || cacando,
     acao: abrirAbismo,
     relogio: 'abismo',
   })
@@ -705,37 +694,235 @@ function prepararTeclado() {
 
 // ------------------------------------------------------- as ações em si
 
-async function cacar() {
-  const r = await mandar('/api/combate/cacar')
-  await entrarEmCena(r.encontro)
-  await mostrarEncontro(r.encontro, r.travado)
-}
+const doisDigitos = (n) => String(n ?? 0).padStart(2, '0')
 
-async function enfrentarChefe() {
-  const r = await mandar('/api/combate/chefe')
-  await entrarEmCena(r.encontro)
-  await mostrarEncontro(r.encontro, false)
-}
+/** O laço automático está rodando? O jogador já pediu para parar? */
+let cacando = false
+let voltando = false
 
 /**
- * A ida até o bicho: da taberna, o personagem atravessa a tela andando; já
- * nas ruínas, caminha só mais um trecho. Depois o monstro entra pela direita.
+ * A rota como o mapa deve mostrá-la ENQUANTO uma fase é contada.
+ *
+ * A resposta do servidor chega com a rota já andada — se o mapa desenhasse
+ * ela direto, a luz pularia para a fase seguinte antes de a luta ser
+ * contada, entregando o resultado. Então o mapa fica congelado no estado de
+ * antes da fase até a narração acabar.
  */
-async function entrarEmCena(encontro) {
-  // O palco é ilustração: se algo nele falhar, a caçada acontece do mesmo
+let rotaNaTela = null
+const mostrarMapa = () => desenharMapa(rotaNaTela ?? estado.p?.cacada ?? null)
+
+const noPalco = async (acao) => {
+  // O palco é ilustração: se algo nele falhar, a fase acontece do mesmo
   // jeito — o log é que conta a história.
   try {
-    if (!palcoEmBatalha()) {
-      definirCena('Ruínas de Valkhar')
-      await irCacar(classeBase())
-    } else {
-      andarUmTrecho()
-    }
-    await entrarOMonstro(encontro.monstro.id)
-    await esperarEmPosicao()
+    await acao()
   } catch (e) {
     console.warn('palco:', e)
   }
+}
+
+/**
+ * "Ir à caçada": o personagem sai da taberna e não para mais.
+ *
+ * Uma volta do laço é uma fase. O servidor resolve a fase inteira de uma vez
+ * e devolve o log; a animação leva vários segundos, e é ela que dá o ritmo —
+ * o laço só pede a próxima quando a anterior acabou de ser contada.
+ *
+ * Vencendo, a rota anda sozinha e a fase seguinte começa. Perdendo, ela
+ * recua uma fase e o personagem fica repetindo o que consegue vencer até o
+ * jogador mandar seguir em frente. O laço continua nos dois casos: quem o
+ * interrompe é "Voltar para a taberna", e mesmo esse espera a fase em curso
+ * terminar — nada é abortado no meio, porque o servidor já resolveu aquela
+ * fase e o resultado dela vale.
+ */
+async function irACacada() {
+  if (cacando) return
+  cacando = true
+  voltando = false
+  desenharAcoes()
+
+  try {
+    let primeira = true
+    while (!voltando) {
+      const antes = estado.p?.cacada
+      const r = await mandar('/api/combate/cacada')
+      await narrarFase(r.cacada, { primeira, rotaAntes: antes })
+      primeira = false
+    }
+    await voltarParaTaberna()
+  } catch (e) {
+    rotaNaTela = null
+    limparVidaEmCena()
+    mostrarMapa()
+    avisarErro(e)
+    sussurro('A caçada parou aqui. Quando quiser, é só sair de novo.')
+  } finally {
+    cacando = false
+    voltando = false
+    desenharAcoes()
+  }
+}
+
+/** "Ir para a próxima fase": religa o avanço depois de uma queda. */
+async function seguirEmFrente() {
+  const r = await mandar('/api/combate/cacada/avancar')
+  sussurro(`De volta à fase ${doisDigitos(r.rota.fase)} de ${r.rota.nomeDoAto}. Desta vez vai.`)
+  if (!cacando) await irACacada()
+}
+
+/** Pede ao laço que pare — ele sai no fim da fase que está sendo contada. */
+function pedirParaVoltar() {
+  voltando = true
+  desenharAcoes()
+  avisar('Voltando para a taberna quando esta fase acabar.')
+}
+
+/**
+ * Uma fase contada do começo ao fim: a viagem até lá, a horda um inimigo
+ * atrás do outro, e o fechamento.
+ */
+async function narrarFase(f, { primeira = false, rotaAntes = null } = {}) {
+  rotaNaTela = rotaAntes
+  mostrarMapa()
+
+  const mudouDeLugar = f.cenario !== cenarioEmCena()
+
+  await noPalco(async () => {
+    // O cenário desta fase e o da seguinte entram na memória antes de
+    // precisarem: a troca de ato não pode esperar download.
+    prepararCenarios([f.cenario, f.proxima?.cenario], 'rota')
+    if (primeira && !palcoNaRota()) await irParaOAto(classeBase(), f.cenario)
+    else seguirViagem(f.cenario)
+  })
+
+  definirCena(f.nomeDoAto)
+  // Lugar novo: o nome aparece por cima do palco e some, à moda de Dark
+  // Souls. Só quando o cenário muda de verdade — repetir a mesma fase não é
+  // chegar a lugar nenhum.
+  if (mudouDeLugar) anunciarAto(f.nomeDoAto, f.rota.arco.rotulo)
+
+  limparNarrativa()
+  tituloDeCena(`${f.nomeDoAto} — fase ${doisDigitos(f.fase)} de ${doisDigitos(f.rota.fasesPorAto)}`)
+
+  if (f.chefe) {
+    sussurro(`O ato termina aqui: ${f.lutas[0]?.inimigo.nome ?? 'o chefe'} espera no fim do caminho.`)
+  } else {
+    sussurro(
+      `Uma horda de ${f.horda} vem vindo, um atrás do outro. Entre um e outro só dá tempo de respirar: ` +
+        'o que a luta anterior tirou pesa na seguinte.',
+    )
+  }
+
+  for (const [i, luta] of f.lutas.entries()) {
+    await noPalco(async () => {
+      if (i > 0) seguirViagem()
+      await entrarOMonstro(luta.inimigo.id)
+      await esperarEmPosicao()
+    })
+
+    const m = luta.inimigo
+    tituloDeCena(
+      `${m.emoji} ${m.nome}${m.elite ? ' (elite)' : ''} — nível ${m.nivel}` +
+        (f.horda > 1 ? `  ·  ${i + 1} de ${f.horda}` : ''),
+    )
+
+    await narrarLuta({
+      // No PvE o log chama o jogador de "Você" — o placar acompanha, senão a
+      // barra diria "Sombra" e o texto logo abaixo diria outra coisa.
+      nomeA: 'Você',
+      hpA: luta.hpInicial,
+      hpMaxA: luta.hpMax,
+      nomeB: `${m.emoji} ${m.nome}`,
+      hpB: m.hpMax,
+      hpMaxB: m.hpMax,
+      log: luta.log,
+      aoEntrada: golpe,
+      aoVida: mostrarVidaEmCena,
+    })
+
+    fimDaLuta({ venceu: luta.venceu })
+    if (luta.venceu) contarGanhos(luta.ganhos)
+  }
+
+  // A horda acabou: a ficha volta a mostrar o que o servidor diz — que, fora
+  // da fase, é sempre a vida cheia.
+  limparVidaEmCena()
+  fecharFase(f)
+
+  rotaNaTela = null
+  mostrarMapa()
+  desenharAcoes()
+}
+
+/** O que caiu de um inimigo, em poucas linhas. */
+function contarGanhos(g) {
+  if (!g) return
+
+  rico(
+    '+',
+    forte(num(g.xp)),
+    ' de XP e +',
+    forte(num(g.gold)),
+    ' de gold.',
+    g.goldDeSaque > 0 ? el('span', { class: 'sussurro' }, `  (${num(g.goldDeSaque)} vieram do saque)`) : '',
+  )
+  if (g.subiuPara.length) rico(forte(`Subiu para o nível ${g.subiuPara.at(-1)}!`, 'cura'))
+  if (g.drop) {
+    if (g.mochilaCheia) sussurro(`${g.drop.nome} caiu, mas a mochila está cheia — perdido.`)
+    else rico('Caiu ', forte(g.drop.nomeCompleto ?? g.drop.nome), '.')
+  }
+  if (g.titanita) sussurro(`Titanita: ${g.titanita.quantidade}× ${g.titanita.grau}.`)
+  if (g.feitico) rico('Encontrou um feitiço de ', forte(g.feitico), '.')
+}
+
+/** O fechamento da fase: o placar dela e para onde a rota foi. */
+function fecharFase(f) {
+  const t = f.total
+
+  if (!f.venceu) {
+    tocar('aviso')
+    tituloDeCena('Você caiu')
+    const ultimo = f.lutas.at(-1)
+    rico(
+      forte(`${ultimo?.inimigo.nome ?? 'A horda'} derrubou você`, 'perigo'),
+      ` na fase ${doisDigitos(f.fase)} de ${f.nomeDoAto}.`,
+    )
+    if (t.xp || t.gold) {
+      rico('Do que deu tempo: +', forte(num(t.xp)), ' de XP e +', forte(num(t.gold)), ' de gold.')
+    }
+    const volta =
+      f.proxima.ato === f.ato
+        ? `a fase ${doisDigitos(f.proxima.fase)}`
+        : `a fase ${doisDigitos(f.proxima.fase)} de ${f.proxima.nomeDoAto}`
+    sussurro(
+      `A rota recuou para ${volta}, e você entra nela com a vida cheia. ` +
+        'Fique repetindo até ficar mais forte — quando quiser tentar de novo, mande seguir em frente.',
+    )
+    return
+  }
+
+  tituloDeCena(f.chefe ? 'O ato caiu' : 'Fase vencida')
+  rico('Somando a fase: +', forte(num(t.xp)), ' de XP e +', forte(num(t.gold)), ' de gold.')
+  if (t.subiuPara.length) rico(forte(`Subiu para o nível ${t.subiuPara.at(-1)}!`, 'cura'))
+  if (t.perdidos) {
+    sussurro(`${t.perdidos} item(ns) caíram com a mochila cheia e ficaram para trás. Passe na loja.`)
+  }
+
+  if (f.terminou) {
+    tocar('evento')
+    rico(forte('A rota acabou.', 'cura'), ' Você chegou ao fim do Abismo Demoníaco e voltou para contar.')
+    return
+  }
+  if (f.repetindo) {
+    sussurro('Vencida de novo. A rota continua parada aqui até você mandar seguir em frente.')
+    return
+  }
+  if (f.novoAto) {
+    tocar('evento')
+    rico('Adiante, ', forte(f.proxima.nomeDoAto), ' — ', f.proxima.rotuloDoArco, '.')
+    return
+  }
+  sussurro(`Vida cheia e a fase ${doisDigitos(f.proxima.fase)} logo à frente.`)
 }
 
 /** Volta para a taberna: o mesmo fade, no sentido contrário. */
@@ -751,20 +938,29 @@ async function voltarParaTaberna() {
   desenharAcoes()
 }
 
-async function mostrarEncontro(e, travado) {
+/**
+ * Uma luta solta, fora da rota: é o evento da Fenda que passa por aqui.
+ * Entra em cena onde o palco estiver, sem mexer na posição da rota.
+ */
+async function entrarEmCena(encontro) {
+  await noPalco(async () => {
+    if (!palcoEmCena()) await irParaOAto(classeBase(), estado.p?.cacada?.cenario)
+    else seguirViagem()
+    await entrarOMonstro(encontro.monstro.id)
+    await esperarEmPosicao()
+  })
+}
+
+async function mostrarEncontro(e) {
   limparNarrativa()
 
   const m = e.monstro
-  const titulo = m.boss ? `${m.emoji} ${m.nome}` : `${m.emoji} ${m.nome}${m.elite ? ' (elite)' : ''}`
-  tituloDeCena(`${titulo} — nível ${m.nivel}`)
-
-  if (m.boss) {
-    sussurro('O chefe do marco espera. Ele luta três níveis acima de você, e não é um saco de pancada.')
-  } else if (m.elite) {
-    sussurro('Esse veio diferente: três níveis acima e um quarto mais forte em tudo.')
-  } else {
-    sussurro('Surge das sombras, pronto para atacar.')
-  }
+  tituloDeCena(`${m.emoji} ${m.nome}${m.elite ? ' (elite)' : ''} — nível ${m.nivel}`)
+  sussurro(
+    m.elite
+      ? 'Esse veio diferente: três níveis acima e um quarto mais forte em tudo.'
+      : 'Surge das sombras, pronto para atacar.',
+  )
 
   await narrarLuta({
     // No PvE o log chama o jogador de "Você" — o placar acompanha, senão a
@@ -777,58 +973,20 @@ async function mostrarEncontro(e, travado) {
     hpMaxB: m.hpMax,
     log: e.log,
     aoEntrada: golpe,
+    aoVida: mostrarVidaEmCena,
   })
 
   fimDaLuta({ venceu: e.venceu })
+  limparVidaEmCena()
   tituloDeCena(e.venceu ? 'Vitória' : 'Derrota')
 
   if (!e.venceu) {
-    rico(
-      forte(`${m.nome} venceu.`, 'perigo'),
-      e.goldPerdido ? ` Você perdeu ${num(e.goldPerdido)} de gold no caminho de volta.` : '',
-    )
-    sussurro('Ferido por 5 minutos. Uma bandagem resolve na hora; a fogueira, com paciência.')
+    rico(forte(`${m.nome} venceu.`, 'perigo'), ' Nada do que ele carregava ficou com você.')
     return
   }
 
-  rico('+', forte(num(e.xp)), ' de XP e +', forte(num(e.gold)), ' de gold.',
-    e.goldDeSaque > 0 ? el('span', { class: 'sussurro' }, `  (${num(e.goldDeSaque)} vieram do saque)`) : '')
-
   if (e.porDecisao) sussurro('Venceu por decisão: as 30 rodadas acabaram e você tinha mais vida proporcional.')
-  if (e.bossVencido) rico(forte('O marco caiu.', 'cura'), ' Seu nível voltou a subir.')
-  if (e.subiuPara.length) rico(forte(`Subiu para o nível ${e.subiuPara.at(-1)}!`, 'cura'))
-  else if (travado) sussurro('O XP entrou, mas o nível continua travado até o chefe cair.')
-
-  if (e.drop) {
-    if (e.mochilaCheia) sussurro(`${e.drop.nome} caiu, mas a mochila está cheia — perdido.`)
-    else rico('Caiu ', forte(e.drop.nomeCompleto ?? e.drop.nome), '.')
-  }
-  if (e.titanita) sussurro(`Titanita: ${e.titanita.quantidade}× ${e.titanita.grau}.`)
-  if (e.feitico) rico('Encontrou um feitiço de ', forte(e.feitico), '.')
-}
-
-async function descansar() {
-  const r = await mandar('/api/combate/fogueira')
-  linha(
-    `Você acende uma fogueira. A vida sobe aos poucos e enche em ${duracao(r.terminaEm - Date.now())} — ` +
-      'levantar antes da hora não perde o que já subiu, só para de subir.',
-    'sussurro',
-  )
-}
-
-async function levantar() {
-  const r = await mandar('/api/combate/levantar')
-  linha(
-    r.descansoCompleto
-      ? 'Você levanta inteiro. A fogueira apaga sozinha.'
-      : `Você levanta antes da hora, com ${num(estado.p.hp)} de ${num(estado.p.hpMax)} de vida.`,
-    'sussurro',
-  )
-}
-
-async function usarConsumivel(item) {
-  const r = await mandar('/api/mochila/usar', { uid: item.uid })
-  linha(r.texto, 'sussurro')
+  contarGanhos(e)
 }
 
 // ------------------------------------------------------ menu de lugares
@@ -1028,24 +1186,11 @@ function atualizarRelogios() {
   if (!p) return
 
   const passo = 1000
-  p.estados.ferido = Math.max(0, p.estados.ferido - passo)
-  p.estados.descansando = Math.max(0, p.estados.descansando - passo)
-  p.cooldowns.luta = Math.max(0, p.cooldowns.luta - passo)
   p.cooldowns.abismo = Math.max(0, p.cooldowns.abismo - passo)
   p.cooldowns.pvp = Math.max(0, p.cooldowns.pvp - passo)
   p.cooldowns.raid = Math.max(0, p.cooldowns.raid - passo)
   if (p.estados.expedicao) {
     p.estados.expedicao.restante = Math.max(0, p.estados.expedicao.restante - passo)
-  }
-
-  // A fogueira sobe em rampa: a mesma conta que o servidor faz em
-  // vidaAtual(), refeita a cada segundo para a barra subir na tela em vez de
-  // dar um salto no fim.
-  const fogueira = p.estados.fogueira
-  if (fogueira && fogueira.duracao > 0) {
-    const andado = Math.min(1, (fogueira.duracao - p.estados.descansando) / fogueira.duracao)
-    p.hp = Math.round(fogueira.hpNoInicio + (p.hpMax - fogueira.hpNoInicio) * andado)
-    atualizarBarraDeVida()
   }
 
   // O que precisa ser refeito depois da volta, não no meio dela: redesenhar
@@ -1055,13 +1200,7 @@ function atualizarRelogios() {
   for (const node of document.querySelectorAll('[data-relogio]')) {
     const tipo = node.dataset.relogio
 
-    if (tipo === 'ferido') {
-      node.textContent = `Ferido — se recupera em ${duracao(p.estados.ferido)}.`
-    } else if (tipo === 'descanso') {
-      node.textContent =
-        `Descansando na fogueira — ${num(p.hp)}/${num(p.hpMax)} de vida, ` +
-        `cheia em ${duracao(p.estados.descansando)}.`
-    } else if (tipo === 'expedicao') {
+    if (tipo === 'expedicao') {
       const e = p.estados.expedicao
       node.textContent = e?.restante
         ? `${e.emoji} ${e.nome} — volta em ${duracao(e.restante)}.`
@@ -1082,26 +1221,7 @@ function atualizarRelogios() {
     }
   }
 
-  // Estado que acabou muda o menu inteiro, e o valor que vale é o do
-  // servidor: melhor buscar a ficha do que adivinhar.
-  const estadoAcabou =
-    (p.estados.ferido === 0 && document.querySelector('[data-relogio="ferido"]')) ||
-    (p.estados.descansando === 0 && document.querySelector('[data-relogio="descanso"]'))
-
-  if (estadoAcabou) atualizarFicha()
-  else if (redesenharMenu) desenharAcoes()
-}
-
-/**
- * Atualiza a barra de vida no lugar, sem redesenhar a ficha inteira — que
- * perderia a rolagem e piscaria a cada segundo do descanso.
- */
-function atualizarBarraDeVida() {
-  const p = estado.p
-  const alvo = document.querySelector('#ficha .barra.vida')
-  if (!alvo || !p) return
-  alvo.querySelector('.preenchida').style.width = `${pct(p.hp, p.hpMax)}%`
-  alvo.querySelector('.rotulo').textContent = `${num(p.hp)} / ${num(p.hpMax)}`
+  if (redesenharMenu) desenharAcoes()
 }
 
 async function atualizarFicha() {
@@ -1378,7 +1498,7 @@ async function iniciar() {
   prepararChat()
   prepararTeclado()
   destravarSom()
-  configurarEventos({ mostrarEncontro, atualizarFicha })
+  configurarEventos({ mostrarEncontro, entrarEmCena, atualizarFicha })
   configurarAventuras({ atualizarFicha, mostrarCartao, aoMudarChefe: desenharBotaoDoChefe })
 
   $('#fechar-modal').addEventListener('click', fecharModal)

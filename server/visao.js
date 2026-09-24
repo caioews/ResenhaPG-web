@@ -16,15 +16,9 @@ import {
 } from './rpg/classes.js'
 import { HABILIDADES, efeitosDaClasse, habilidadesDaClasse } from './rpg/habilidades.js'
 import { NOME_DO_SLOT, RARIDADES, SLOTS, TIPOS, bonusFinal, nomeCompleto, precoDeReferencia } from './rpg/itens.js'
-import {
-  atributos,
-  descansoRestante,
-  feridoRestante,
-  itemEquipado,
-  vidaAtual,
-  xpParaSubir,
-} from './rpg/jogador.js'
-import { NIVEIS_ACIMA, chefeDoMarco, proximoBoss } from './rpg/monstros.js'
+import { atributos, itemEquipado, vidaAtual, xpParaSubir } from './rpg/jogador.js'
+import { verRota } from './rpg/cacada.js'
+import { chefeDoAto, nomeDoArco, arcoDoAto, ato as atoDaRota } from './rpg/rota.js'
 import { FEITICOS } from './rpg/feiticos.js'
 import { TITANITAS } from './rpg/ferreiro.js'
 import { emExpedicao, tempoRestante, EXPEDICOES } from './rpg/expedicao.js'
@@ -53,22 +47,10 @@ export function verItem(item, index = null) {
     equipavel: Boolean(item.slot),
   }
 
-  if (!item.slot) {
-    // Consumivel: pocao ou bandagem.
-    return {
-      ...base,
-      consumivel: true,
-      emoji: item.emoji ?? base.emoji,
-      cura: item.cura ?? 0,
-      tiraFerimento: Boolean(item.tiraFerimento),
-    }
-  }
-
   const raridade = RARIDADES[item.raridade] ?? RARIDADES.comum
 
   return {
     ...base,
-    consumivel: false,
     raridade: item.raridade,
     raridadeNome: raridade.nome,
     raridadeEmoji: raridade.emoji,
@@ -114,28 +96,29 @@ export const classesBase = () =>
     .filter((id) => CLASSES[id].tier === 1)
     .map((id) => ({ ...verClasse(id), passiva: verHabilidade(CLASSES[id].habilidade) }))
 
+/** O inimigo no formato que a tela e o palco desenham. */
+export const verInimigo = (monstro) => ({
+  // É o `id` que diz ao palco qual sprite desenhar.
+  id: monstro.id,
+  nome: monstro.nome,
+  emoji: monstro.emoji,
+  nivel: monstro.nivel,
+  elite: Boolean(monstro.elite),
+  boss: Boolean(monstro.boss),
+  eco: Boolean(monstro.eco),
+  hpMax: monstro.hp,
+  atq: monstro.atq,
+  def: monstro.def,
+  agi: monstro.agi,
+})
+
 /**
- * Um encontro resolvido, no formato que a interface desenha.
- *
- * `hpInicial` é a vida com que o jogador ENTROU: caçar em sequência parte de
- * onde a luta anterior terminou, e a barra da animação precisa começar daí.
+ * Uma luta solta resolvida (o evento da Fenda), no formato que a interface
+ * desenha. `hpInicial` é a vida com que o jogador ENTROU.
  */
 export const verEncontro = (monstro, saida, hpInicial) => ({
   hpInicial,
-  monstro: {
-    // A espécie (o `id`) diz ao palco qual sprite desenhar.
-    id: monstro.id,
-    nome: monstro.nome,
-    emoji: monstro.emoji,
-    nivel: monstro.nivel,
-    elite: monstro.elite,
-    boss: monstro.boss,
-    eco: Boolean(monstro.eco),
-    hpMax: monstro.hp,
-    atq: monstro.atq,
-    def: monstro.def,
-    agi: monstro.agi,
-  },
+  monstro: verInimigo(monstro),
   venceu: saida.venceu,
   rodadas: saida.luta.rodadas,
   porDecisao: saida.luta.porDecisao,
@@ -145,13 +128,79 @@ export const verEncontro = (monstro, saida, hpInicial) => ({
   xp: saida.xp,
   gold: saida.gold,
   goldDeSaque: saida.goldDeSaque,
-  goldPerdido: saida.goldPerdido,
   subiuPara: saida.subiuPara,
-  bossVencido: saida.bossVencido,
   drop: saida.drop ? verItem(saida.drop) : null,
   mochilaCheia: saida.mochilaCheia,
   titanita: saida.titanita,
   feitico: saida.feitico,
+})
+
+/**
+ * Uma fase da rota resolvida, no formato que a interface anima.
+ *
+ * Vem com a horda inteira: uma entrada por inimigo, cada uma com o log
+ * completo daquela luta e a vida com que o personagem ENTROU nela — é o
+ * desgaste de uma para a outra que o palco precisa desenhar. O cliente só
+ * reproduz; nada aqui ainda está por decidir.
+ */
+export const verFase = (player, saida) => ({
+  ato: saida.fase.ato,
+  fase: saida.fase.fase,
+  nomeDoAto: saida.fase.nomeDoAto,
+  cenario: saida.fase.cenario,
+  nivel: saida.fase.nivel,
+  chefe: saida.fase.chefe,
+  // Quantos inimigos a fase TINHA. `lutas` só traz os que aconteceram: se o
+  // personagem cai no terceiro, o quarto e o quinto nunca entram em cena.
+  horda: saida.fase.inimigos.length,
+  venceu: saida.venceu,
+
+  lutas: saida.lutas.map((l) => ({
+    inimigo: verInimigo(l.inimigo),
+    hpInicial: l.hpInicial,
+    hpMax: l.hpMax,
+    venceu: l.venceu,
+    rodadas: l.rodadas,
+    porDecisao: l.porDecisao,
+    log: l.log,
+    ganhos: l.ganhos
+      ? {
+          xp: l.ganhos.xp,
+          gold: l.ganhos.gold,
+          goldDeSaque: l.ganhos.goldDeSaque,
+          subiuPara: l.ganhos.subiuPara,
+          drop: l.ganhos.drop ? verItem(l.ganhos.drop) : null,
+          mochilaCheia: l.ganhos.mochilaCheia,
+          titanita: l.ganhos.titanita,
+          feitico: l.ganhos.feitico,
+        }
+      : null,
+  })),
+
+  // O fechamento da fase, somado — é o que o relatório final mostra.
+  total: {
+    xp: saida.total.xp,
+    gold: saida.total.gold,
+    subiuPara: saida.total.subiuPara,
+    itens: saida.total.itens.map((d) => ({ item: verItem(d.item), perdido: d.perdido })),
+    titanitas: saida.total.titanitas,
+    feiticos: saida.total.feiticos,
+    perdidos: saida.total.perdidos,
+  },
+
+  // Para onde a rota andou, e o que a tela faz com isso.
+  proxima: {
+    ...saida.proxima,
+    nomeDoAto: atoDaRota(saida.proxima.ato)?.nome ?? '',
+    cenario: atoDaRota(saida.proxima.ato)?.cenario ?? null,
+    rotuloDoArco: nomeDoArco(arcoDoAto(saida.proxima.ato)),
+    chefe: chefeDoAto(saida.proxima.ato)?.nome ?? null,
+  },
+  novoAto: Boolean(saida.novoAto),
+  repetindo: saida.repetindo,
+  recorde: saida.recorde,
+  terminou: saida.terminou,
+  rota: verRota(player),
 })
 
 /** A ficha inteira. É o payload de GET /api/estado. */
@@ -163,14 +212,6 @@ export function verPersonagem(player) {
 
   const linhagem = ficha.classe ? linhagemDe(ficha.classe).map(verClasse) : []
   const habilidades = c ? habilidadesDaClasse(c).map(verHabilidade) : []
-
-  const esperaDeLuta = Math.max(
-    0,
-    (ficha.ultimaLuta ?? 0) + config.rpg.cooldownSummonSeconds * 1000 - Date.now(),
-  )
-
-  const marco = ficha.bossPendente || proximoBoss(ficha.nivel)
-  const chefe = chefeDoMarco(marco)
 
   return {
     id: player.id,
@@ -227,8 +268,6 @@ export function verPersonagem(player) {
       })),
 
     estados: {
-      ferido: feridoRestante(player),
-      descansando: descansoRestante(player),
       expedicao: emExpedicao(player)
         ? {
             tipo: ficha.expedicao.tipo,
@@ -239,22 +278,9 @@ export function verPersonagem(player) {
         : null,
       esperaDoRito: esperaDoRito(player),
       esperaDaProva: Math.max(0, (ficha.provaAte ?? 0) - Date.now()),
-
-      // O bastante para a tela desenhar a rampa da fogueira sem pedir nada
-      // ao servidor a cada segundo: de onde a vida partiu e quanto dura o
-      // descanso. O cliente interpola exatamente a mesma conta de
-      // vidaAtual() — e o valor que vale continua sendo o de cima, `hp`.
-      fogueira:
-        descansoRestante(player) > 0
-          ? {
-              duracao: ficha.fogueiraAte - (ficha.hpEm || ficha.fogueiraAte),
-              hpNoInicio: ficha.hp ?? total.hp,
-            }
-          : null,
     },
 
     cooldowns: {
-      luta: esperaDeLuta,
       abismo: esperaDoAbismo(player),
       pvp: esperaEntreDuelos(player),
       raid: Math.max(
@@ -263,16 +289,9 @@ export function verPersonagem(player) {
       ),
     },
 
-    boss: {
-      pendente: ficha.bossPendente,
-      proximoMarco: proximoBoss(ficha.nivel),
-      vencidos: ficha.bossesVencidos,
-      // O chefe de um marco luta tres niveis acima dele — e dai que vem a
-      // dificuldade, mais do que dos multiplicadores.
-      chefe: chefe
-        ? { nome: chefe.nome, emoji: chefe.emoji, nivel: marco + NIVEIS_ACIMA, marco, eco: Boolean(chefe.eco) }
-        : null,
-    },
+    // Onde o personagem está na rota: é o que o mapa desenha, e é de onde
+    // sai o rótulo do botão de caçar.
+    cacada: verRota(player),
 
     // O prestígio: o contador, o que ele já dá e o que o próximo daria.
     prestigio: (() => {
@@ -357,7 +376,11 @@ export function verPerfil(player) {
     equipado: Object.fromEntries(SLOTS.map((slot) => [slot, verItem(itemEquipado(player, slot))])),
     prestigio: verPrestigio(player),
 
-    boss: { vencidos: ficha.bossesVencidos },
+    cacada: {
+      ato: ficha.cacada?.maiorAto ?? 0,
+      fase: ficha.cacada?.maiorFase ?? 0,
+      nomeDoAto: atoDaRota(ficha.cacada?.maiorAto ?? 0)?.nome ?? null,
+    },
     abismo: { melhorAndar: ficha.abismo?.melhorAndar ?? 0 },
     masmorra: { melhorAndar: ficha.masmorra?.melhorAndar ?? 0 },
     raid: { vitorias: ficha.raid?.vitorias ?? 0, derrotas: ficha.raid?.derrotas ?? 0 },

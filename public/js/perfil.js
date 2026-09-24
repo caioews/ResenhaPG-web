@@ -168,7 +168,10 @@ function montarFicha(p, { retratoClicavel = null, lateral = [], antes = null } =
       el('h4', {}, 'Feitos'),
       linhaDeDado('Vitórias em caçada', num(p.vitorias)),
       linhaDeDado('Derrotas', num(p.derrotas)),
-      linhaDeDado('Chefes vencidos', num(p.boss.vencidos.length)),
+      linhaDeDado(
+        'Rota — recorde',
+        p.cacada?.ato ? `ato ${p.cacada.ato} · fase ${String(p.cacada.fase).padStart(2, '0')}` : '—',
+      ),
       linhaDeDado('Abismo — recorde', p.abismo.melhorAndar ? `andar ${p.abismo.melhorAndar}` : '—'),
       linhaDeDado('Masmorra — recorde', p.masmorra?.melhorAndar ? `andar ${p.masmorra.melhorAndar}` : '—'),
       linhaDeDado('Raids', `${num(p.raid.vitorias)}V / ${num(p.raid.derrotas)}D`),

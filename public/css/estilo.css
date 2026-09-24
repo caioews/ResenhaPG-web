@@ -554,10 +554,16 @@ select:focus {
   flex: 1;
 }
 
-.palco {
+/* O palco e o mapa andam juntos: o mapa fica sempre logo abaixo da tela
+   desenhada, empilhados ou lado a lado com o log. */
+.palco-coluna {
   flex: none;
   align-self: stretch;
   margin: 12px 14px 0;
+  min-width: 0;
+}
+
+.palco {
   border: 1px solid var(--borda);
   border-radius: 2px;
   overflow: hidden;
@@ -576,11 +582,214 @@ select:focus {
   .cena-e-palco {
     flex-direction: row;
   }
-  .palco {
+  .palco-coluna {
     align-self: flex-start;
     width: 46%;
     max-width: 540px;
     margin: 14px 14px 14px 0;
+  }
+}
+
+/* ------------------------------------------------- o nome do lugar
+
+   Chegou a um ato novo: o nome aparece por cima do palco, fica um segundo
+   e some. Nada nele recebe clique — é só um letreiro. */
+.anuncio-ato {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  padding: 0 18px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(6, 5, 10, 0.72) 0%, rgba(6, 5, 10, 0) 72%);
+}
+.anuncio-ato.tocando {
+  animation: surgir-e-sumir 2.2s ease-in-out forwards;
+}
+.anuncio-ato .arco {
+  font-family: var(--corpo);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ouro-fraco);
+}
+.anuncio-ato .nome {
+  font-family: var(--titulo);
+  font-size: clamp(18px, 4.2cqw, 30px);
+  letter-spacing: 0.1em;
+  color: var(--ouro-claro);
+  text-shadow: 0 0 22px rgba(0, 0, 0, 0.9), 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+.anuncio-ato .risco {
+  width: min(260px, 60%);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ouro-fraco), transparent);
+}
+
+@keyframes surgir-e-sumir {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.3em;
+  }
+  22% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anuncio-ato.tocando {
+    animation-duration: 2.2s;
+    animation-name: piscar-parado;
+  }
+  @keyframes piscar-parado {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    10%,
+    80% {
+      opacity: 1;
+    }
+  }
+}
+
+/* ------------------------------------------------------------ o mapa
+
+   A rota vista de cima: o arco, o ato e as dez fases dele. A fase atual
+   pulsa; as vencidas ficam acesas; a décima é sempre o chefe. */
+.mapa {
+  margin-top: 10px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(24, 20, 14, 0.75), rgba(10, 9, 13, 0.9)),
+    var(--painel);
+}
+
+.mapa-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.mapa-arco {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ouro-fraco);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mapa-ato {
+  font-family: var(--titulo);
+  font-size: 15px;
+  color: var(--ouro-claro);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mapa-contador {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--texto-fraco);
+  white-space: nowrap;
+}
+
+/* A trilha: dez nós ligados por uma linha pontilhada. */
+.mapa-trilha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  position: relative;
+}
+.mapa-trilha::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  border-top: 1px dashed rgba(122, 101, 38, 0.55);
+}
+
+.mapa-no {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--borda);
+  border-radius: 50%;
+  background: var(--preto);
+  color: var(--texto-fraco);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+}
+.mapa-no.feita {
+  border-color: var(--ouro-fraco);
+  background: #241d10;
+  color: var(--ouro);
+}
+.mapa-no.chefe {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.mapa-no.atual {
+  border-color: var(--ouro-claro);
+  background: #3a2d10;
+  color: var(--ouro-claro);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.16);
+  animation: pulso-do-mapa 1.8s ease-in-out infinite;
+}
+.mapa-no.travada {
+  border-color: var(--erro);
+  color: var(--erro);
+}
+
+@keyframes pulso-do-mapa {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(201, 162, 39, 0.04);
+  }
+}
+
+.mapa-rodape {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--texto-fraco);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mapa-rodape .recorde {
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapa-no.atual {
+    animation: none;
   }
 }
 
