@@ -5,6 +5,7 @@
  * Regra que atravessa o arquivo inteiro: nada aqui decide nada do jogo. O
  * cliente pede, o servidor responde com a ficha nova, e a tela redesenha.
  */
+import { palcoEmCena } from './palco.js'
 
 export const estado = {
   usuario: null,
@@ -233,6 +234,16 @@ export function limparVidaEmCena() {
   vidaEmCena = null
   if (estado.p) pintarVida(estado.p.hp, estado.p.hpMax)
 }
+
+/**
+ * O Rito, as raids e a masmorra em grupo pedem o personagem inteiro por um
+ * tempo — não dá para estar no meio da rota (ou do Abismo) e aceitar outra
+ * coisa ao mesmo tempo. `palcoEmCena()` já diz se o personagem está fora da
+ * taberna; os três painéis usam o mesmo aviso e o mesmo texto.
+ */
+export const AVISO_FORA_DA_TABERNA = 'Para aceitar você deve voltar para a taberna.'
+export const avisoForaDaTaberna = () =>
+  palcoEmCena() ? el('p', { style: 'color:var(--erro)' }, AVISO_FORA_DA_TABERNA) : null
 
 export function linhaDeBarra(sigla, classe, atual, maximo, rotulo) {
   return el(

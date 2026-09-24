@@ -256,9 +256,63 @@ export async function abrirFicha() {
           'Remover',
         )
       : null,
+    el(
+      'button',
+      { class: 'btn pequeno', type: 'button', onClick: () => abrirRenomear(p, { aoTerminar: abrirFicha }) },
+      '✏️ Renomear',
+    ),
   )
 
   abrirModal(tituloDaFicha(p), montarFicha(p, { retratoClicavel: trocar, lateral: [botoes] }))
+}
+
+/**
+ * Trocar o nome. Mesma regra da criação (3 a 18 letras, números ou espaços)
+ * e a mesma exigência: único entre todos os personagens do servidor.
+ */
+function abrirRenomear(p, { aoTerminar = fecharModal } = {}) {
+  const campoNome = el('input', { type: 'text', maxlength: '18', value: p.nome })
+  const aviso = el('p', { class: 'aviso' })
+
+  const corpo = el(
+    'div',
+    {},
+    el(
+      'p',
+      { class: 'sussurro', style: 'margin-top:0' },
+      'De 3 a 18 letras, números ou espaços. Ninguém mais no servidor pode ter esse nome.',
+    ),
+    el('label', { class: 'campo' }, el('span', {}, 'Nome'), campoNome),
+    aviso,
+    el(
+      'div',
+      { style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:16px' },
+      el('button', { class: 'btn', type: 'button', onClick: () => aoTerminar() }, 'Cancelar'),
+      el(
+        'button',
+        {
+          class: 'btn primario',
+          type: 'button',
+          onClick: (ev) =>
+            comBotao(ev.currentTarget, async () => {
+              aviso.className = 'aviso'
+              aviso.textContent = ''
+              try {
+                await mandar('/api/personagem/renomear', { nome: campoNome.value.trim() })
+                avisarBom('Nome trocado.')
+                aoTerminar()
+              } catch (e) {
+                aviso.className = 'aviso erro'
+                aviso.textContent = e.message
+              }
+            }),
+        },
+        'Salvar',
+      ),
+    ),
+  )
+
+  abrirModal('Trocar o nome', corpo, { largura: 'estreito' })
 }
 
 /**

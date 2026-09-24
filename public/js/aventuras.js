@@ -11,6 +11,8 @@ import {
   abrirModal,
   avisar,
   avisarBom,
+  avisoForaDaTaberna,
+  AVISO_FORA_DA_TABERNA,
   barra,
   comBotao,
   confirmar,
@@ -40,6 +42,7 @@ import {
   sussurro,
   tituloDeCena,
 } from './narrativa.js'
+import { palcoEmCena } from './palco.js'
 import { tocar } from './som.js'
 
 /** O que o app.js empresta: sem isso este arquivo teria de importá-lo. */
@@ -345,6 +348,7 @@ async function narrarEspolioDoChefe(r) {
 export async function abrirMasmorra() {
   const d = await pegar('/api/masmorra')
   const p = estado.p
+  const bloqueado = palcoEmCena()
 
   const cartaoDaSala = (sala, minha) =>
     el(
@@ -368,10 +372,11 @@ export async function abrirMasmorra() {
               {
                 class: 'btn primario',
                 type: 'button',
-                disabled: sala.liderId !== p.id || sala.participantes.length < sala.minJogadores,
-                title: sala.liderId !== p.id ? 'Só quem abriu decide a hora de descer' : '',
+                disabled: sala.liderId !== p.id || sala.participantes.length < sala.minJogadores || bloqueado,
+                title: sala.liderId !== p.id ? 'Só quem abriu decide a hora de descer' : bloqueado ? AVISO_FORA_DA_TABERNA : '',
                 onClick: (ev) =>
                   comBotao(ev.currentTarget, async () => {
+                    if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                     fecharModal()
                     // Chega pela resposta e pelo socket: narra só a resposta.
                     estado.iniciandoMasmorra = true
@@ -390,10 +395,11 @@ export async function abrirMasmorra() {
               {
                 class: 'btn primario',
                 type: 'button',
-                disabled: Boolean(d.impedimento),
-                title: d.impedimento ?? '',
+                disabled: Boolean(d.impedimento) || bloqueado,
+                title: d.impedimento ?? (bloqueado ? AVISO_FORA_DA_TABERNA : ''),
                 onClick: (ev) =>
                   comBotao(ev.currentTarget, async () => {
+                    if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                     await mandar('/api/masmorra/entrar', { id: sala.id })
                     abrirMasmorra()
                   }),
@@ -432,6 +438,7 @@ export async function abrirMasmorra() {
         `${d.nivelMinimo}.`,
     ),
     d.impedimento && !d.minhaSala ? el('p', { style: 'color:var(--erro)' }, d.impedimento) : null,
+    avisoForaDaTaberna(),
     d.melhorAndar ? el('p', {}, 'Seu recorde: ', forte(`andar ${d.melhorAndar}`)) : null,
     d.minhaSala ? el('div', { class: 'rotulo-secao' }, 'Seu grupo') : null,
     d.minhaSala ? cartaoDaSala(d.minhaSala, true) : null,
@@ -445,9 +452,10 @@ export async function abrirMasmorra() {
             class: 'btn primario largo',
             type: 'button',
             style: 'margin-top:12px',
-            disabled: Boolean(d.impedimento),
+            disabled: Boolean(d.impedimento) || bloqueado,
             onClick: (ev) =>
               comBotao(ev.currentTarget, async () => {
+                if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                 await mandar('/api/masmorra/abrir')
                 abrirMasmorra()
               }),

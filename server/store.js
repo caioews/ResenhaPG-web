@@ -289,8 +289,16 @@ export const personagensDoUsuario = (usuarioId) =>
     .filter((p) => p.usuarioId === usuarioId)
     .sort((a, b) => a.criadoEm - b.criadoEm)
 
-export const nomeEstaLivre = (nome) =>
-  !db.prepare('SELECT 1 FROM personagens WHERE nome = ?').get(nome)
+/**
+ * Se o nome está livre para usar. `idParaIgnorar` é o próprio personagem, na
+ * troca de nome — sem isso, reafirmar o nome que já é seu (ou só mudar a
+ * caixa das letras, já que a coluna é COLLATE NOCASE) sempre bateria nele
+ * mesmo e pareceria ocupado.
+ */
+export function nomeEstaLivre(nome, idParaIgnorar = null) {
+  const linha = db.prepare('SELECT id FROM personagens WHERE nome = ?').get(nome)
+  return !linha || linha.id === idParaIgnorar
+}
 
 export function criarPersonagem(usuarioId, nome) {
   const player = {
@@ -315,6 +323,17 @@ export function apagarPersonagem(id) {
   db.prepare('DELETE FROM personagens WHERE id = ?').run(id)
   personagens.delete(id)
   gravado.delete(id)
+}
+
+/**
+ * Troca o nome do personagem. `nome` é a coluna própria (não faz parte do
+ * `dados` que o debounce grava): a escrita é direta e na hora, como na
+ * criação — não faz sentido um personagem ficar "quase" com o nome novo se
+ * o servidor cair antes do próximo `save()`.
+ */
+export function renomearPersonagem(player, nome) {
+  db.prepare('UPDATE personagens SET nome = ? WHERE id = ?').run(nome, player.id)
+  player.name = nome
 }
 
 /** Marca que o personagem acabou de ser usado (ordena a tela de selecao). */

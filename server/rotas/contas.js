@@ -14,7 +14,7 @@ import {
 import * as store from '../store.js'
 import { esquecerPersonagem } from '../mercado.js'
 import { classesBase, verPersonagem, verResumo } from '../visao.js'
-import { exigirPersonagem, rota } from '../contexto.js'
+import { exigirPersonagem, responder, rota } from '../contexto.js'
 import { darGold } from '../rpg/jogador.js'
 import { classe } from '../rpg/classes.js'
 
@@ -147,6 +147,26 @@ contas.delete(
     esquecerPersonagem(player.id)
     store.apagarPersonagem(player.id)
     res.json({ ok: true, personagens: store.personagensDoUsuario(req.usuario.id).map(verResumo) })
+  }),
+)
+
+contas.post(
+  '/personagem/renomear',
+  exigirLogin,
+  exigirPersonagem,
+  rota((req, res) => {
+    const player = req.player
+    const nome = String(req.body?.nome ?? '').trim().replace(/\s+/g, ' ')
+
+    if (!NOME_DE_PERSONAGEM.test(nome)) {
+      return res.status(400).json({ erro: 'O nome precisa ter de 3 a 18 letras, números ou espaços.' })
+    }
+    if (!store.nomeEstaLivre(nome, player.id)) {
+      return res.status(409).json({ erro: 'Já existe um personagem com esse nome.' })
+    }
+
+    store.renomearPersonagem(player, nome)
+    responder(res, player, { texto: `Agora você é ${nome}.` })
   }),
 )
 

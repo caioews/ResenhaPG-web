@@ -12,6 +12,8 @@ import {
   abrirModal,
   avisar,
   avisarBom,
+  avisoForaDaTaberna,
+  AVISO_FORA_DA_TABERNA,
   classeBase,
   comBotao,
   confirmar,
@@ -48,6 +50,7 @@ import {
   fimDaLuta,
   golpe,
   irAoAbismo,
+  palcoEmCena,
   prepararCenarios,
   seguirViagem,
 } from './palco.js'
@@ -770,6 +773,7 @@ export async function abrirEvolucao(aba = 'rito') {
       el('p', { class: 'sussurro', style: 'margin-top:0' },
         'O Rito são três provas em sequência, todas espelhos de você mesmo — com até 90% dos seus atributos, mas sem as suas habilidades. A vida carrega de uma para a outra: só 25% do máximo volta entre elas.'),
       dados.motivoTexto ? el('p', { style: 'color:var(--erro)' }, dados.motivoTexto) : null,
+      avisoForaDaTaberna(),
       dados.custo
         ? el('p', {}, 'Custo: ', forte(`${num(dados.custo)} de gold`), ' — cobrado mesmo se você perder.')
         : null,
@@ -819,9 +823,10 @@ export async function abrirEvolucao(aba = 'rito') {
                   {
                     class: 'btn primario largo',
                     type: 'button',
-                    disabled: !dados.podeEncarar,
+                    disabled: !dados.podeEncarar || palcoEmCena(),
                     onClick: (ev) =>
                       comBotao(ev.currentTarget, async () => {
+                        if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                         fecharModal()
                         const r = await mandar('/api/evolucao/encarar', { alvo: op.id })
                         await narrarRito(r.rito)
@@ -1230,6 +1235,7 @@ async function narrarDescida(descida) {
 export async function abrirRaid() {
   const dados = await pegar('/api/raid')
   const p = estado.p
+  const bloqueado = palcoEmCena()
 
   const corpoSala = (sala, minha) =>
     el(
@@ -1255,10 +1261,11 @@ export async function abrirRaid() {
               {
                 class: 'btn primario',
                 type: 'button',
-                disabled: sala.criadorId !== p.id || sala.participantes.length < sala.minJogadores,
-                title: sala.criadorId !== p.id ? 'Só quem abriu pode começar' : '',
+                disabled: sala.criadorId !== p.id || sala.participantes.length < sala.minJogadores || bloqueado,
+                title: sala.criadorId !== p.id ? 'Só quem abriu pode começar' : bloqueado ? AVISO_FORA_DA_TABERNA : '',
                 onClick: (ev) =>
                   comBotao(ev.currentTarget, async () => {
+                    if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                     fecharModal()
                     // O resultado chega duas vezes nesta aba: pelo socket (que
                     // avisa todo o grupo) e pela resposta. Narra só a resposta.
@@ -1278,8 +1285,11 @@ export async function abrirRaid() {
               {
                 class: 'btn primario',
                 type: 'button',
+                disabled: bloqueado,
+                title: bloqueado ? AVISO_FORA_DA_TABERNA : '',
                 onClick: (ev) =>
                   comBotao(ev.currentTarget, async () => {
+                    if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                     await mandar('/api/raid/entrar', { id: sala.id })
                     abrirRaid()
                   }),
@@ -1314,6 +1324,7 @@ export async function abrirRaid() {
       { class: 'sussurro', style: 'margin-top:0' },
       `De ${dados.minJogadores} a ${dados.maxJogadores} jogadores contra um chefe grande, resolvido de uma vez. Entrar não custa nada e a sala não retém nada de ninguém. Só a vida do chefe cresce com o tamanho do grupo — chamar mais gente ajuda porque o dano dele se espalha. De tempos em tempos ele acerta o grupo inteiro.`,
     ),
+    avisoForaDaTaberna(),
     dados.espera > 0
       ? el('p', { style: 'color:var(--erro)' }, `Você ainda se refaz da última raid: ${duracao(dados.espera)}.`)
       : null,
@@ -1329,9 +1340,10 @@ export async function abrirRaid() {
             class: 'btn primario largo',
             type: 'button',
             style: 'margin-top:12px',
-            disabled: dados.espera > 0,
+            disabled: dados.espera > 0 || bloqueado,
             onClick: (ev) =>
               comBotao(ev.currentTarget, async () => {
+                if (palcoEmCena()) return avisar(AVISO_FORA_DA_TABERNA, 'erro')
                 await mandar('/api/raid/abrir')
                 abrirRaid()
               }),
