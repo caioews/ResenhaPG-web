@@ -16,7 +16,7 @@ import { efeitosDaClasse } from './habilidades.js'
 import { sortearDrop } from './itens.js'
 import { recompensas } from './monstros.js'
 import { xpComPrestigio } from './prestigio.js'
-import { atributos, darGold, itemEquipado, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
+import { atributos, darGold, itemEquipado, ganharXp, guardarLoot } from './jogador.js'
 
 /**
  * Tudo que o jogador leva para a luta alem dos atributos: as habilidades da
@@ -79,9 +79,11 @@ export function premiar(player, monstro, { sorte = Math.random, forca = 1 } = {}
     xp,
     gold,
     goldDeSaque: gold - premio.gold,
+    goldDaVenda: 0,
     subiuPara: [],
     drop: null,
     mochilaCheia: false,
+    vendidoAutomaticamente: false,
     titanita: null,
     feitico: null,
   }
@@ -109,10 +111,17 @@ export function premiar(player, monstro, { sorte = Math.random, forca = 1 } = {}
   if (sorte() < premio.chanceDrop + (hab.saqueDrop ?? 0)) {
     const item = sortearDrop(player.rpg.classe, monstro.nivel, config.rpg.chanceDropDaPropriaClasse, sorte)
     ganhos.drop = item
-    // Mochila cheia nao segura a caçada: o item aparece no relatorio como
-    // perdido, e quem esta no laco automatico ve o aviso e vai esvaziar.
-    if (mochilaCheia(player)) ganhos.mochilaCheia = true
-    else guardarItem(player, item)
+
+    const loot = guardarLoot(player, item)
+    if (loot.vendido) {
+      ganhos.vendidoAutomaticamente = true
+      ganhos.goldDaVenda = loot.gold
+      ganhos.gold += loot.gold
+      // Mochila cheia nao segura a caçada: o item aparece no relatorio como
+      // perdido, e quem esta no laco automatico ve o aviso e vai esvaziar.
+    } else if (!loot.coube) {
+      ganhos.mochilaCheia = true
+    }
   }
 
   store.save()
@@ -136,9 +145,11 @@ export function resolver(player, monstro, sorte = Math.random) {
     xp: 0,
     gold: 0,
     goldDeSaque: 0,
+    goldDaVenda: 0,
     subiuPara: [],
     drop: null,
     mochilaCheia: false,
+    vendidoAutomaticamente: false,
     titanita: null,
     feitico: null,
   }

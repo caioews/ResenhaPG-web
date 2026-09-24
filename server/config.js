@@ -43,7 +43,7 @@ export const config = {
       // acima do nivel da fase, e como o XP sai do nivel do INIMIGO, quem
       // fica tres vezes acima nunca mais alcanca a rota. 0.35 e o ponto em
       // que a fase continua dura e o jogador continua subindo.
-      curaEntreInimigos: 0.35,
+      curaEntreInimigos: 0.15,
 
       // ------------------------------------------------ a rampa e o botao
       //
@@ -54,7 +54,7 @@ export const config = {
       // excedente 50% maior, 0 desliga a rampa e deixa so o nivel. E o
       // unico numero que se precisa mexer para a rota inteira ficar mais
       // dura ou mais mansa.
-      escalaDeDificuldade: 1,
+      escalaDeDificuldade: 2,
       // Calibrado em npm run rota: com 0.001 a rota inteira sai em ~1.800
       // fases, do nivel 1 ao 506, com os oito primeiros atos passando quase
       // sem tropeco e a friccao aparecendo do nono em diante.

@@ -3,6 +3,7 @@ import { config } from '../config.js'
 import * as store from '../store.js'
 import { atributosBase, classePodeUsar } from './classes.js'
 import { SLOTS, TIPOS, bonusFinal } from './itens.js'
+import { precoDeCompra, vendeAutomatico } from './loja.js'
 
 /** XP de combate para sair de um nivel para o proximo. */
 export const xpParaSubir = (nivel) => Math.round(55 * Math.pow(nivel, 1.15))
@@ -111,6 +112,24 @@ export function guardarItem(player, item) {
   player.rpg.inventario.push(item)
   store.save()
   return true
+}
+
+/**
+ * Um item de LOOT — o que cai de um inimigo, nunca o que se compra, se
+ * retira do baú ou se recebe numa troca. Se a raridade dele está marcada
+ * para venda automática (rpg/loja.js), vira gold na hora, pelo preço que a
+ * loja pagaria, em vez de ocupar espaço na mochila.
+ *
+ * Devolve o que aconteceu, para a tela poder contar a história: `vendido`
+ * (com o `gold` que entrou) ou `coube` (guardou, ou não — mochila cheia).
+ */
+export function guardarLoot(player, item) {
+  if (vendeAutomatico(player, item)) {
+    const gold = precoDeCompra(item)
+    darGold(player, gold)
+    return { vendido: true, gold, coube: false }
+  }
+  return { vendido: false, gold: 0, coube: guardarItem(player, item) }
 }
 
 export function removerItem(player, uid) {

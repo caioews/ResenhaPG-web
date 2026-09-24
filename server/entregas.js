@@ -7,7 +7,7 @@
  */
 import { db } from './db.js'
 import { migrarItem } from './store.js'
-import { guardarItem, mochilaCheia } from './rpg/jogador.js'
+import { guardarItem, guardarLoot, mochilaCheia } from './rpg/jogador.js'
 
 const inserir = db.prepare('INSERT INTO entregas (personagem_id, item, motivo, criado_em) VALUES (?, ?, ?, ?)')
 const listar = db.prepare('SELECT * FROM entregas WHERE personagem_id = ? ORDER BY id')
@@ -30,9 +30,24 @@ export const quantasEntregas = (personagemId) => listar.all(personagemId).length
 
 /**
  * Põe o item na mochila, ou nas entregas se ela estiver cheia.
- * @returns 'mochila' | 'entregas'
+ *
+ * `loot: true` é para o que cai de verdade (espólio de chefe mundial ou de
+ * masmorra): passa primeiro pela venda automática (rpg/jogador.js,
+ * `guardarLoot`) antes de tentar a mochila. Nunca vale para arremate,
+ * devolução de anúncio ou qualquer coisa que o jogador pediu explicitamente
+ * — ali o item é sempre guardado, nunca vendido sem avisar.
+ *
+ * @returns 'mochila' | 'entregas' | 'vendido'
  */
-export function guardarOuEntregar(player, item, motivo) {
+export function guardarOuEntregar(player, item, motivo, { loot = false } = {}) {
+  if (loot) {
+    const resultado = guardarLoot(player, item)
+    if (resultado.vendido) return 'vendido'
+    if (resultado.coube) return 'mochila'
+    entregar(player.id, item, motivo)
+    return 'entregas'
+  }
+
   if (!mochilaCheia(player) && guardarItem(player, item)) return 'mochila'
   entregar(player.id, item, motivo)
   return 'entregas'

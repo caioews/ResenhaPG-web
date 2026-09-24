@@ -11,7 +11,7 @@ export const RARIDADES = {
   lendario: { nome: 'lendário', emoji: '🟠', mult: 3.0, peso: 0.6 },
 }
 
-const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
+export const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
 
 /**
  * Tipos de equipamento. "slot" e onde ele entra no personagem.

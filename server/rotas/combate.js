@@ -151,7 +151,12 @@ combate.post(
         premio: descida.premio,
         subiu: descida.subiu,
         materiais: descida.materiais,
-        itens: descida.itens.map((d) => ({ item: verItem(d.item), perdido: d.perdido })),
+        itens: descida.itens.map((d) => ({
+          item: verItem(d.item),
+          perdido: d.perdido,
+          vendido: d.vendido,
+          gold: d.gold,
+        })),
         // A vida com que se entra em cada andar: cheia no primeiro, e depois
         // o que `vidaEntreAndares` devolveu do andar anterior.
         andares: descida.andares.map((a, i) => ({

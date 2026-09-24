@@ -11,7 +11,7 @@ import { config } from './config.js'
 import * as store from './store.js'
 import { lutarEmGrupo } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
-import { atributos, darGold, ganharXp, guardarItem, mochilaCheia } from './rpg/jogador.js'
+import { atributos, darGold, ganharXp, guardarLoot } from './rpg/jogador.js'
 import { droparMateriais, droparRecompensas } from './rpg/raid.js'
 import { xpComPrestigio } from './rpg/prestigio.js'
 import { FEITICOS } from './rpg/feiticos.js'
@@ -120,9 +120,14 @@ export function resolverLutaDeGrupo(
   while (drops.length < quantos) drops.push(...droparRecompensas(embrulho))
 
   const itens = drops.slice(0, quantos).map(({ dono, item }) => {
-    const perdido = mochilaCheia(dono.player)
-    if (!perdido) guardarItem(dono.player, item)
-    return { personagem: verResumo(dono.player), item: verItem(item), perdido }
+    const loot = guardarLoot(dono.player, item)
+    return {
+      personagem: verResumo(dono.player),
+      item: verItem(item),
+      perdido: !loot.vendido && !loot.coube,
+      vendido: loot.vendido,
+      gold: loot.gold,
+    }
   })
 
   store.flush()

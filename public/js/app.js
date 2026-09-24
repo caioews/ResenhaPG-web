@@ -868,8 +868,13 @@ function contarGanhos(g) {
   )
   if (g.subiuPara.length) rico(forte(`Subiu para o nível ${g.subiuPara.at(-1)}!`, 'cura'))
   if (g.drop) {
-    if (g.mochilaCheia) sussurro(`${g.drop.nome} caiu, mas a mochila está cheia — perdido.`)
-    else rico('Caiu ', forte(g.drop.nomeCompleto ?? g.drop.nome), '.')
+    if (g.vendidoAutomaticamente) {
+      rico(g.drop.nomeCompleto ?? g.drop.nome, ' vendido automaticamente por ', forte(`+${num(g.goldDaVenda)}`), ' de gold.')
+    } else if (g.mochilaCheia) {
+      sussurro(`${g.drop.nome} caiu, mas a mochila está cheia — perdido.`)
+    } else {
+      rico('Caiu ', forte(g.drop.nomeCompleto ?? g.drop.nome), '.')
+    }
   }
   if (g.titanita) sussurro(`Titanita: ${g.titanita.quantidade}× ${g.titanita.grau}.`)
   if (g.feitico) rico('Encontrou um feitiço de ', forte(g.feitico), '.')
@@ -904,6 +909,9 @@ function fecharFase(f) {
   tituloDeCena(f.chefe ? 'O ato caiu' : 'Fase vencida')
   rico('Somando a fase: +', forte(num(t.xp)), ' de XP e +', forte(num(t.gold)), ' de gold.')
   if (t.subiuPara.length) rico(forte(`Subiu para o nível ${t.subiuPara.at(-1)}!`, 'cura'))
+  if (t.vendidos) {
+    sussurro(`${t.vendidos} item(ns) vendidos automaticamente por +${num(t.goldDaVenda)} de gold — já somados acima.`)
+  }
   if (t.perdidos) {
     sussurro(`${t.perdidos} item(ns) caíram com a mochila cheia e ficaram para trás. Passe na loja.`)
   }

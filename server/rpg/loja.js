@@ -12,7 +12,7 @@
  */
 import { config } from '../config.js'
 import * as store from '../store.js'
-import { criarItem, precoDeReferencia, tiposDaClasse } from './itens.js'
+import { ORDEM_RARIDADE, criarItem, precoDeReferencia, tiposDaClasse } from './itens.js'
 
 /**
  * Pesos da raridade na oferta especial — quanto mais raro, mais difícil.
@@ -117,3 +117,29 @@ export function prateleira(player) {
 }
 
 export const itemDaLoja = (player, id) => prateleira(player).find((i) => i.id === Number(id)) ?? null
+
+// ------------------------------------------------------ venda automática
+
+/**
+ * As raridades marcadas para venda automática: um item de LOOT dessa
+ * raridade vira gold na hora (rpg/jogador.js, `guardarLoot`) em vez de
+ * entrar na mochila. Nunca se aplica a compra, retirada do baú ou troca.
+ */
+export const raridadesEmVendaAutomatica = (player) => player.rpg.vendaAutomatica ?? []
+
+/** Se este item, ao cair, deveria virar gold na hora em vez de ser guardado. */
+export const vendeAutomatico = (player, item) =>
+  Boolean(item?.slot) && raridadesEmVendaAutomatica(player).includes(item.raridade)
+
+/**
+ * Troca quais raridades entram na venda automática. Ignora qualquer valor
+ * que não seja uma raridade de verdade — o corpo da requisição é entrada de
+ * fora, nunca confiável.
+ */
+export function definirVendaAutomatica(player, raridades) {
+  const lista = Array.isArray(raridades) ? raridades : []
+  const validas = ORDEM_RARIDADE.filter((r) => lista.includes(r))
+  player.rpg.vendaAutomatica = validas
+  store.save()
+  return validas
+}

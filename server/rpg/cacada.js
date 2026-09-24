@@ -100,7 +100,17 @@ export function enfrentar(player, sorte = Math.random) {
   const fase = montarFase(onde.ato, onde.fase, sorte)
 
   const lutas = []
-  const total = { xp: 0, gold: 0, itens: [], subiuPara: [], titanitas: [], feiticos: [], perdidos: 0 }
+  const total = {
+    xp: 0,
+    gold: 0,
+    itens: [],
+    subiuPara: [],
+    titanitas: [],
+    feiticos: [],
+    perdidos: 0,
+    vendidos: 0,
+    goldDaVenda: 0,
+  }
   let hp = atributos(player).hp
   let venceu = true
 
@@ -127,8 +137,19 @@ export function enfrentar(player, sorte = Math.random) {
       total.xp += ganhos.xp
       total.gold += ganhos.gold
       total.subiuPara.push(...ganhos.subiuPara)
-      if (ganhos.drop) total.itens.push({ item: ganhos.drop, perdido: ganhos.mochilaCheia })
+      if (ganhos.drop) {
+        total.itens.push({
+          item: ganhos.drop,
+          perdido: ganhos.mochilaCheia,
+          vendido: ganhos.vendidoAutomaticamente,
+          gold: ganhos.goldDaVenda,
+        })
+      }
       if (ganhos.mochilaCheia) total.perdidos++
+      if (ganhos.vendidoAutomaticamente) {
+        total.vendidos++
+        total.goldDaVenda += ganhos.goldDaVenda
+      }
       if (ganhos.titanita) total.titanitas.push(ganhos.titanita)
       if (ganhos.feitico) total.feiticos.push(ganhos.feitico)
 

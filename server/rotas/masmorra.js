@@ -10,6 +10,7 @@ import * as store from '../store.js'
 import * as masmorra from '../masmorra.js'
 import { registrar } from '../missoes.js'
 import { nomeDaProfundidade } from '../rpg/abismo.js'
+import { precoDeCompra } from '../rpg/loja.js'
 import { verItem, verResumo } from '../visao.js'
 import { anunciar, emitirPara, emitirParaTodos } from '../realtime.js'
 
@@ -117,7 +118,13 @@ function verDescida(resultado) {
       gold: j.gold,
       subiu: j.subiu,
       recorde: j.recorde,
-      itens: j.itens.map((x) => ({ item: verItem(x.item), onde: x.onde })),
+      // O gold so importa quando `onde` e 'vendido'; recalcular a partir do
+      // item e barato e evita guardar mais um campo em guardarOuEntregar.
+      itens: j.itens.map((x) => ({
+        item: verItem(x.item),
+        onde: x.onde,
+        goldDoItem: x.onde === 'vendido' ? precoDeCompra(x.item) : null,
+      })),
       titanita: j.titanita,
       feitico: j.feitico,
     })),

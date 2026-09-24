@@ -100,6 +100,12 @@ export function fichaNova() {
       ultimaFaseEm: 0,
     },
     inventario: [],
+    // Venda automatica (server/rpg/loja.js): as raridades marcadas aqui
+    // nunca chegam a ocupar a mochila — um item de loot dessa raridade vira
+    // gold na hora, pelo preco que a loja pagaria. So vale para loot (o que
+    // cai de um inimigo); comprar, retirar do bau ou receber por troca nunca
+    // aciona isso.
+    vendaAutomatica: [],
     // O bau (server/rpg/bau.js): itens guardados fora da mochila. Os espacos
     // comprados somam ao que config.rpg.bau.espacos ja da de graca.
     bau: { itens: [], espacosComprados: 0 },

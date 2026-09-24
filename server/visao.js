@@ -168,9 +168,11 @@ export const verFase = (player, saida) => ({
           xp: l.ganhos.xp,
           gold: l.ganhos.gold,
           goldDeSaque: l.ganhos.goldDeSaque,
+          goldDaVenda: l.ganhos.goldDaVenda,
           subiuPara: l.ganhos.subiuPara,
           drop: l.ganhos.drop ? verItem(l.ganhos.drop) : null,
           mochilaCheia: l.ganhos.mochilaCheia,
+          vendidoAutomaticamente: l.ganhos.vendidoAutomaticamente,
           titanita: l.ganhos.titanita,
           feitico: l.ganhos.feitico,
         }
@@ -182,10 +184,17 @@ export const verFase = (player, saida) => ({
     xp: saida.total.xp,
     gold: saida.total.gold,
     subiuPara: saida.total.subiuPara,
-    itens: saida.total.itens.map((d) => ({ item: verItem(d.item), perdido: d.perdido })),
+    itens: saida.total.itens.map((d) => ({
+      item: verItem(d.item),
+      perdido: d.perdido,
+      vendido: d.vendido,
+      gold: d.gold,
+    })),
     titanitas: saida.total.titanitas,
     feiticos: saida.total.feiticos,
     perdidos: saida.total.perdidos,
+    vendidos: saida.total.vendidos,
+    goldDaVenda: saida.total.goldDaVenda,
   },
 
   // Para onde a rota andou, e o que a tela faz com isso.

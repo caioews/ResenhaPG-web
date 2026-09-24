@@ -17,7 +17,7 @@ import { comoLutador, efeitosDe } from './encontro.js'
 import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { darFeitico, sortearFeitico } from './feiticos.js'
 import { RARIDADES, criarItem, tiposDaClasse } from './itens.js'
-import { atributos, darGold, ganharXp, guardarItem, mochilaCheia } from './jogador.js'
+import { atributos, darGold, ganharXp, guardarLoot } from './jogador.js'
 import { xpComPrestigio } from './prestigio.js'
 import { atributosDeMonstro } from './monstros.js'
 import { chaveDeArte } from './arte.js'
@@ -206,6 +206,7 @@ export function descer(player, sorte = Math.random) {
 
   const itens = []
   const materiais = { titanitas: [], feiticos: [] }
+  let goldDaVenda = 0
 
   if (vencidos > 0) {
     darGold(player, Math.round(premio.gold * (1 + (hab.saqueGold ?? 0))))
@@ -236,13 +237,14 @@ export function descer(player, sorte = Math.random) {
     for (const raridade of premio.raridades) {
       const tipo = tipos[Math.floor(sorte() * tipos.length)]
       const item = criarItem(tipo, ficha.nivel, raridade)
-      const coube = !mochilaCheia(player)
-      if (coube) guardarItem(player, item)
-      itens.push({ item, perdido: !coube })
+      const loot = guardarLoot(player, item)
+      if (loot.vendido) goldDaVenda += loot.gold
+      itens.push({ item, perdido: !loot.vendido && !loot.coube, vendido: loot.vendido, gold: loot.gold })
     }
   }
 
   premio.xp = xpComPrestigio(player, premio.xp)
+  premio.goldDaVenda = goldDaVenda
   const subiu = ganharXp(player, premio.xp)
   store.save()
 

@@ -329,8 +329,12 @@ async function narrarEspolioDoChefe(r) {
   )
   rico('+', forte(num(r.xp)), ' de XP e +', forte(num(r.gold)), ' de gold.', r.subiu?.length ? el('span', { class: 'cura' }, `  Subiu para o nível ${r.subiu.at(-1)}!`) : '')
   if (r.item) {
-    rico('Caiu ', forte(nomeDoItem(r.item)), ` (${r.item.raridadeNome}) — ${textoDeBonus(r.item)}.`)
-    if (r.onde === 'entregas') sussurro('A mochila estava cheia: o item ficou em "Retirar", na Casa de Leilões.')
+    if (r.onde === 'vendido') {
+      rico(nomeDoItem(r.item), ` (${r.item.raridadeNome}) vendido automaticamente por `, forte(`+${num(r.goldDoItem)}`), ' de gold.')
+    } else {
+      rico('Caiu ', forte(nomeDoItem(r.item)), ` (${r.item.raridadeNome}) — ${textoDeBonus(r.item)}.`)
+      if (r.onde === 'entregas') sussurro('A mochila estava cheia: o item ficou em "Retirar", na Casa de Leilões.')
+    }
   }
   if (r.titanita) sussurro(`Titanita: ${r.titanita.quantidade}× ${r.titanita.nome}.`)
   if (r.feitico) rico('E um feitiço de ', forte(`${r.feitico.emoji} ${r.feitico.nome}`), '.')
@@ -499,7 +503,11 @@ export async function narrarMasmorra(descida) {
       j.subiu?.length ? el('span', { class: 'cura' }, `  subiu para o nível ${j.subiu.at(-1)}`) : '',
     )
     for (const x of j.itens) {
-      sussurro(`${j.personagem.nome} recebeu ${nomeDoItem(x.item)} (${x.item.raridadeNome})${x.onde === 'entregas' ? ' — em "Retirar", a mochila estava cheia' : ''}.`)
+      if (x.onde === 'vendido') {
+        sussurro(`${j.personagem.nome} vendeu automaticamente ${nomeDoItem(x.item)} (${x.item.raridadeNome}) por +${num(x.goldDoItem)} de gold.`)
+      } else {
+        sussurro(`${j.personagem.nome} recebeu ${nomeDoItem(x.item)} (${x.item.raridadeNome})${x.onde === 'entregas' ? ' — em "Retirar", a mochila estava cheia' : ''}.`)
+      }
     }
     const extras = [j.titanita ? `${j.titanita.quantidade}× ${j.titanita.nome}` : null, j.feitico ? `feitiço de ${j.feitico.nome}` : null].filter(Boolean)
     if (extras.length) sussurro(`${j.personagem.nome}: ${extras.join(' e ')}.`)

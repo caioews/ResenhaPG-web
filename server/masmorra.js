@@ -213,7 +213,7 @@ export function descer(participantes) {
     for (const raridade of premio.raridades) {
       const tipo = tipos[Math.floor(Math.random() * tipos.length)]
       const item = criarItem(tipo, ficha.nivel, raridade)
-      itens.push({ item, onde: guardarOuEntregar(p, item, 'Espólio da masmorra') })
+      itens.push({ item, onde: guardarOuEntregar(p, item, 'Espólio da masmorra', { loot: true }) })
     }
 
     let titanita = null

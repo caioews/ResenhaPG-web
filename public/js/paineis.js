@@ -353,6 +353,7 @@ export async function abrirLoja(aba = 'comprar') {
     [
       { id: 'comprar', nome: 'Comprar' },
       { id: 'vender', nome: 'Vender' },
+      { id: 'automatica', nome: 'Venda automática' },
     ],
     aba,
     (id) => abrirLoja(id),
@@ -412,7 +413,7 @@ export async function abrirLoja(aba = 'comprar') {
         )
       }),
     )
-  } else {
+  } else if (aba === 'vender') {
     const escolhidos = new Set()
     const precoPorUid = new Map(dados.revenda.map((r) => [r.uid, r.preco]))
 
@@ -480,6 +481,47 @@ export async function abrirLoja(aba = 'comprar') {
       ),
       vendaveis.length ? lista : vazio('Nada para vender. Itens equipados não entram.'),
       vendaveis.length ? rodape : null,
+    )
+  } else {
+    // A venda automática decide o que fazer com um item ANTES dele existir
+    // na mochila: nunca mexe no que já está guardado, só no que ainda vai
+    // cair. Por isso não há lista de itens aqui — só as cinco raridades.
+    const ativas = new Set(dados.vendaAutomatica.ativas)
+
+    const chips = dados.vendaAutomatica.raridades.map((r) => {
+      const chip = el(
+        'button',
+        {
+          class: `chip-raridade r-${r.id}${ativas.has(r.id) ? ' ativa' : ''}`,
+          type: 'button',
+          onClick: (ev) =>
+            comBotao(ev.currentTarget, async () => {
+              if (ativas.has(r.id)) ativas.delete(r.id)
+              else ativas.add(r.id)
+              chip.classList.toggle('ativa', ativas.has(r.id))
+              const resp = await mandar('/api/loja/venda-automatica', { raridades: [...ativas] })
+              avisarBom(resp.texto)
+            }),
+        },
+        `${r.emoji} ${r.nome}`,
+      )
+      return chip
+    })
+
+    corpo = el(
+      'div',
+      {},
+      el(
+        'p',
+        { class: 'sussurro', style: 'margin-top:0' },
+        'Marque as raridades que você nunca quer carregar. Assim que um item de loot cair numa delas, vira gold na hora — pelo mesmo preço que a loja pagaria — e nem chega a ocupar espaço na mochila.',
+      ),
+      el('div', { class: 'chips-raridade' }, ...chips),
+      el(
+        'p',
+        { class: 'sussurro', style: 'margin-top:14px' },
+        '⚠️ Vale só para o que cai de um inimigo (caçada, Abismo, raid, masmorra, chefe mundial, expedição). Comprar, retirar do baú ou receber numa troca nunca aciona a venda automática.',
+      ),
     )
   }
 
@@ -1007,8 +1049,13 @@ function mostrarColeta(coleta) {
   tituloDeCena(`${coleta.expedicao.emoji} ${coleta.expedicao.nome} concluída`)
   rico('Trouxe ', forte(`${num(coleta.premio.xp)} de XP`), ' e ', forte(`${num(coleta.premio.gold)} de gold`), '.')
   if (coleta.drop) {
-    if (coleta.perdido) sussurro(`${nomeDoItem(coleta.drop)} veio junto, mas a mochila estava cheia — perdido.`)
-    else rico('Trouxe também ', forte(nomeDoItem(coleta.drop)), ` — ${textoDeBonus(coleta.drop)}.`)
+    if (coleta.vendido) {
+      rico('Trouxe ', nomeDoItem(coleta.drop), ', vendido automaticamente por ', forte(`+${num(coleta.gold)}`), ' de gold.')
+    } else if (coleta.perdido) {
+      sussurro(`${nomeDoItem(coleta.drop)} veio junto, mas a mochila estava cheia — perdido.`)
+    } else {
+      rico('Trouxe também ', forte(nomeDoItem(coleta.drop)), ` — ${textoDeBonus(coleta.drop)}.`)
+    }
   }
   if (coleta.subiu?.length) rico(forte(`Subiu para o nível ${coleta.subiu.at(-1)}!`, 'cura'))
 }
@@ -1152,10 +1199,20 @@ async function narrarDescida(descida) {
     forte(String(descida.vencidos)),
     descida.recorde ? el('span', { class: 'cura' }, '  — novo recorde!') : '',
   )
-  rico('+', forte(num(descida.premio.xp)), ' de XP e +', forte(num(descida.premio.gold)), ' de gold.')
+  rico(
+    '+',
+    forte(num(descida.premio.xp)),
+    ' de XP e +',
+    forte(num(descida.premio.gold)),
+    ' de gold.',
+    descida.premio.goldDaVenda > 0
+      ? el('span', { class: 'sussurro' }, `  (${num(descida.premio.goldDaVenda)} vieram de venda automática)`)
+      : '',
+  )
 
-  for (const { item, perdido } of descida.itens) {
-    if (perdido) sussurro(`${nomeDoItem(item)} ficou para trás — mochila cheia.`)
+  for (const { item, perdido, vendido, gold } of descida.itens) {
+    if (vendido) rico(nomeDoItem(item), ' vendido automaticamente por ', forte(`+${num(gold)}`), ' de gold.')
+    else if (perdido) sussurro(`${nomeDoItem(item)} ficou para trás — mochila cheia.`)
     else rico('Trouxe ', forte(nomeDoItem(item)), ` — ${textoDeBonus(item)}.`)
   }
   if (descida.materiais.titanitas.length) {
@@ -1326,8 +1383,13 @@ export async function narrarRaidCompleta(raid, { cena = 'Raid', abertura = null 
     )
   }
   for (const d of raid.itens) {
-    if (d.perdido) sussurro(`${d.personagem.nome} perdeu ${nomeDoItem(d.item)} — mochila cheia.`)
-    else rico(forte(d.personagem.nome), ' recebeu ', forte(nomeDoItem(d.item)), ` — ${textoDeBonus(d.item)}.`)
+    if (d.vendido) {
+      rico(forte(d.personagem.nome), ' vendeu automaticamente ', nomeDoItem(d.item), ' por ', forte(`+${num(d.gold)}`), ' de gold.')
+    } else if (d.perdido) {
+      sussurro(`${d.personagem.nome} perdeu ${nomeDoItem(d.item)} — mochila cheia.`)
+    } else {
+      rico(forte(d.personagem.nome), ' recebeu ', forte(nomeDoItem(d.item)), ` — ${textoDeBonus(d.item)}.`)
+    }
   }
   for (const m of raid.materiais) {
     const partes = []

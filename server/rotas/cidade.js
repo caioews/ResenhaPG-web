@@ -24,13 +24,21 @@ import {
   vidaAtual,
   ganharXp,
   guardarItem,
+  guardarLoot,
   mochilaCheia,
   removerItem,
 } from '../rpg/jogador.js'
 import { comoLutador } from '../rpg/encontro.js'
 import { lutar } from '../rpg/combate.js'
-import { criarItem, nomeCompleto, tiposDaClasse } from '../rpg/itens.js'
-import { itemDaLoja, limparOferta, prateleira, precoDeCompra } from '../rpg/loja.js'
+import { ORDEM_RARIDADE, RARIDADES, criarItem, nomeCompleto, tiposDaClasse } from '../rpg/itens.js'
+import {
+  definirVendaAutomatica,
+  itemDaLoja,
+  limparOferta,
+  prateleira,
+  precoDeCompra,
+  raridadesEmVendaAutomatica,
+} from '../rpg/loja.js'
 import { custoAteOMaximo, custoDoReforco, motivoParaNaoReforcar, quantasTitanitas, reforcar, TITANITAS } from '../rpg/ferreiro.js'
 import {
   FEITICOS,
@@ -106,6 +114,29 @@ cidade.get(
         preco: item.slot ? precoDeCompra(item) : 0,
         vendavel: Boolean(item.slot) && !estaEquipado(player, item.uid),
       })),
+      // Venda automática: quais raridades de LOOT viram gold na hora em vez
+      // de entrar na mochila. `raridades` é o catálogo, na ordem certa, para
+      // a tela desenhar um botão por raridade sem precisar saber a lista.
+      vendaAutomatica: {
+        ativas: raridadesEmVendaAutomatica(player),
+        raridades: ORDEM_RARIDADE.map((r) => ({ id: r, nome: RARIDADES[r].nome, emoji: RARIDADES[r].emoji })),
+      },
+    })
+  }),
+)
+
+cidade.post(
+  '/loja/venda-automatica',
+  rota((req, res) => {
+    const player = req.player
+    const raridades = Array.isArray(req.body?.raridades) ? req.body.raridades.map(String) : []
+    const ativas = definirVendaAutomatica(player, raridades)
+
+    responder(res, player, {
+      vendaAutomatica: ativas,
+      texto: ativas.length
+        ? `Venda automática ligada para: ${ativas.map((r) => RARIDADES[r].nome).join(', ')}.`
+        : 'Venda automática desligada.',
     })
   }),
 )
@@ -663,17 +694,29 @@ cidade.post(
 
     let drop = null
     let perdido = false
+    let vendido = false
+    let goldDoDrop = 0
     if (Math.random() < expedicao.chanceDrop) {
       const tipos = tiposDaClasse(player.rpg.classe)
       const tipo = tipos[Math.floor(Math.random() * tipos.length)]
       const item = criarItem(tipo, player.rpg.nivel, sortearRaridade(expedicao.tentativasDeRaridade))
-      perdido = mochilaCheia(player)
-      if (!perdido) guardarItem(player, item)
+      const loot = guardarLoot(player, item)
+      vendido = loot.vendido
+      goldDoDrop = loot.gold
+      perdido = !loot.vendido && !loot.coube
       drop = verItem(item)
     }
 
     responder(res, player, {
-      coleta: { expedicao: { nome: expedicao.nome, emoji: expedicao.emoji }, premio, subiu, drop, perdido },
+      coleta: {
+        expedicao: { nome: expedicao.nome, emoji: expedicao.emoji },
+        premio,
+        subiu,
+        drop,
+        perdido,
+        vendido,
+        gold: goldDoDrop,
+      },
     })
   }),
 )

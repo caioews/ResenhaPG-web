@@ -1537,6 +1537,43 @@ select:focus {
   text-shadow: 0 0 9px rgba(232, 163, 61, 0.4);
 }
 
+/* ------------------------------------------------ venda automática
+
+   Um botão por raridade, na cor dela (reaproveita .r-comum..r-lendario).
+   Apagado enquanto desligado; ganha brilho e um leve halo quando ativo —
+   sem preencher o fundo com a cor, que apagaria o próprio texto. */
+.chips-raridade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.chip-raridade {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  background: #100e16;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: var(--titulo);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.12s;
+}
+.chip-raridade:hover {
+  opacity: 0.8;
+}
+.chip-raridade.ativa {
+  opacity: 1;
+  background: #17131f;
+  box-shadow: 0 0 0 1px currentColor, 0 0 12px -3px currentColor;
+}
+.chip-raridade:disabled {
+  cursor: default;
+}
+
 .bonus {
   font-family: var(--mono);
   font-size: 12px;

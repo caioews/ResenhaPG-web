@@ -28,6 +28,7 @@ import { atributosDeMonstro } from './rpg/monstros.js'
 import { atributos, darGold, ganharXp } from './rpg/jogador.js'
 import { emExpedicao } from './rpg/expedicao.js'
 import { criarItem, tiposDaClasse } from './rpg/itens.js'
+import { precoDeCompra } from './rpg/loja.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
 import { xpComPrestigio } from './rpg/prestigio.js'
@@ -294,7 +295,7 @@ export function encerrar(como = 'fugiu') {
     if (raridade) {
       const tipos = tiposDaClasse(p.rpg.classe)
       item = criarItem(tipos[Math.floor(Math.random() * tipos.length)], p.rpg.nivel, raridade)
-      onde = guardarOuEntregar(p, item, `Espólio: ${def.nome}`)
+      onde = guardarOuEntregar(p, item, `Espólio: ${def.nome}`, { loot: true })
     }
 
     const titanita = sortearTitanita('raid')
@@ -315,6 +316,10 @@ export function encerrar(como = 'fugiu') {
       subiu,
       item: item ? verItem(item) : null,
       onde,
+      // O gold so importa quando `onde` e 'vendido' — mas a conta e sempre a
+      // mesma (item.raridade + item.bonus), entao recalcular aqui e barato e
+      // nao pede guardar mais nada na resposta de guardarOuEntregar.
+      goldDoItem: item && onde === 'vendido' ? precoDeCompra(item) : null,
       titanita: titanita ? { ...titanita, nome: TITANITAS[titanita.grau].nome } : null,
       feitico: feitico ? { nome: FEITICOS[feitico].nome, emoji: FEITICOS[feitico].emoji } : null,
     })
