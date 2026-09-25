@@ -25,8 +25,20 @@ const marcarOnline = (id) => online.set(id, (online.get(id) ?? 0) + 1)
 
 function marcarOffline(id) {
   const quantas = (online.get(id) ?? 1) - 1
-  if (quantas <= 0) online.delete(id)
-  else online.set(id, quantas)
+  if (quantas <= 0) {
+    online.delete(id)
+    aoFicarOfflineFn?.(id)
+  } else online.set(id, quantas)
+}
+
+/**
+ * Quem quer saber que um personagem fechou o jogo (a ultima aba dele caiu).
+ * Registrado de fora, como os comandos de chat, para este arquivo nao
+ * precisar conhecer a arena do chefe final — que por sua vez ja depende daqui.
+ */
+let aoFicarOfflineFn = null
+export const aoFicarOffline = (fn) => {
+  aoFicarOfflineFn = fn
 }
 
 /** Quem está com o jogo aberto agora. */

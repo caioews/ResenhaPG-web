@@ -203,11 +203,47 @@ export function quantosInimigos(numeroDoAto, numeroDaFase) {
  */
 const RODIZIO = NIVEIS_DE_BOSS.filter((n) => n >= 35)
 
-/** O fecho da rota tem chefe proprio — nenhum eco serve de ultimo chefe. */
+/**
+ * O multiplicador de ataque de cada eco, por ato (20 a 50).
+ *
+ * Um mesmo chefe volta em atos muito diferentes, e o ataque calibrado para o
+ * ato de origem dele nao serve nos outros: a Hidra que era medida no ato 6
+ * seria um enfeite no 34, e o Dragao Anciao do ato 25 uma parede. Estes numeros
+ * saem de simulacao da rota inteira, um por ato, mirando o mesmo alvo do resto
+ * da tabela — o jogador simulado passa de primeira em ~50% dos chefes. Os
+ * degraus em torno do 30 e do 40 sao o jogador ganhando maestria (nivel 150)
+ * e apoteose (200): o chefe acompanha, senao a rota ficaria facil dali em
+ * diante. Recalibrar: npm run chefes.
+ */
+export const ATQ_DOS_ECOS = {
+  20: 2.12, 21: 2.28, 22: 1.33, 23: 1.68, 24: 1.52, 25: 1.55, 26: 1.74, 27: 1.47, 28: 1.64, 29: 2.09,
+  30: 1.96, 31: 2.81, 32: 2.79, 33: 1.58, 34: 3.18, 35: 2.72, 36: 1.59, 37: 2.04, 38: 1.91, 39: 2,
+  40: 2.29, 41: 1.79, 42: 1.61, 43: 1.58, 44: 1.45, 45: 2.07, 46: 2.11, 47: 1.2, 48: 2.5, 49: 2.22,
+  50: 1.24,
+}
+
+/**
+ * O fecho da rota tem chefe proprio — nenhum eco serve de ultimo chefe.
+ *
+ * Esta ficha so vale para o que ainda monta a fase 10 do ato 51 como luta de
+ * uma pessoa so (as simulacoes da rota). No jogo, essa fase nao se enfrenta
+ * sozinho: leva a arena, onde o Coracao do Abismo e uma raid (rpg/coracao.js).
+ */
 const CHEFE_FINAL = {
   nome: 'O Coração do Abismo',
   emoji: '🫀',
-  mult: { hp: 0.95, atq: 2.05, def: 1.85, agi: 1.5 },
+  mult: { hp: 0.95, atq: 1.15, def: 1.85, agi: 1.5 },
+  especial: {
+    nome: 'Batida do Abismo',
+    emoji: '🫀',
+    resumo: 'A cada 2 turnos o coração pulsa: 1,35× de dano que não dá para desviar, e ele recupera 60% do que causou.',
+    texto: 'pulsa, e o abismo inteiro treme sugando a sua vida',
+    tipo: 'golpe',
+    cada: 2,
+    mult: 1.35,
+    semEsquiva: true,
+    cura: 0.6,
+  },
 }
 
 /**
@@ -229,18 +265,33 @@ export function chefeDoAto(numeroDoAto) {
 
   return {
     ...original,
+    // O ataque do eco nao e o da tabela: e o do ato (ver ATQ_DOS_ECOS).
+    mult: { ...original.mult, atq: ATQ_DOS_ECOS[numeroDoAto] ?? original.mult.atq },
     nome: `${original.nome} Ecoado${volta > 0 ? ` ${'★'.repeat(Math.min(3, volta))}` : ''}`,
     eco: true,
   }
 }
 
-/** O chefe do ato pronto para lutar, ja com o nivel e a forca da fase. */
+/**
+ * O chefe do ato pronto para lutar, ja com o nivel e a forca da fase.
+ *
+ * Os multiplicadores da tabela sao a personalidade dele; `config.rpg.cacada
+ * .chefe` e o quanto TODOS os chefes pesam a mais por cima disso — e o botao
+ * que se mexe para chefe ficar mais facil ou mais duro sem tocar em cada um.
+ */
 export function criarChefeDoAto(numeroDoAto, indice) {
   const chefe = chefeDoAto(numeroDoAto)
   const nivel = nivelDaFase(indice) + config.rpg.cacada.chefeNiveisAcima
+  const peso = config.rpg.cacada.chefe
+  const mult = {
+    hp: chefe.mult.hp * peso.hp,
+    atq: chefe.mult.atq * peso.atq,
+    def: chefe.mult.def * peso.def,
+    agi: chefe.mult.agi,
+  }
 
   return {
-    ...criarChefe(chefe, nivel, { forca: forcaDaFase(indice), daRota: true }),
+    ...criarChefe({ ...chefe, mult }, nivel, { forca: forcaDaFase(indice), daRota: true }),
     // O sprite sai do nome, como os chefes do Abismo: pôr a folha em
     // `Assets/inimigos/chefes` com o nome do chefe basta para ele entrar em
     // cena desenhado (ver scripts/arte.js).
@@ -315,3 +366,10 @@ export const comparar = (a, b) => indiceDaFase(a.ato, a.fase) - indiceDaFase(b.a
 
 /** O fim da rota: a ultima fase do ultimo ato. */
 export const ehOFim = ({ ato: a, fase: f }) => a === TOTAL_DE_ATOS && f === fasesPorAto()
+
+/**
+ * Se a fase e a do chefe final. E a mesma que ehOFim, com outro significado:
+ * ninguem "enfrenta" essa fase sozinho — quem chega nela vai para a arena
+ * (server/final.js), onde o Coracao do Abismo so cai em grupo.
+ */
+export const ehFaseDoChefeFinal = ehOFim

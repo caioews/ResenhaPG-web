@@ -1359,7 +1359,7 @@ export async function abrirRaid() {
  * Narra uma luta de grupo inteira. Serve à raid e aos eventos de grupo, que
  * chegam no mesmo formato; o evento só troca o nome da cena e a abertura.
  */
-export async function narrarRaidCompleta(raid, { cena = 'Raid', abertura = null } = {}) {
+export async function narrarRaidCompleta(raid, { cena = 'Raid', abertura = null, aoEntrada = null } = {}) {
   limparNarrativa()
   definirCena(cena)
   tituloDeCena(`${raid.chefe.emoji} ${raid.chefe.nome}`)
@@ -1367,11 +1367,20 @@ export async function narrarRaidCompleta(raid, { cena = 'Raid', abertura = null 
   sussurro(
     `${raid.participantes.length} ${raid.participantes.length > 1 ? 'aventureiros' : 'aventureiro'} · nível médio ${raid.nivelMedio} · o inimigo entra com ${num(raid.chefe.hpMax)} de vida e acerta o grupo inteiro a cada ${raid.chefe.areaCada} rodadas.`,
   )
+  // O chefe final tem mais: um laser que não dá para desviar, e uma fúria.
+  if (raid.chefe.laser) {
+    sussurro(
+      `A cada ${raid.chefe.laser.cada} rodadas ele atira um laser em ${raid.chefe.laser.alvos} de vocês ao mesmo tempo. ` +
+        'Não dá para desviar.' +
+        (raid.chefe.furia ? ` Abaixo de ${Math.round(raid.chefe.furia.abaixoDe * 100)}% de vida, ele enfurece.` : ''),
+    )
+  }
 
   await narrarRaid({
     nomeDoChefe: `${raid.chefe.emoji} ${raid.chefe.nome}`,
     hpMaxDoChefe: raid.chefe.hpMax,
     log: raid.log,
+    aoEntrada,
   })
 
   if (!raid.venceu) {

@@ -88,6 +88,14 @@ import {
   fecharPopup,
   ouvirEventos,
 } from './eventos.js'
+import {
+  acoesDaArena,
+  configurarFinal,
+  irAoChefeFinal,
+  naArenaFinal,
+  ouvirFinal,
+  verificarPendencia,
+} from './final.js'
 import { alternarSom, destravarSom, somLigado, tocar } from './som.js'
 import {
   abrirChefeMundial,
@@ -550,7 +558,10 @@ function desenharAcoes() {
   //
   // Um botão só, e o que ele diz depende de onde o personagem está: parado
   // na taberna, ele convida; no meio da rota, ele é o jeito de sair.
-  if (cacando) {
+  if (naArenaFinal()) {
+    // Na arena do chefe final o menu é outro: pronto, começar, sair.
+    itens.push(...acoesDaArena())
+  } else if (cacando) {
     if (rota?.repetindo) {
       itens.push({
         rotulo: 'Ir para a próxima fase',
@@ -567,9 +578,11 @@ function desenharAcoes() {
   } else {
     itens.push({
       rotulo: 'Ir à caçada',
-      nota: rota
-        ? `${rota.nomeDoAto} — fase ${doisDigitos(rota.fase)} de ${doisDigitos(rota.fasesPorAto)}`
-        : bloqueado ?? '',
+      nota: rota?.chefeFinal
+        ? 'o Coração do Abismo aguarda'
+        : rota
+          ? `${rota.nomeDoAto} — fase ${doisDigitos(rota.fase)} de ${doisDigitos(rota.fasesPorAto)}`
+          : bloqueado ?? '',
       desabilitado: Boolean(bloqueado),
       acao: irACacada,
     })
@@ -590,25 +603,28 @@ function desenharAcoes() {
     }
   }
 
-  itens.push({
-    rotulo: p.estados.expedicao ? 'Ver a expedição' : 'Partir em expedição',
-    nota: p.estados.expedicao ? '' : 'ganha XP com o navegador fechado',
-    desabilitado: cacando,
-    acao: abrirExpedicao,
-  })
+  // Na arena do chefe final não há expedição nem Abismo: só o Coração.
+  if (!naArenaFinal()) {
+    itens.push({
+      rotulo: p.estados.expedicao ? 'Ver a expedição' : 'Partir em expedição',
+      nota: p.estados.expedicao ? '' : 'ganha XP com o navegador fechado',
+      desabilitado: cacando,
+      acao: abrirExpedicao,
+    })
 
-  itens.push({
-    rotulo: 'Descer o Abismo',
-    nota:
-      p.nivel < 40
-        ? 'a partir do nível 40'
-        : p.cooldowns.abismo > 0
-          ? `fechado por ${duracao(p.cooldowns.abismo)}`
-          : 'sem volta, só profundidade',
-    desabilitado: p.nivel < 40 || p.cooldowns.abismo > 0 || Boolean(bloqueado) || cacando,
-    acao: abrirAbismo,
-    relogio: 'abismo',
-  })
+    itens.push({
+      rotulo: 'Descer o Abismo',
+      nota:
+        p.nivel < 40
+          ? 'a partir do nível 40'
+          : p.cooldowns.abismo > 0
+            ? `fechado por ${duracao(p.cooldowns.abismo)}`
+            : 'sem volta, só profundidade',
+      desabilitado: p.nivel < 40 || p.cooldowns.abismo > 0 || Boolean(bloqueado) || cacando,
+      acao: abrirAbismo,
+      relogio: 'abismo',
+    })
+  }
 
   itens.forEach((item, i) => {
     caixa.append(
@@ -743,13 +759,27 @@ async function irACacada() {
 
   try {
     let primeira = true
+    let arena = null
     while (!voltando) {
       const antes = estado.p?.cacada
       const r = await mandar('/api/combate/cacada')
+      // A última fase da rota é o Coração do Abismo, e ele não se enfrenta
+      // sozinho: o servidor devolve a arena em vez de uma fase.
+      if (r.chefeFinal) {
+        arena = r.chefeFinal
+        break
+      }
       await narrarFase(r.cacada, { primeira, rotaAntes: antes })
       primeira = false
     }
-    await voltarParaTaberna()
+    if (arena) {
+      rotaNaTela = null
+      limparVidaEmCena()
+      mostrarMapa()
+      await irAoChefeFinal(arena)
+    } else {
+      await voltarParaTaberna()
+    }
   } catch (e) {
     rotaNaTela = null
     limparVidaEmCena()
@@ -825,6 +855,15 @@ async function narrarFase(f, { primeira = false, rotaAntes = null } = {}) {
       `${m.emoji} ${m.nome}${m.elite ? ' (elite)' : ''} — nível ${m.nivel}` +
         (f.horda > 1 ? `  ·  ${i + 1} de ${f.horda}` : ''),
     )
+    // Chefe: a habilidade dele é dita antes da luta, para o que acontecer no
+    // log não pegar ninguém de surpresa.
+    if (m.especial) {
+      rico(
+        el('span', { class: 'especial' }, `${m.especial.emoji} ${m.especial.nome}`),
+        ' — ',
+        m.especial.resumo,
+      )
+    }
 
     await narrarLuta({
       // No PvE o log chama o jogador de "Você" — o placar acompanha, senão a
@@ -1347,6 +1386,7 @@ function conectarSocket() {
 
   ouvirEventos(socket)
   ouvirAventuras(socket)
+  ouvirFinal(socket)
 
   socket.on('mercado:oferta', ({ oferta }) => {
     tocar('mercado')
@@ -1508,6 +1548,16 @@ async function iniciar() {
   destravarSom()
   configurarEventos({ mostrarEncontro, entrarEmCena, atualizarFicha })
   configurarAventuras({ atualizarFicha, mostrarCartao, aoMudarChefe: desenharBotaoDoChefe })
+  configurarFinal({
+    atualizarFicha,
+    redesenharMenu: () => estado.p && desenharAcoes(),
+    voltarParaTaberna,
+    // Depois do fim, quem escolhe continuar volta ao laço da caçada — o
+    // servidor já o deixou na última fase, repetindo.
+    continuarCacando: () => {
+      if (!cacando) irACacada()
+    },
+  })
 
   $('#fechar-modal').addEventListener('click', fecharModal)
   $('#fundo-modal').addEventListener('click', (ev) => {
@@ -1527,6 +1577,8 @@ async function iniciar() {
 
   aoMudarFicha(() => {
     if ($('#tela-jogo').classList.contains('ativa')) desenharFicha()
+    // Derrubou o Coração e fechou a página antes de escolher: o pop-up volta.
+    verificarPendencia(estado.p)
   })
 
   const r = await pegar('/api/auth/eu')

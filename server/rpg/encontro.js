@@ -50,7 +50,10 @@ export function comoLutador(player, nome = 'Você', hp = null) {
   }
 }
 
-/** O inimigo no formato que o motor de combate espera. */
+/**
+ * O inimigo no formato que o motor de combate espera. `hab` so existe nos
+ * chefes (a habilidade especial deles); o resto luta sem ela.
+ */
 export const comoInimigo = (monstro) => ({
   nome: `${monstro.emoji} ${monstro.nome}`,
   nivel: monstro.nivel,
@@ -58,6 +61,7 @@ export const comoInimigo = (monstro) => ({
   def: monstro.def,
   agi: monstro.agi,
   hp: monstro.hp,
+  ...(monstro.hab ? { hab: monstro.hab } : {}),
 })
 
 /**

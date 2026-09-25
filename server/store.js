@@ -106,6 +106,12 @@ export function fichaNova() {
     // cai de um inimigo); comprar, retirar do bau ou receber por troca nunca
     // aciona isso.
     vendaAutomatica: [],
+    // O fim do jogo (server/final.js): a luta contra o Coracao do Abismo.
+    // `zerou` = ja derrubou o chefe final alguma vez (os creditos passam uma
+    // vez so); `pendente` = derrubou e ainda nao escolheu o que fazer depois
+    // (continuar no ultimo ato ou prestigiar) — a escolha espera, mesmo que a
+    // pessoa feche a pagina no meio dos creditos.
+    fim: { zerou: false, pendente: false, escolha: null, em: 0, vitorias: 0, derrotas: 0, ultimaLuta: 0 },
     // O bau (server/rpg/bau.js): itens guardados fora da mochila. Os espacos
     // comprados somam ao que config.rpg.bau.espacos ja da de graca.
     bau: { itens: [], espacosComprados: 0 },
@@ -178,6 +184,7 @@ function migrar(rpg = {}) {
       itens: (rpg.bau?.itens ?? []).filter((i) => !itemAposentado(i)).map(migrarItem),
     },
     cacada: { ...base.cacada, ...rpg.cacada },
+    fim: { ...base.fim, ...rpg.fim },
     // A oferta do dia tambem guarda um item inteiro, e ele fica de pe por
     // minutos depois de um reinicio: passa pela mesma conversao.
     lojaOferta: {

@@ -19,7 +19,9 @@ import {
   ranking as rankingDoAbismo,
   vidaEntreAndares,
 } from '../rpg/abismo.js'
-import { avancar, enfrentar, esperaDaCacada, verRota } from '../rpg/cacada.js'
+import { avancar, enfrentar, esperaDaCacada, posicao, verRota } from '../rpg/cacada.js'
+import { ehFaseDoChefeFinal } from '../rpg/rota.js'
+import { entrarNaArena, verArena } from '../final.js'
 import { emExpedicao } from '../rpg/expedicao.js'
 import { verFase, verItem, verResumo } from '../visao.js'
 import { anunciar } from '../realtime.js'
@@ -72,6 +74,14 @@ combate.post(
   rota((req, res) => {
     const player = req.player
     if (emExpedicao(player)) return res.status(409).json({ erro: 'Seu personagem está em expedição.' })
+
+    // A última fase da rota não se enfrenta sozinho: o Coração do Abismo é uma
+    // raid, e quem chega até ele é levado para a arena (server/final.js).
+    if (ehFaseDoChefeFinal(posicao(player))) {
+      const feito = entrarNaArena(player)
+      if (feito.erro) return res.status(409).json({ erro: feito.erro })
+      return responder(res, player, { chefeFinal: verArena(player) })
+    }
 
     const espera = esperaDaCacada(player)
     if (espera > 0) return res.status(409).json({ erro: `Recupere o fôlego: ${Math.ceil(espera / 1000)}s.` })

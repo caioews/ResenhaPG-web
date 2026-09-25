@@ -145,11 +145,11 @@ export const PESOS_DO_DROP = {
   lendario: 5,
 }
 
-export function sortearRaridadeDeRaid(sorte = Math.random) {
-  const total = Object.values(PESOS_DO_DROP).reduce((a, b) => a + b, 0)
+export function sortearRaridadeDeRaid(sorte = Math.random, pesos = PESOS_DO_DROP) {
+  const total = Object.values(pesos).reduce((a, b) => a + b, 0)
   let ponto = sorte() * total
 
-  for (const [raridade, peso] of Object.entries(PESOS_DO_DROP)) {
+  for (const [raridade, peso] of Object.entries(pesos)) {
     ponto -= peso
     if (ponto <= 0) return raridade
   }
@@ -193,8 +193,11 @@ export function criarChefeDeRaid(id, nivelMedio, jogadores) {
   }
 }
 
-/** Itens que caem quando o grupo vence, um sorteio de dono por item. */
-export function droparRecompensas(participantes, sorte = Math.random) {
+/**
+ * Itens que caem quando o grupo vence, um sorteio de dono por item. `pesos`
+ * troca a tabela de raridades: o chefe final nao larga nada abaixo de epico.
+ */
+export function droparRecompensas(participantes, sorte = Math.random, pesos = PESOS_DO_DROP) {
   const quantidade = Math.max(
     config.rpg.raid.itensMinimos,
     Math.ceil(participantes.length * config.rpg.raid.itensPorJogador),
@@ -207,7 +210,7 @@ export function droparRecompensas(participantes, sorte = Math.random) {
     const tipo = tipos[Math.floor(sorte() * tipos.length)]
 
     // No nivel de quem recebe, para dar de equipar na hora.
-    drops.push({ dono, item: criarItem(tipo, dono.player.rpg.nivel, sortearRaridadeDeRaid(sorte)) })
+    drops.push({ dono, item: criarItem(tipo, dono.player.rpg.nivel, sortearRaridadeDeRaid(sorte, pesos)) })
   }
 
   return drops

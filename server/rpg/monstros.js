@@ -42,34 +42,294 @@ const TITULOS_ELITE = ['Veterano', 'Sombrio', 'Ancião', 'Sanguinário', 'Amaldi
  * mesmo depois de os marcos terem saido do jogo.
  *
  * Hoje quem os distribui e a rota (rpg/rota.js): um por ato, na ordem desta
- * tabela, na ultima fase de cada um. Ate o 30 os multiplicadores sao os
- * originais — aquela faixa ja estava calibrada e nao havia motivo para
- * mexer. Do 35 para cima eles sobem junto com a escala de fim de jogo (ver
- * escalaEndgame no config).
+ * tabela, na ultima fase de cada um. Os `mult` sao a personalidade de cada
+ * chefe (o Tita e uma parede, a Rainha e vidro e fogo); o quanto TODOS eles
+ * pesam a mais que um inimigo comum e o botao `config.rpg.cacada.chefe`.
+ *
+ * Cada chefe traz uma habilidade especial: `tipo` diz o que ela faz e o
+ * resto sao os numeros — o motor de combate (rpg/combate.js, secao das
+ * habilidades dos chefes) le e aplica. `resumo` e o que a tela mostra quando
+ * o chefe entra em cena; `texto` e a frase que o log conta, com o nome do
+ * chefe na frente.
  */
 export const BOSSES = {
-  10: { nome: 'Rei Goblin', emoji: '👑', mult: { hp: 0.68, atq: 1.3, def: 1.3, agi: 1.0 } },
-  15: { nome: 'Cavaleiro Caído', emoji: '🏴', mult: { hp: 0.66, atq: 1.35, def: 1.4, agi: 1.1 } },
-  20: { nome: 'Necromante', emoji: '🕯️', mult: { hp: 0.62, atq: 1.45, def: 1.3, agi: 1.2 } },
-  25: { nome: 'Dragão Jovem', emoji: '🐉', mult: { hp: 0.63, atq: 1.5, def: 1.4, agi: 1.1 } },
-  30: { nome: 'Senhor do Abismo', emoji: '😈', mult: { hp: 0.5, atq: 1.6, def: 1.5, agi: 1.3 } },
+  10: {
+    nome: 'Rei Goblin',
+    emoji: '👑',
+    mult: { hp: 0.68, atq: 1.27, def: 1.3, agi: 1.0 },
+    especial: {
+      nome: 'Pancada Real',
+      emoji: '👑',
+      resumo: 'A cada 3 turnos, desce o cetro com o peso do trono: 2,2× de dano.',
+      texto: 'ergue o cetro dourado e o desce com o peso do trono',
+      tipo: 'golpe',
+      cada: 3,
+      mult: 2.2,
+    },
+  },
+  15: {
+    nome: 'Cavaleiro Caído',
+    emoji: '🏴',
+    mult: { hp: 0.66, atq: 1.33, def: 1.4, agi: 1.1 },
+    especial: {
+      nome: 'Guarda Caída',
+      emoji: '🛡️',
+      resumo: 'Ao cair abaixo de metade da vida, cerra o escudo e absorve dano equivalente a 25% da vida máxima.',
+      texto: 'cerra o escudo partido e a armadura passa a engolir os golpes',
+      tipo: 'escudo',
+      abaixoDe: 0.5,
+      fracao: 0.25,
+    },
+  },
+  20: {
+    nome: 'Necromante',
+    emoji: '🕯️',
+    mult: { hp: 0.62, atq: 1.35, def: 1.3, agi: 1.2 },
+    especial: {
+      nome: 'Erguer Mortos',
+      emoji: '💀',
+      resumo: 'A cada 3 turnos ergue um morto-vivo (até 3) que ataca junto, com 22% do ataque dele.',
+      texto: 'murmura uma palavra proibida e um morto-vivo se ergue do chão',
+      tipo: 'invocar',
+      cada: 3,
+      max: 3,
+      fracao: 0.22,
+      aliado: 'Morto-vivo',
+    },
+  },
+  25: {
+    nome: 'Dragão Jovem',
+    emoji: '🐉',
+    mult: { hp: 0.63, atq: 0.93, def: 1.4, agi: 1.1 },
+    especial: {
+      nome: 'Sopro de Fogo',
+      emoji: '🔥',
+      resumo: 'A cada 4 turnos cospe fogo que não dá para desviar (1,4× de dano) e queima 5% da sua vida por turno, por 3 turnos.',
+      texto: 'enche o peito e cospe fogo sobre você',
+      tipo: 'golpe',
+      cada: 4,
+      mult: 1.4,
+      semEsquiva: true,
+      queima: { fracao: 0.05, turnos: 3 },
+    },
+  },
+  30: {
+    nome: 'Senhor do Abismo',
+    emoji: '😈',
+    mult: { hp: 0.6, atq: 1.11, def: 1.3, agi: 1.3 },
+    especial: {
+      nome: 'Marca do Abismo',
+      emoji: '🌀',
+      resumo: 'Abre a luta marcando você: −20% de ataque e −15% de defesa até o fim.',
+      texto: 'crava a marca do abismo em você e as suas forças escorrem',
+      tipo: 'enfraquecer',
+      atq: 0.2,
+      def: 0.15,
+    },
+  },
 
   // ---------------------------------------------------- marcos de endgame
-  35: { nome: 'Hidra das Brumas', emoji: '🐍', mult: { hp: 0.6, atq: 1.72, def: 1.35, agi: 1.35 } },
-  40: { nome: 'Arauto da Ruína', emoji: '🌑', mult: { hp: 0.62, atq: 1.62, def: 1.5, agi: 1.3 } },
-  45: { nome: 'Titã Esquecido', emoji: '🗿', mult: { hp: 0.72, atq: 1.45, def: 1.8, agi: 0.85 } },
-  50: { nome: 'Rainha das Cinzas', emoji: '👸', mult: { hp: 0.56, atq: 1.85, def: 1.3, agi: 1.45 } },
-  55: { nome: 'Devorador de Almas', emoji: '👁️', mult: { hp: 0.68, atq: 1.6, def: 1.55, agi: 1.15 } },
-  60: { nome: 'Dragão Ancião', emoji: '🐲', mult: { hp: 0.7, atq: 1.65, def: 1.62, agi: 1.1 } },
-  65: { nome: 'Ceifador', emoji: '⚰️', mult: { hp: 0.55, atq: 1.88, def: 1.35, agi: 1.6 } },
-  70: { nome: 'Anjo Caído', emoji: '🕊️', mult: { hp: 0.64, atq: 1.7, def: 1.55, agi: 1.4 } },
-  75: { nome: 'Leviatã Terrestre', emoji: '🐋', mult: { hp: 0.8, atq: 1.55, def: 1.72, agi: 0.9 } },
-  80: { nome: 'Senhor da Tempestade', emoji: '⛈️', mult: { hp: 0.58, atq: 1.8, def: 1.38, agi: 1.7 } },
-  85: { nome: 'Guardião do Tempo', emoji: '⏳', mult: { hp: 0.66, atq: 1.62, def: 1.75, agi: 1.35 } },
-  90: { nome: 'Avatar da Ruína', emoji: '💥', mult: { hp: 0.6, atq: 1.92, def: 1.45, agi: 1.3 } },
-  95: { nome: 'Rei Esquecido', emoji: '👑', mult: { hp: 0.68, atq: 1.7, def: 1.62, agi: 1.3 } },
-  100: { nome: 'O Primordial', emoji: '🌌', mult: { hp: 0.75, atq: 1.85, def: 1.75, agi: 1.4 } },
+  35: {
+    nome: 'Hidra das Brumas',
+    emoji: '🐍',
+    mult: { hp: 0.6, atq: 1.17, def: 1.1, agi: 1.35 },
+    especial: {
+      nome: 'Cabeças Renascidas',
+      emoji: '🐍',
+      resumo: 'Cada cabeça cortada volta: regenera 2% da vida máxima a cada turno.',
+      tipo: 'passiva',
+      efeitos: { regeneracao: 0.02 },
+    },
+  },
+  40: {
+    nome: 'Arauto da Ruína',
+    emoji: '🌑',
+    mult: { hp: 0.62, atq: 1.1, def: 1.3, agi: 1.3 },
+    especial: {
+      nome: 'Dobre de Finados',
+      emoji: '🔔',
+      resumo: 'A cada 4 turnos toca o sino da ruína: o golpe paralisa e você perde a próxima vez.',
+      texto: 'toca o sino da ruína e o som paralisa você',
+      tipo: 'golpe',
+      cada: 4,
+      mult: 1.2,
+      prende: 1,
+    },
+  },
+  45: {
+    nome: 'Titã Esquecido',
+    emoji: '🗿',
+    mult: { hp: 0.72, atq: 1, def: 1.8, agi: 0.85 },
+    especial: {
+      nome: 'Pele Pétrea',
+      emoji: '🪨',
+      resumo: 'A pele de pedra devolve 18% de todo o dano que ele leva para quem bateu.',
+      texto: 'devolve parte do golpe pela pele de pedra',
+      tipo: 'refletir',
+      fracao: 0.18,
+    },
+  },
+  50: {
+    nome: 'Rainha das Cinzas',
+    emoji: '👸',
+    mult: { hp: 0.6, atq: 1.36, def: 1.3, agi: 1.45 },
+    especial: {
+      nome: 'Renascer das Cinzas',
+      emoji: '🔥',
+      resumo: 'Na primeira vez que cairia, renasce das cinzas com 40% da vida máxima.',
+      texto: 'se desfaz em brasas e renasce das próprias cinzas',
+      tipo: 'reviver',
+      fracao: 0.4,
+    },
+  },
+  55: {
+    nome: 'Devorador de Almas',
+    emoji: '👁️',
+    mult: { hp: 0.68, atq: 1.18, def: 1.55, agi: 1.15 },
+    especial: {
+      nome: 'Devorar Alma',
+      emoji: '👁️',
+      resumo: 'A cada 3 turnos crava o olhar em você (1,5× de dano) e recupera tudo o que causou.',
+      texto: 'crava o olhar em você e arranca um pedaço da sua alma',
+      tipo: 'golpe',
+      cada: 3,
+      mult: 1.5,
+      cura: 1,
+    },
+  },
+  60: {
+    nome: 'Dragão Ancião',
+    emoji: '🐲',
+    mult: { hp: 0.7, atq: 1.2, def: 1.62, agi: 1.1 },
+    especial: {
+      nome: 'Fúria Ancestral',
+      emoji: '🐲',
+      resumo: 'Ao cair abaixo de metade da vida, entra em fúria: +40% de ataque até o fim.',
+      texto: 'ruge, e a fúria de mil anos toma conta do corpo',
+      tipo: 'enfurecer',
+      abaixoDe: 0.5,
+      atq: 0.4,
+    },
+  },
+  65: {
+    nome: 'Ceifador',
+    emoji: '⚰️',
+    mult: { hp: 0.6, atq: 1.27, def: 1.35, agi: 1.6 },
+    especial: {
+      nome: 'Ceifa',
+      emoji: '⚰️',
+      resumo: 'Quando a sua vida cai abaixo de 40%, desce a foice sobre você: 3,2× de dano, atravessando metade da defesa. Só uma vez.',
+      texto: 'ergue a foice sobre quem já está no fim e a desce sem piedade',
+      tipo: 'golpe',
+      quandoAlvoAbaixoDe: 0.4,
+      mult: 3.2,
+      perfuracao: 0.5,
+      semEsquiva: true,
+    },
+  },
+  70: {
+    nome: 'Anjo Caído',
+    emoji: '🕊️',
+    mult: { hp: 0.64, atq: 1.19, def: 1.55, agi: 1.4 },
+    especial: {
+      nome: 'Voo Sombrio',
+      emoji: '🕊️',
+      resumo: 'Some entre as asas negras: os 3 primeiros golpes que você tentar cortam o vazio.',
+      texto: 'some entre as asas negras e o golpe atravessa o vazio',
+      tipo: 'evasao',
+      golpes: 3,
+    },
+  },
+  75: {
+    nome: 'Leviatã Terrestre',
+    emoji: '🐋',
+    mult: { hp: 0.8, atq: 0.94, def: 1.72, agi: 0.9 },
+    especial: {
+      nome: 'Couraça Colossal',
+      emoji: '🛡️',
+      resumo: 'Já entra com uma couraça que absorve dano equivalente a 30% da vida máxima.',
+      texto: 'fecha a couraça colossal, que engole os primeiros golpes',
+      tipo: 'escudo',
+      abaixoDe: 1,
+      fracao: 0.3,
+    },
+  },
+  80: {
+    nome: 'Senhor da Tempestade',
+    emoji: '⛈️',
+    mult: { hp: 0.6, atq: 1.01, def: 1.38, agi: 1.7 },
+    especial: {
+      nome: 'Relâmpago',
+      emoji: '⚡',
+      resumo: 'A cada 3 turnos um raio cai sobre você: 1,7× de dano, atravessa 70% da defesa e não dá para desviar.',
+      texto: 'racha o céu e um raio cai sobre você',
+      tipo: 'golpe',
+      cada: 3,
+      mult: 1.7,
+      perfuracao: 0.7,
+      semEsquiva: true,
+    },
+  },
+  85: {
+    nome: 'Guardião do Tempo',
+    emoji: '⏳',
+    mult: { hp: 0.66, atq: 0.96, def: 1.75, agi: 1.35 },
+    especial: {
+      nome: 'Eco do Tempo',
+      emoji: '⏳',
+      resumo: 'Rebobina o instante: começa a luta e tem 40% de chance de agir duas vezes no mesmo turno.',
+      tipo: 'passiva',
+      efeitos: { iniciativa: true, golpeDuplo: 0.4 },
+    },
+  },
+  90: {
+    nome: 'Avatar da Ruína',
+    emoji: '💥',
+    mult: { hp: 0.6, atq: 1.31, def: 1.45, agi: 1.3 },
+    especial: {
+      nome: 'Ruína Crescente',
+      emoji: '💥',
+      resumo: 'A ruína cresce a cada turno: +8% de ataque por rodada, até +80%.',
+      tipo: 'passiva',
+      efeitos: { furia: { porRodada: 0.08, teto: 0.8 } },
+    },
+  },
+  95: {
+    nome: 'Rei Esquecido',
+    emoji: '👑',
+    mult: { hp: 0.68, atq: 1.35, def: 1.62, agi: 1.3 },
+    especial: {
+      nome: 'Esquecimento',
+      emoji: '🕳️',
+      resumo: 'Cada golpe dele apaga um pedaço da sua armadura: −6% de defesa por acerto, até −50%.',
+      tipo: 'passiva',
+      efeitos: { maldicao: { porAcerto: 0.06, teto: 0.5 } },
+    },
+  },
+  100: {
+    nome: 'O Primordial',
+    emoji: '🌌',
+    mult: { hp: 0.75, atq: 0.82, def: 1.75, agi: 1.4 },
+    especial: {
+      nome: 'Gênese Primordial',
+      emoji: '🌌',
+      resumo: 'A cada 4 turnos desfaz o mundo por um instante: 2,4× de dano, atravessa 40% da defesa e não dá para desviar.',
+      texto: 'desfaz o mundo por um instante e o refaz por cima de você',
+      tipo: 'golpe',
+      cada: 4,
+      mult: 2.4,
+      perfuracao: 0.4,
+      semEsquiva: true,
+    },
+  },
 }
+
+/**
+ * A habilidade de um chefe no formato que o combate le: os `efeitos` das
+ * passivas entram direto no `hab` (regeneracao, furia... ja existem la), e o
+ * resto vai inteiro em `hab.especial`.
+ */
+export const habDoChefe = (especial) => (especial ? { ...(especial.efeitos ?? {}), especial } : undefined)
 
 /** Os chefes nomeados, na ordem em que a rota os distribui pelos atos. */
 export const NIVEIS_DE_BOSS = Object.keys(BOSSES).map(Number).sort((a, b) => a - b)
@@ -203,6 +463,10 @@ export function criarChefe(chefe, nivel, { forca = 1, daRota = false } = {}) {
     nivel,
     elite: false,
     boss: true,
+    // A habilidade especial: `especial` e o que a tela mostra, `hab` e o que o
+    // combate le (o mesmo campo que as habilidades de classe usam).
+    especial: chefe.especial ?? null,
+    hab: habDoChefe(chefe.especial),
     ...atributosDeMonstro(nivel, aplicarForca(chefe.mult, forca), escalaPara(nivel, daRota)),
   }
 }

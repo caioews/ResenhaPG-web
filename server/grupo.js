@@ -26,11 +26,12 @@ export const nivelMedioDe = (participantes) =>
  * @param chefe          o inimigo pronto, no formato de criarChefeDeRaid
  * @param opcoes.recompensa  multiplicadores { xp, gold, itens } sobre a conta da raid
  * @param opcoes.materiais   se cai titanita e feitiço na vitória
+ * @param opcoes.pesosDoDrop raridades que podem cair, com seus pesos (o da raid comum se não vier)
  */
 export function resolverLutaDeGrupo(
   participantes,
   chefe,
-  { recompensa = {}, materiais = true } = {},
+  { recompensa = {}, materiais = true, pesosDoDrop = undefined } = {},
 ) {
   const media = nivelMedioDe(participantes)
   const mult = { xp: 1, gold: 1, itens: 1, ...recompensa }
@@ -52,6 +53,9 @@ export function resolverLutaDeGrupo(
       hpMax: chefe.hp,
       duro: Boolean(chefe.duro),
       areaCada: chefe.areaCada,
+      // So o chefe final tem: o laser e a furia entram na abertura da narracao.
+      laser: chefe.laser ? { cada: chefe.laser.cada, alvos: chefe.laser.alvos } : null,
+      furia: chefe.furia ? { abaixoDe: chefe.furia.abaixoDe } : null,
     },
     nivelMedio: media,
     participantes: participantes.map(verResumo),
@@ -115,9 +119,9 @@ export function resolverLutaDeGrupo(
 
   // O multiplicador mexe na QUANTIDADE de itens, nunca na peça: menos que a
   // raid corta a lista, mais que ela sorteia de novo. Piso de um.
-  const drops = droparRecompensas(embrulho)
+  const drops = droparRecompensas(embrulho, Math.random, pesosDoDrop)
   const quantos = Math.max(1, Math.round(drops.length * mult.itens))
-  while (drops.length < quantos) drops.push(...droparRecompensas(embrulho))
+  while (drops.length < quantos) drops.push(...droparRecompensas(embrulho, Math.random, pesosDoDrop))
 
   const itens = drops.slice(0, quantos).map(({ dono, item }) => {
     const loot = guardarLoot(dono.player, item)

@@ -25,6 +25,7 @@ import {
   arcoDoAto,
   ato,
   comparar,
+  ehFaseDoChefeFinal,
   ehOFim,
   faseAnterior,
   faseValida,
@@ -256,6 +257,8 @@ export function verRota(player) {
     recorde: melhor,
     repetindo: Boolean(c.repetindo),
     travada: faseValida(c.travada) ? c.travada : null,
+    // A proxima fase e o chefe final: quem manda caçar vai para a arena.
+    chefeFinal: ehFaseDoChefeFinal(onde),
     indice: indiceDaFase(onde.ato, onde.fase),
     vitorias: c.vitorias ?? 0,
     derrotas: c.derrotas ?? 0,

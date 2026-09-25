@@ -106,6 +106,10 @@ export const verInimigo = (monstro) => ({
   elite: Boolean(monstro.elite),
   boss: Boolean(monstro.boss),
   eco: Boolean(monstro.eco),
+  // A habilidade especial do chefe, para a tela anunciar antes da luta.
+  especial: monstro.especial
+    ? { nome: monstro.especial.nome, emoji: monstro.especial.emoji, resumo: monstro.especial.resumo }
+    : null,
   hpMax: monstro.hp,
   atq: monstro.atq,
   def: monstro.def,
@@ -301,6 +305,13 @@ export function verPersonagem(player) {
     // Onde o personagem está na rota: é o que o mapa desenha, e é de onde
     // sai o rótulo do botão de caçar.
     cacada: verRota(player),
+
+    // O fim do jogo: o chefe final ja caiu, e se falta escolher o que vem depois.
+    fim: {
+      zerou: Boolean(ficha.fim?.zerou),
+      pendente: Boolean(ficha.fim?.pendente),
+      escolha: ficha.fim?.escolha ?? null,
+    },
 
     // O prestígio: o contador, o que ele já dá e o que o próximo daria.
     prestigio: (() => {

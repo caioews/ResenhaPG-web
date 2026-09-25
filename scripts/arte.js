@@ -1207,8 +1207,9 @@ function folhasDeInimigo() {
     const nome = semAcento(entrada.name)
     const id = chaves.find((e) => e.pistas.some((pista) => nome.includes(pista)))?.id
     if (entrada.isDirectory()) {
-      // Os chefes do Abismo moram numa pasta só deles e não são espécies.
-      if (entrada.name === PASTA_DOS_CHEFES) continue
+      // Os chefes do Abismo e o chefe final moram em pastas só deles e não
+      // são espécies.
+      if (entrada.name === PASTA_DOS_CHEFES || entrada.name === PASTA_DO_CHEFE_FINAL) continue
       if (!id) throw new Error(`a pasta "${entrada.name}" não bate com nenhuma espécie`)
       saida[id] = achar(path.join(base, entrada.name), ehImagem)
     } else if (ehImagem(entrada.name)) {
@@ -1225,6 +1226,8 @@ function folhasDeInimigo() {
 
 /** Onde ficam as folhas dos chefes do Abismo, dentro de `inimigos`. */
 const PASTA_DOS_CHEFES = 'chefes abismo'
+/** A folha do chefe final: uma só, com um formato que não é o das outras. */
+const PASTA_DO_CHEFE_FINAL = 'chefe final'
 
 /**
  * As folhas dos chefes do Abismo. Diferente das espécies, aqui não há lista
@@ -1260,6 +1263,336 @@ async function cenaInteira(arquivo, { recorteDoTopo = 0, largura }) {
     .toBuffer()
 
   return { buffer, proporcao: width / altura }
+}
+
+// ------------------------------------------------------- o chefe final
+
+/**
+ * A folha do Coração do Abismo: treze quadros em três fileiras (7, 3 e 3),
+ * sobre um cinza chapado, sem rótulo nenhum. Não serve à `montarAtlas`, que
+ * espera as três faixas de oito quadros das outras folhas: aqui cada quadro é
+ * uma pose com nome, e o atlas sai com a lista de quem é quem.
+ */
+const FILEIRAS_DO_CHEFE = [7, 3, 3]
+
+/**
+ * O feixe de laser vem DESENHADO no quadro em que o chefe atira, apontando
+ * para um lado só. O jogo precisa mirar em quem estiver na arena, então o
+ * feixe é cortado (a partir deste x, na folha) e desenhado em tempo real; do
+ * quadro ficam o corpo, o anel de luz na boca e o começo do feixe.
+ */
+const CORTE_DO_FEIXE_X = 1600
+/** Onde o feixe nasce, na folha crua: o centro do anel na boca. */
+const BOCA_DO_CHEFE = { x: 1530, y: 805 }
+
+/**
+ * As poses, por nome. Cada uma é uma lista de [coluna, fileira] do atlas; o
+ * cliente decide o ritmo (public/js/palcoFinal.js).
+ *
+ *   fileira 0  respiro (o coração pulsando), braços erguidos, golpe, pancada
+ *              no chão com rachaduras, braço estendido
+ *   fileira 1  braços abertos, tentáculo na boca (carregando), o disparo
+ *   fileira 2  braços cruzados sobre o coração, cada vez mais fechado
+ */
+const POSES_DO_CHEFE = {
+  respiro: [[2, 0], [0, 0], [1, 0], [0, 0]],
+  dormindo: [[2, 2]],
+  acordando: [[2, 2], [1, 2], [0, 2], [3, 0], [1, 0]],
+  rugir: [[3, 0]],
+  golpe: [[4, 0], [6, 0]],
+  pancada: [[3, 0], [5, 0]],
+  carregar: [[0, 1], [1, 1]],
+  laser: [[2, 1]],
+  ferido: [[0, 2], [1, 2]],
+  caindo: [[1, 2], [2, 2]],
+}
+
+/**
+ * Do tamanho da folha para o do atlas. O chefe é grande e aparece grande: com
+ * 0.75 o quadro mais alto fica com uns 280 pixels, o bastante para não
+ * borrar quando o palco o estica.
+ */
+const ESCALA_DO_CHEFE_FINAL = 0.75
+
+/** Rotula os pedaços de desenho de um alpha: quem é de quem, e a caixa de cada um. */
+function rotular(alpha, W, H) {
+  const rotulo = new Int32Array(W * H).fill(-1)
+  const grupos = []
+  const pilha = new Int32Array(W * H)
+
+  for (let inicio = 0; inicio < W * H; inicio++) {
+    if (rotulo[inicio] >= 0 || alpha[inicio] < 40) continue
+    const id = grupos.length
+    const g = { id, n: 0, x0: W, x1: 0, y0: H, y1: 0 }
+    let topo = 0
+    pilha[topo++] = inicio
+    rotulo[inicio] = id
+
+    while (topo > 0) {
+      const p = pilha[--topo]
+      const x = p % W
+      const y = (p / W) | 0
+      g.n++
+      if (x < g.x0) g.x0 = x
+      if (x > g.x1) g.x1 = x
+      if (y < g.y0) g.y0 = y
+      if (y > g.y1) g.y1 = y
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx
+        const ny = y + dy
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
+        const q = ny * W + nx
+        if (rotulo[q] >= 0 || alpha[q] < 40) continue
+        rotulo[q] = id
+        pilha[topo++] = q
+      }
+    }
+    grupos.push(g)
+  }
+
+  return { rotulo, grupos }
+}
+
+/**
+ * O atlas do chefe final.
+ *
+ * O fundo é um cinza chapado, e boa parte dele fica PRESO dentro do desenho
+ * (entre os braços, sob o manto): inundar das bordas não chega lá, e por isso
+ * vale a cor do fundo em qualquer lugar da folha. É seguro porque o chefe é
+ * todo marrom, osso e vermelho — nenhum pixel dele é cinza neutro.
+ */
+async function atlasDoChefeFinal(arquivo, { escala }) {
+  const { data, suave, W, H } = await lerRaw(arquivo)
+  const fundo = corDominante(suave, W, H)
+  const PERTO = 26
+
+  // O que é fundo: a cor dele, em qualquer parte.
+  const alpha = new Uint8Array(W * H)
+  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+    const d = somaAbs(suave[i], suave[i + 1], suave[i + 2], fundo[0], fundo[1], fundo[2])
+    alpha[p] = d <= PERTO ? 0 : 255
+  }
+
+  // A franja: o pixel de contorno que ainda guarda um pouco do cinza do JPEG.
+  for (let p = 0; p < W * H; p++) {
+    if (!alpha[p]) continue
+    const x = p % W
+    const y = (p / W) | 0
+    const vizinhoFora =
+      (x > 0 && !alpha[p - 1]) || (x < W - 1 && !alpha[p + 1]) || (y > 0 && !alpha[p - W]) || (y < H - 1 && !alpha[p + W])
+    if (!vizinhoFora) continue
+    const i = p * 4
+    if (somaAbs(data[i], data[i + 1], data[i + 2], fundo[0], fundo[1], fundo[2]) <= PERTO * 2.2) alpha[p] = 254
+  }
+  for (let p = 0; p < W * H; p++) if (alpha[p] === 254) alpha[p] = 0
+
+  const { rotulo, grupos } = rotular(alpha, W, H)
+
+  // Os quadros são os pedaços grandes; os pequenos (um elo de corrente, uma
+  // faísca) pertencem ao quadro mais próximo, e as manchas do gerador — como o
+  // borrão solto ao lado do disparo — não pertencem a nenhum.
+  const grandes = grupos.filter((g) => g.n >= 3000)
+  const linhas = [[], [], []]
+  for (const g of grandes) linhas[g.y0 < 400 ? 0 : g.y0 < 900 ? 1 : 2].push(g)
+  for (const l of linhas) l.sort((a, b) => a.x0 - b.x0)
+
+  const contagem = linhas.map((l) => l.length)
+  if (contagem.join() !== FILEIRAS_DO_CHEFE.join()) {
+    throw new Error(`a folha do chefe final deveria ter ${FILEIRAS_DO_CHEFE.join('+')} quadros e tem ${contagem.join('+')}`)
+  }
+
+  const dono = new Map(grandes.map((g) => [g.id, g.id]))
+  const MARGEM = 70
+  for (const g of grupos) {
+    if (g.n >= 3000 || g.n < 150) continue
+    const cx = (g.x0 + g.x1) / 2
+    const cy = (g.y0 + g.y1) / 2
+    // O quadro mais perto — as caixas de dois quadros vizinhos se cruzam (o
+    // braço de um entra na caixa do outro), e "o primeiro que contém" daria a
+    // faísca do golpe no chão para o quadro ao lado.
+    const distancia = (q) => Math.hypot(Math.max(q.x0 - cx, 0, cx - q.x1), Math.max(q.y0 - cy, 0, cy - q.y1))
+    const alvo = grandes.reduce((a, b) => (distancia(a) <= distancia(b) ? a : b))
+    if (distancia(alvo) <= MARGEM) dono.set(g.id, alvo.id)
+  }
+
+  // A máscara de cada quadro, já com o corte do feixe.
+  const quadros = linhas.map((fila, l) =>
+    fila.map((g, c) => {
+      const mascara = new Uint8Array(W * H)
+      const caixa = { x0: W, x1: 0, y0: H, y1: 0 }
+      for (let y = g.y0 - MARGEM; y <= g.y1 + MARGEM; y++) {
+        for (let x = g.x0 - MARGEM; x <= g.x1 + MARGEM; x++) {
+          if (x < 0 || y < 0 || x >= W || y >= H) continue
+          const p = y * W + x
+          if (rotulo[p] < 0 || dono.get(rotulo[p]) !== g.id) continue
+          if (l === 1 && c === 2 && x >= CORTE_DO_FEIXE_X) continue
+          mascara[p] = 255
+          if (x < caixa.x0) caixa.x0 = x
+          if (x > caixa.x1) caixa.x1 = x
+          if (y < caixa.y0) caixa.y0 = y
+          if (y > caixa.y1) caixa.y1 = y
+        }
+      }
+      return { mascara, caixa, ancora: ancora(mascara, W, caixa), l, c }
+    }),
+  )
+
+  // A célula: o maior quadro medido a partir da âncora.
+  let esq = 0, dir = 0, cima = 0, baixo = 0
+  for (const q of quadros.flat()) {
+    esq = Math.max(esq, q.ancora.x - q.caixa.x0)
+    dir = Math.max(dir, q.caixa.x1 - q.ancora.x)
+    cima = Math.max(cima, q.ancora.y - q.caixa.y0)
+    baixo = Math.max(baixo, q.caixa.y1 - q.ancora.y)
+  }
+  const pad = 3
+  const CW = Math.ceil((esq + dir) * escala) + pad * 2
+  const CH = Math.ceil((cima + baixo) * escala) + pad * 2
+  const ax = Math.round(esq * escala) + pad
+  const ay = Math.round(cima * escala) + pad
+
+  const colunas = Math.max(...FILEIRAS_DO_CHEFE)
+  const pedacos = []
+  for (const q of quadros.flat()) {
+    const lw = q.caixa.x1 - q.caixa.x0 + 1
+    const lh = q.caixa.y1 - q.caixa.y0 + 1
+    const recorte = Buffer.alloc(lw * lh * 4)
+    for (let y = 0; y < lh; y++) {
+      for (let x = 0; x < lw; x++) {
+        const origem = ((q.caixa.y0 + y) * W + q.caixa.x0 + x) * 4
+        const destino = (y * lw + x) * 4
+        recorte[destino] = data[origem]
+        recorte[destino + 1] = data[origem + 1]
+        recorte[destino + 2] = data[origem + 2]
+        recorte[destino + 3] = q.mascara[(q.caixa.y0 + y) * W + q.caixa.x0 + x]
+      }
+    }
+    const png = await sharp(recorte, { raw: { width: lw, height: lh, channels: 4 } })
+      .resize(Math.max(1, Math.round(lw * escala)), Math.max(1, Math.round(lh * escala)), { kernel: 'lanczos3' })
+      .png()
+      .toBuffer()
+    pedacos.push({
+      input: png,
+      left: q.c * CW + ax - Math.round((q.ancora.x - q.caixa.x0) * escala),
+      top: q.l * CH + ay - Math.round((q.ancora.y - q.caixa.y0) * escala),
+    })
+  }
+
+  const buffer = await sharp({
+    create: { width: CW * colunas, height: CH * FILEIRAS_DO_CHEFE.length, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(pedacos)
+    .webp({ quality: 86, alphaQuality: 100 })
+    .toBuffer()
+
+  // O coração: o centro do vermelho vivo do quadro em que ele brilha mais.
+  const brilhante = quadros[0][1]
+  let somaX = 0, somaY = 0, n = 0
+  for (let y = brilhante.caixa.y0; y <= brilhante.caixa.y1; y++) {
+    for (let x = brilhante.caixa.x0; x <= brilhante.caixa.x1; x++) {
+      const p = y * W + x
+      if (!brilhante.mascara[p]) continue
+      const i = p * 4
+      if (data[i] > 190 && data[i + 1] < 90 && data[i + 2] < 120) {
+        somaX += x
+        somaY += y
+        n++
+      }
+    }
+  }
+  const coracao = n
+    ? [Math.round(((somaX / n) - brilhante.ancora.x) * escala), Math.round(((somaY / n) - brilhante.ancora.y) * escala)]
+    : [0, Math.round(-(cima * 0.45) * escala)]
+
+  const disparo = quadros[1][2]
+  const boca = [
+    Math.round((BOCA_DO_CHEFE.x - disparo.ancora.x) * escala),
+    Math.round((BOCA_DO_CHEFE.y - disparo.ancora.y) * escala),
+  ]
+
+  return {
+    buffer,
+    quadro: [CW, CH],
+    ancora: [ax, ay],
+    animacoes: POSES_DO_CHEFE,
+    // Relativos à âncora do quadro em que valem (coração: o do quadro mais
+    // brilhante; boca: o do disparo).
+    coracao,
+    boca,
+  }
+}
+
+/**
+ * O cenário da luta final: duas camadas do MESMO quadro, desenhadas para
+ * baterem uma sobre a outra — o fundo (o céu partido, as ilhas ao longe) e a
+ * arena central, que vem sobre preto e ganha transparência aqui. O chefe
+ * entra entre as duas, e quem luta pisa na arena.
+ */
+async function cenarioDaLutaFinal(pasta, escrever) {
+  const arquivos = readdirSync(pasta).filter(ehImagem)
+  const fundo = arquivos.find((n) => /^fundo/i.test(n))
+  const arena = arquivos.find((n) => /^arena/i.test(n))
+  if (!fundo || !arena) return null
+
+  const LARGURA = 1600
+  const meta = await sharp(path.join(pasta, fundo)).metadata()
+  const cenaDoFundo = await cenaInteira(path.join(pasta, fundo), { largura: LARGURA })
+  escrever('cenario/final-fundo.webp', cenaDoFundo.buffer)
+
+  // A arena: o preto que a cerca é o "vazio". Alastra das bordas e fica com o
+  // que sobra — o preto que já é desenho (as pedras escuras) não sai, porque
+  // está cercado de cor.
+  const { data, suave, W, H } = await lerRaw(path.join(pasta, arena))
+  const fora = new Uint8Array(W * H)
+  const pilha = []
+  const olhar = (x, y) => {
+    const p = y * W + x
+    if (fora[p]) return
+    const i = p * 4
+    if (suave[i] + suave[i + 1] + suave[i + 2] > 30) return
+    fora[p] = 1
+    pilha.push(p)
+  }
+  for (let x = 0; x < W; x++) { olhar(x, 0); olhar(x, H - 1) }
+  for (let y = 0; y < H; y++) { olhar(0, y); olhar(W - 1, y) }
+  while (pilha.length) {
+    const p = pilha.pop()
+    const x = p % W
+    const y = (p / W) | 0
+    if (x > 0) olhar(x - 1, y)
+    if (x < W - 1) olhar(x + 1, y)
+    if (y > 0) olhar(x, y - 1)
+    if (y < H - 1) olhar(x, y + 1)
+  }
+
+  // Só ficam os pedaços grandes: a arena e as pedras que flutuam ao redor dela.
+  const dentro = new Uint8Array(W * H)
+  for (let p = 0; p < W * H; p++) dentro[p] = fora[p] ? 0 : 255
+  const { rotulo, grupos } = rotular(dentro, W, H)
+  const maior = Math.max(...grupos.map((g) => g.n))
+  const alpha = new Uint8Array(W * H)
+  for (let p = 0; p < W * H; p++) {
+    if (rotulo[p] >= 0 && grupos[rotulo[p]].n >= maior * 0.01) alpha[p] = 255
+  }
+
+  const recorte = Buffer.alloc(W * H * 4)
+  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+    recorte[i] = data[i]
+    recorte[i + 1] = data[i + 1]
+    recorte[i + 2] = data[i + 2]
+    recorte[i + 3] = alpha[p]
+  }
+  const buffer = await sharp(recorte, { raw: { width: W, height: H, channels: 4 } })
+    .resize({ width: LARGURA })
+    .webp({ quality: 88, alphaQuality: 100 })
+    .toBuffer()
+  escrever('cenario/final-arena.webp', buffer)
+
+  return {
+    fundo: 'cenario/final-fundo.webp',
+    arena: 'cenario/final-arena.webp',
+    proporcao: meta.width / meta.height,
+  }
 }
 
 /**
@@ -1313,6 +1646,13 @@ const impressaoDe = (fonte, ato) =>
 const compartilhados = new Set()
 
 /**
+ * Qual das imagens de uma pasta é o cenário do ato. Costuma haver uma só; a
+ * do ato final tem duas camadas (fundo e arena), e o que se repete enquanto o
+ * personagem caça é o fundo — a arena só existe na luta do chefe.
+ */
+const imagemDoAto = (arquivos) => arquivos.find((n) => /^fundo/i.test(n)) ?? arquivos[0]
+
+/**
  * Descobre, antes de escrever qualquer coisa, quais imagens se repetem entre
  * atos. É o que permite dar ao arquivo compartilhado um nome que se explica.
  */
@@ -1324,7 +1664,7 @@ function acharCenariosCompartilhados(pastaDeCenario) {
     const arquivos = readdirSync(pasta).filter(ehImagem)
     if (!arquivos.length || arquivos.some((n) => n.toUpperCase().startsWith('CÉU'))) continue
 
-    const impressao = impressaoDe(path.join(pasta, arquivos[0]), ato)
+    const impressao = impressaoDe(path.join(pasta, imagemDoAto(arquivos)), ato)
     if (vistos.has(impressao)) compartilhados.add(impressao)
     vistos.add(impressao)
   }
@@ -1352,7 +1692,7 @@ async function cenarioDoAto(ato, pasta, escrever) {
     return { proporcao, linhaDoChao: LINHA_DO_CHAO[ato.cenario] ?? 0.94, camadas }
   }
 
-  const fonte = path.join(pasta, arquivos[0])
+  const fonte = path.join(pasta, imagemDoAto(arquivos))
   const impressao = impressaoDe(fonte, ato)
   const repetido = cenariosJaEscritos.get(impressao)
   if (repetido) {
@@ -1380,7 +1720,7 @@ async function principal() {
   rmSync(SAIDA, { recursive: true, force: true })
   for (const p of ['cenario', 'lutadores', 'sentados']) mkdirSync(path.join(SAIDA, p), { recursive: true })
 
-  const manifesto = { lutadores: {}, sentados: {}, cenario: {} }
+  const manifesto = { lutadores: {}, sentados: {}, cenario: {}, chefeFinal: null }
   const escrever = (relativo, buffer) => {
     writeFileSync(path.join(SAIDA, relativo), buffer)
     console.log(`  ${relativo.padEnd(34)} ${(buffer.length / 1024).toFixed(0)} KB`)
@@ -1442,6 +1782,16 @@ async function principal() {
     }
   }
 
+  console.log('\nChefe final')
+  const pastaDoChefeFinal = path.join(ENTRADA, 'inimigos', PASTA_DO_CHEFE_FINAL)
+  if (existsSync(pastaDoChefeFinal)) {
+    const atlas = await atlasDoChefeFinal(achar(pastaDoChefeFinal, ehImagem), { escala: ESCALA_DO_CHEFE_FINAL })
+    escrever('lutadores/coracao-do-abismo.webp', atlas.buffer)
+    manifesto.chefeFinal = { arquivo: 'lutadores/coracao-do-abismo.webp', ...semBuffer(atlas) }
+  } else {
+    console.log('  (sem folha do chefe final)')
+  }
+
   console.log('\nCenário — os atos da rota')
 
   // Um cenário por ato (server/rpg/rota.js), achado pelo NOME DA PASTA: a
@@ -1466,6 +1816,13 @@ async function principal() {
     const feito = await cenarioDoAto(ato, pasta, escrever)
     if (feito) manifesto.cenario.atos[ato.cenario] = feito
   }
+
+  // A luta final: fundo e arena em camadas, na pasta do último ato.
+  console.log('\nCenário — a luta final')
+  const pastaDoFinal = pastaDeCenario.get(ATOS.at(-1).cenario)
+  const luta = pastaDoFinal ? await cenarioDaLutaFinal(pastaDoFinal, escrever) : null
+  if (luta) manifesto.cenario.final = luta
+  else console.log('  (sem fundo e arena na pasta do último ato)')
 
   // Os andares do Abismo: uma imagem por profundidade, e o palco troca de
   // uma para a outra conforme a descida muda de faixa.

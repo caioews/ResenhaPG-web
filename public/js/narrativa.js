@@ -91,13 +91,104 @@ function criarPlacar(nomeA, hpA, hpMaxA, nomeB, hpB, hpMaxB, aoMudar = {}) {
 
 // ---------------------------------------------------------- vocabulário
 
+/** As entradas do log que são a habilidade de um chefe, e não um golpe. */
+const TIPOS_DE_HABILIDADE = new Set(['especial', 'reflexo', 'queimadura'])
+
 const VERBOS = ['acertou', 'atingiu', 'golpeou', 'alcançou', 'feriu']
 const VERBOS_ESQUIVA = ['desviou', 'saiu da linha', 'leu o movimento e escapou']
 
 const sorteio = (lista, semente) => lista[semente % lista.length]
 
+/** O nome da habilidade especial de um chefe, em destaque: "🔥 Sopro de Fogo!" */
+const cabecalhoEspecial = (especial) => el('span', { class: 'especial' }, `${especial.emoji} ${especial.nome}! `)
+
+const detalheDoVida = (hp, hpMax) =>
+  hp === undefined ? '.' : el('span', { class: 'sussurro' }, `  (${num(Math.max(0, hp))}/${num(hpMax)})`)
+
+/**
+ * Uma habilidade especial de chefe que não é um golpe: invocar, escudo,
+ * enfurecer, voltar dos mortos, marcar o jogador.
+ */
+function descreverEspecial(entrada) {
+  const e = entrada.especial
+  const detalhes = []
+
+  if (entrada.escudo) detalhes.push(`Escudo de ${num(entrada.escudo)}.`)
+  if (entrada.reviveu) detalhes.push(`Volta com ${num(entrada.hpQuemAtaca)} de vida.`)
+  if (entrada.invocados) detalhes.push(`${entrada.invocados} em campo.`)
+
+  return el(
+    'p',
+    {},
+    cabecalhoEspecial(e),
+    forte(entrada.nome),
+    ` ${e.texto}.`,
+    detalhes.length ? el('span', { class: 'sussurro' }, `  ${detalhes.join(' ')}`) : '',
+  )
+}
+
+/** O golpe especial de um chefe: o nome da habilidade, o que ele faz e o estrago. */
+function descreverGolpeEspecial(entrada) {
+  const e = entrada.especial
+  const abertura = [cabecalhoEspecial(e), forte(entrada.nome), ` ${e.texto}`]
+
+  if (entrada.esquivou) return el('p', {}, ...abertura, ', mas ', forte(entrada.alvo), ' ', el('span', { class: 'esquiva' }, 'desvia'), '.')
+
+  const efeitos = []
+  if (entrada.absorvido) efeitos.push(`o escudo absorveu ${num(entrada.absorvido)}`)
+  if (entrada.prendeu) efeitos.push(`${entrada.alvo} perde a próxima vez`)
+  if (entrada.queimou) efeitos.push(`${entrada.alvo} pega fogo`)
+  if (entrada.cura > 0) efeitos.push(`${entrada.nome} recupera ${num(entrada.cura)}`)
+
+  return el(
+    'p',
+    {},
+    ...abertura,
+    ' — ',
+    forte(num(entrada.dano), entrada.critico ? 'critico' : 'perigo'),
+    ' de dano em ',
+    forte(entrada.alvo),
+    detalheDoVida(entrada.hpAlvo, entrada.hpMaxAlvo),
+    efeitos.length ? el('span', { class: 'sussurro' }, `  ${efeitos.join(' · ')}.`) : '',
+  )
+}
+
 /** Uma entrada de log de combate individual virando um parágrafo. */
 function descrever(entrada, i) {
+  if (entrada.tipo === 'especial') return descreverEspecial(entrada)
+
+  if (entrada.tipo === 'queimadura') {
+    return el(
+      'p',
+      {},
+      forte(entrada.nome),
+      ' arde em chamas: ',
+      forte(`-${num(entrada.dano)}`, 'perigo'),
+      detalheDoVida(entrada.hpQuemAtaca, entrada.hpMaxQuemAtaca),
+    )
+  }
+
+  if (entrada.tipo === 'reflexo') {
+    return el(
+      'p',
+      {},
+      cabecalhoEspecial(entrada.especial),
+      forte(entrada.nome),
+      ` ${entrada.especial.texto}: `,
+      forte(entrada.alvo),
+      ' leva ',
+      forte(num(entrada.dano), 'perigo'),
+      detalheDoVida(entrada.hpAlvo, entrada.hpMaxAlvo),
+    )
+  }
+
+  // A evasão de um chefe (Voo Sombrio): o golpe existe, mas não acerta nada.
+  if (entrada.evasao) {
+    return el('p', {}, cabecalhoEspecial(entrada.especial), forte(entrada.alvo), ` ${entrada.especial.texto}.`)
+  }
+
+  if (entrada.marca === 'especial') return descreverGolpeEspecial(entrada)
+
   if (entrada.tipo === 'regenerou') {
     return el(
       'p',
@@ -138,16 +229,53 @@ function descrever(entrada, i) {
     forte(entrada.alvo),
     ' em ',
     forte(num(entrada.dano), entrada.executou ? 'execucao' : entrada.critico ? 'critico' : 'destaque'),
-    entrada.hpAlvo !== undefined
-      ? el('span', { class: 'sussurro' }, `  (${num(Math.max(0, entrada.hpAlvo))}/${num(entrada.hpMaxAlvo)})`)
-      : '.',
+    detalheDoVida(entrada.hpAlvo, entrada.hpMaxAlvo),
+    entrada.absorvido ? el('span', { class: 'sussurro' }, `  o escudo absorveu ${num(entrada.absorvido)}.`) : '',
   )
 
   return el('p', {}, ...partes)
 }
 
-/** Uma entrada de log de raid (o formato de grupo é diferente). */
+/**
+ * Uma entrada de log de raid (o formato de grupo é diferente). Devolve `null`
+ * para as entradas que não são de contar — o retrato de fim de rodada da luta
+ * final só existe para a cena acertar as barras de vida.
+ */
 function descreverGrupo(entrada, i) {
+  if (entrada.tipo === 'estado') return null
+
+  if (entrada.tipo === 'laser') {
+    const atingidos = (entrada.alvos ?? []).map((a) =>
+      el(
+        'span',
+        {},
+        forte(a.nome),
+        ' (',
+        forte(num(a.dano), 'perigo'),
+        a.derrubou ? el('span', { class: 'perigo' }, ' — caiu') : '',
+        ')',
+      ),
+    )
+    const partes = [
+      el('span', { class: 'especial' }, '🔴 Laser do Abismo! '),
+      forte(entrada.nome),
+      ' abre a boca e um feixe de luz vermelha corta a arena: ',
+    ]
+    atingidos.forEach((a, k) => partes.push(k ? ' e ' : '', a))
+    partes.push('.')
+    return el('p', {}, ...partes)
+  }
+
+  if (entrada.tipo === 'furia') {
+    return el(
+      'p',
+      {},
+      el('span', { class: 'especial' }, '💢 Fúria! '),
+      forte(entrada.nome),
+      ' ruge — o coração bate mais depressa, e cada golpe dele pesa mais.',
+    )
+  }
+
   if (entrada.tipo === 'curaGrupo') {
     return el(
       'p',
@@ -266,6 +394,16 @@ export async function narrarLuta({
         }
       } else if (entrada.tipo === 'regenerou' && entrada.hpQuemAtaca !== undefined) {
         placar.atualizar(entrada.quem, entrada.hpQuemAtaca, entrada.quem === 'a' ? hpMaxA : hpMaxB)
+      } else if (TIPOS_DE_HABILIDADE.has(entrada.tipo)) {
+        // A habilidade de um chefe: `quem` é quem a usou, `hpQuemAtaca` a vida
+        // dele depois (voltou dos mortos, se curou) e `hpAlvo` a do outro lado
+        // (o reflexo machuca quem bateu). A queimadura só mexe em quem queima.
+        const outro = entrada.quem === 'a' ? 'b' : 'a'
+        const hpMax = { a: hpMaxA, b: hpMaxB }
+        if (entrada.hpQuemAtaca !== undefined) placar.atualizar(entrada.quem, entrada.hpQuemAtaca, hpMax[entrada.quem])
+        if (entrada.tipo !== 'queimadura' && entrada.hpAlvo !== undefined) {
+          placar.atualizar(outro, entrada.hpAlvo, hpMax[outro])
+        }
       }
 
       await dormir(pulando ? 0 : ritmoPara(log.length))
@@ -279,8 +417,15 @@ export async function narrarLuta({
   return placar
 }
 
-/** Reproduz uma luta de raid: uma barra só, a do chefe. */
-export async function narrarRaid({ nomeDoChefe, hpMaxDoChefe, log }) {
+/**
+ * Reproduz uma luta de raid: uma barra só, a do chefe.
+ *
+ * `aoEntrada`, se vier, é chamado a cada linha do log e pode devolver quantos
+ * milissegundos esperar antes da próxima — é assim que a arena do chefe
+ * final anima cada golpe e dá ao laser o seu tempo. Sem ele, o ritmo é o de
+ * sempre.
+ */
+export async function narrarRaid({ nomeDoChefe, hpMaxDoChefe, log, aoEntrada }) {
   const barraChefe = barra('vida', hpMaxDoChefe, hpMaxDoChefe)
   escrever(
     el(
@@ -301,14 +446,17 @@ export async function narrarRaid({ nomeDoChefe, hpMaxDoChefe, log }) {
   try {
     for (let i = 0; i < log.length; i++) {
       const entrada = log[i]
-      escrever(descreverGrupo(entrada, i))
+      const linha = descreverGrupo(entrada, i)
+      if (linha) escrever(linha)
 
       if (entrada.hpChefe !== undefined) {
         barraChefe.querySelector('.preenchida').style.width = `${pct(entrada.hpChefe, hpMaxDoChefe)}%`
         barraChefe.querySelector('.rotulo').textContent = `${num(Math.max(0, entrada.hpChefe))} / ${num(hpMaxDoChefe)}`
       }
 
-      await dormir(pulando ? 0 : log.length > 60 ? 20 : 90)
+      // A cena decide o ritmo quando existe; o texto, quando não.
+      const espera = aoEntrada?.(entrada, i)
+      await dormir(pulando ? 0 : espera ?? (log.length > 60 ? 20 : 90))
     }
   } finally {
     emCurso = false

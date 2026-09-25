@@ -29,8 +29,8 @@
  */
 
 /** O palco é desenhado sempre neste tamanho; o CSS estica. */
-const LARGURA = 640
-const ALTURA = 360
+export const LARGURA = 640
+export const ALTURA = 360
 
 /**
  * Um pouco de zoom no panorama em camadas: sobra cenário para a câmera
@@ -92,8 +92,8 @@ const estado = {
 const imagens = new Map()
 const aguardando = new Map()
 
-const agora = () => performance.now()
-const limitar = (v, min, max) => Math.max(min, Math.min(max, v))
+export const agora = () => performance.now()
+export const limitar = (v, min, max) => Math.max(min, Math.min(max, v))
 const dormir = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)))
 
 /** Carrega (uma vez) uma imagem da pasta de arte. */
@@ -120,8 +120,8 @@ function carregar(relativo) {
   return promessa
 }
 
-const pronta = (relativo) => imagens.get(relativo) ?? null
-const tentarCarregar = (relativo) => carregar(relativo).catch(() => null)
+export const pronta = (relativo) => imagens.get(relativo) ?? null
+export const tentarCarregar = (relativo) => carregar(relativo).catch(() => null)
 
 // -------------------------------------------------------- preparação
 
@@ -167,8 +167,27 @@ export const palcoPreparado = () => Boolean(estado.arte)
 /** Se o palco está mostrando a rota (a caçada), e não a taberna. */
 export const palcoNaRota = () => estado.cena === 'rota'
 
-/** Se o palco está fora da taberna — na rota ou no Abismo. */
-export const palcoEmCena = () => estado.cena === 'rota' || estado.cena === 'abismo'
+/**
+ * Se o palco está fora da taberna — na rota, no Abismo ou na arena do chefe
+ * final. É o que barra Rito, raid e masmorra: para aceitar, volta para a
+ * taberna.
+ */
+export const palcoEmCena = () => estado.cena === 'rota' || estado.cena === 'abismo' || estado.cena === 'final'
+
+/** Se o palco está na arena do Coração do Abismo (public/js/palcoFinal.js). */
+export const palcoNoFinal = () => estado.cena === 'final'
+
+/**
+ * Cenas que moram em outro arquivo. Cada uma entrega a função que a desenha;
+ * o laço do palco chama a da cena em curso. É assim que a arena do chefe
+ * final vive em `palcoFinal.js` sem este arquivo precisar conhecê-la (e sem
+ * importar de volta o que ela importa daqui).
+ */
+const cenasExtras = new Map()
+export const registrarCena = (nome, desenhar) => cenasExtras.set(nome, desenhar)
+
+/** O manifesto de arte carregado (ou null antes de o palco ligar). */
+export const arteDoPalco = () => estado.arte
 
 /**
  * Quem quer saber que a cena mudou. É assim que o menu de ações descobre
@@ -204,10 +223,10 @@ export function spriteDoMonstro(id) {
 }
 
 /** A classe-raiz vira o sprite do herói. */
-const spriteDaClasse = (classe) =>
+export const spriteDaClasse = (classe) =>
   estado.arte?.lutadores?.[classe] ? classe : estado.arte?.lutadores?.guerreiro ? 'guerreiro' : null
 
-function criarLutador(chave, { x, virado }) {
+export function criarLutador(chave, { x, virado }) {
   const lutador = {
     chave,
     meta: estado.arte.lutadores[chave],
@@ -225,7 +244,7 @@ function criarLutador(chave, { x, virado }) {
   return lutador
 }
 
-function tocar(lutador, nome) {
+export function tocar(lutador, nome) {
   if (!lutador) return
   lutador.anim = nome
   lutador.animDesde = agora()
@@ -249,7 +268,7 @@ function posicao(lutador, t) {
 }
 
 /** O quadro do atlas para este instante: que linha, que coluna, e se acabou. */
-function quadroDe(lutador, t) {
+export function quadroDe(lutador, t) {
   const animacao = ANIMACOES[lutador.anim] ?? ANIMACOES.parado
   const linha = Math.max(0, lutador.meta.linhas.indexOf(animacao.linha))
   const naLinha = Array.isArray(lutador.meta.quadros)
@@ -265,7 +284,7 @@ function quadroDe(lutador, t) {
 // ------------------------------------------------------------ cenas
 
 /** Troca de cena com escurecida no meio. Resolve quando a escurecida acaba. */
-async function trocarCena(nova, duracao = FADE) {
+export async function trocarCena(nova, duracao = FADE) {
   const inicio = agora()
   estado.fade = { de: inicio, ate: inicio + duracao }
   await dormir(duracao / 2)
@@ -420,23 +439,35 @@ export function golpe(entrada) {
   if (entrada.tipo === 'regenerou') return flutuar(eu, `+${Math.round(entrada.cura ?? 0)}`, '#7bc47b')
   if (entrada.tipo === 'preso' || eu.caiuEm || outro.caiuEm) return
 
+  // A habilidade especial de um chefe: o nome dela sobe em cima de quem usou.
+  if (entrada.tipo === 'queimadura') return flutuar(eu, `-${dano(entrada)}`, '#ff8a3d')
+  if (entrada.tipo === 'especial') return flutuar(eu, nomeDaHabilidade(entrada.especial), COR_DA_HABILIDADE)
+  if (entrada.tipo === 'reflexo') {
+    flutuar(eu, nomeDaHabilidade(entrada.especial), COR_DA_HABILIDADE)
+    outro.flash = agora()
+    return flutuar(outro, `-${dano(entrada)}`, '#f0e8d8')
+  }
+
   tocar(eu, 'atacar')
   eu.impulso = agora()
   tocar(outro, 'defender')
+  if (entrada.marca === 'especial') flutuar(eu, nomeDaHabilidade(entrada.especial), COR_DA_HABILIDADE)
 
   if (entrada.esquivou) {
     outro.empurrao = { desde: agora(), quanto: -outro.virado * 30 }
-    return flutuar(outro, 'esquiva', '#9fd1e8')
+    return entrada.evasao
+      ? flutuar(outro, nomeDaHabilidade(entrada.especial), COR_DA_HABILIDADE)
+      : flutuar(outro, 'esquiva', '#9fd1e8')
   }
 
   outro.flash = agora()
   outro.empurrao = { desde: agora(), quanto: -outro.virado * 18 }
-  flutuar(
-    outro,
-    `-${Math.round(entrada.dano ?? 0).toLocaleString('pt-BR')}`,
-    entrada.executou ? '#ff9d5c' : entrada.critico ? '#ffd166' : '#f0e8d8',
-  )
+  flutuar(outro, `-${dano(entrada)}`, entrada.executou ? '#ff9d5c' : entrada.critico ? '#ffd166' : '#f0e8d8')
 }
+
+const COR_DA_HABILIDADE = '#c9a0ff'
+const nomeDaHabilidade = (especial) => (especial ? `${especial.emoji} ${especial.nome}` : '')
+const dano = (entrada) => Math.round(entrada.dano ?? 0).toLocaleString('pt-BR')
 
 /** Fim de luta: quem perdeu cai, quem venceu respira. */
 export function fimDaLuta({ venceu }) {
@@ -572,7 +603,7 @@ const rascunho = document.createElement('canvas')
  * O quadro pintado de vermelho. Tem de ser numa tela à parte: `source-atop`
  * na tela principal pintaria o cenário inteiro, não só o boneco.
  */
-function tingir(img, sx, sy, sw, sh, forca) {
+export function tingir(img, sx, sy, sw, sh, forca) {
   if (rascunho.width !== sw || rascunho.height !== sh) {
     rascunho.width = sw
     rascunho.height = sh
@@ -731,7 +762,8 @@ function desenhar(t) {
   ctx.setTransform(tela.width / LARGURA, 0, 0, tela.width / LARGURA, 0, 0)
   ctx.clearRect(0, 0, LARGURA, ALTURA)
 
-  if (palcoEmCena() && cenarioAtual()) desenharCena(ctx, t)
+  if (cenasExtras.has(estado.cena)) cenasExtras.get(estado.cena)(ctx, t)
+  else if ((estado.cena === 'rota' || estado.cena === 'abismo') && cenarioAtual()) desenharCena(ctx, t)
   else if (estado.cena === 'taberna') desenharTaberna(ctx, t)
   else {
     ctx.fillStyle = '#0c0a10'

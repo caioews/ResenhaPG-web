@@ -29,6 +29,24 @@ export const config = {
       nivelPorFase: 0.5,
       // Quantos niveis acima da propria fase o chefe do ato luta.
       chefeNiveisAcima: 2,
+      // O quanto o chefe do ato pesa sobre a tabela dele (BOSSES, em
+      // rpg/monstros.js). Os chefes nasceram para o combate de um contra um
+      // do modelo antigo, com vida entre 0,5x e 0,8x de um monstro do mesmo
+      // nivel: na rota isso os deixava mais frageis que um golem comum, a luta
+      // acabava em tres rodadas e a habilidade especial de cada um nao tinha
+      // tempo de aparecer. Agora o chefe e uma esponja — vida de 2x a 3x a de
+      // um monstro comum, luta de 9 a 22 rodadas — e o que o faz perigoso e o
+      // que ele faz nesse tempo todo, nao um ataque desmedido.
+      //
+      // Cada numero e um multiplicador sobre a tabela; 1 devolve o chefe ao
+      // que ela diz. O `atq` de cada chefe (na tabela BOSSES e nos
+      // ATQ_DOS_ECOS, em rpg/rota.js) foi calibrado por simulacao da rota
+      // inteira (npm run chefes) PARA ESTES pesos de vida e defesa: o
+      // jogador simulado passa de primeira em ~50% dos chefes de ato. Mexer
+      // em `hp` ou `def` desfaz essa calibragem; para deixar TODOS os chefes
+      // mais duros ou mais mansos, mexa no `atq`. O chefe final e outra coisa
+      // (config.rpg.coracao).
+      chefe: { hp: 3.4, atq: 1, def: 0.75 },
 
       // A horda de uma fase comum: quantos inimigos entram, um atras do
       // outro, sem parar.
@@ -232,6 +250,46 @@ export const config = {
       // Quantos itens caem: por jogador, com um piso
       itensPorJogador: 0.6,
       itensMinimos: 2,
+    },
+
+    // O Coração do Abismo Demoníaco (server/final.js, rpg/coracao.js): a luta
+    // final da rota. E uma raid — so cai em grupo — mas nao tem sala: quem
+    // chega a ultima fase da rota e levado para a arena, e la se junta.
+    //
+    // O chefe e feito para um grupo de nivel 300 com equipamento lendario, e
+    // e para ser sofrido MESMO ASSIM: ver `npm run coracao`, que joga a luta
+    // por simulacao e e de onde saem os numeros abaixo. Nao ha escala por
+    // nivel de quem entra: quem chega abaixo disso apanha, e e o que se quer.
+    coracao: {
+      minJogadores: 5,
+      maxJogadores: 10,
+      // Espera de cada jogador entre uma tentativa e a proxima, em minutos.
+      cooldownMinutos: 3,
+      nivel: 300,
+      // A vida cresce com o numero de jogadores elevado a `escalaPorJogador`
+      // (1 = linear, como nas raids).
+      hpPorJogador: 66_000,
+      escalaPorJogador: 1,
+      atq: 3500,
+      // Quanto o ataque sobe por jogador acima do minimo.
+      atqPorJogadorExtra: 0.15,
+      def: 3200,
+      agi: 1500,
+      // Golpe em area a cada N rodadas; areaMultiplicador e o quanto do golpe
+      // normal ele vale para cada um.
+      areaCada: 4,
+      areaMultiplicador: 0.55,
+      // O laser: no lugar do golpe da rodada, a cada `cada` rodadas, atira em
+      // `alvos` jogadores diferentes. Nao da para desviar.
+      laser: { cada: 3, alvos: 2, mult: 2.2, perfuracao: 0.4 },
+      // Abaixo desta fracao de vida o chefe enfurece: mais ataque e laser mais
+      // frequente.
+      furia: { abaixoDe: 0.4, atq: 0.35, laserCada: 2 },
+      maxRodadas: 45,
+      // Sobre a conta da raid comum (XP, gold e quantidade de itens).
+      recompensa: { xp: 4, gold: 6, itens: 3 },
+      // O que cai: nada abaixo de epico.
+      pesosDoDrop: { epico: 55, lendario: 45 },
     },
 
     // Ferreiro (/ferreiro): reforça um equipamento do +1 ao +10 pagando gold

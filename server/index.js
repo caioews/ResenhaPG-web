@@ -25,7 +25,9 @@ import { missoesRotas } from './rotas/missoes.js'
 import { leilaoRotas } from './rotas/leilao.js'
 import { chefeMundialRotas } from './rotas/chefeMundial.js'
 import { masmorraRotas } from './rotas/masmorra.js'
-import { aoComando, iniciarRealtime } from './realtime.js'
+import { finalRotas } from './rotas/final.js'
+import { aoComando, aoFicarOffline, iniciarRealtime } from './realtime.js'
+import { sairDaArena } from './final.js'
 import { iniciarEventos } from './eventos.js'
 import { iniciarLeiloes } from './leilao.js'
 import { iniciarChefeMundial } from './chefeMundial.js'
@@ -45,6 +47,7 @@ app.use('/api', contas)
 // foto não manda (ver rotas/fotos.js).
 app.use('/api', fotosRotas)
 app.use('/api/combate', combate)
+app.use('/api/final', finalRotas)
 app.use('/api/mochila', mochila)
 app.use('/api', bauRotas)
 app.use('/api', cidade)
@@ -79,6 +82,9 @@ app.use((err, _req, res, _next) => {
 const servidor = http.createServer(app)
 iniciarRealtime(servidor)
 aoComando(comandoDeAdmin)
+// Quem fecha o jogo sai da arena do chefe final: uma vaga ocupada por quem
+// nao esta mais la seria um "pronto" que nunca responde.
+aoFicarOffline(sairDaArena)
 iniciarEventos()
 iniciarLeiloes()
 iniciarChefeMundial()

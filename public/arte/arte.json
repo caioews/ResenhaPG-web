@@ -874,8 +874,8 @@
         "linhaDoChao": 0.93
       },
       "portoes-de-malgor": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-portoes-de-malgor.webp",
+        "proporcao": 1.8333333333333333,
         "linhaDoChao": 0.93
       },
       "planicies-escarlates": {
@@ -954,85 +954,90 @@
         "linhaDoChao": 0.93
       },
       "abismo-de-kor-mal": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-abismo-de-kor-mal.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "fortaleza-das-correntes": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-fortaleza-das-correntes.webp",
+        "proporcao": 1.8333333333333333,
         "linhaDoChao": 0.93
       },
       "deserto-de-enxofre": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-deserto-de-enxofre.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "mar-de-chamas-eternas": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-mar-de-chamas-eternas.webp",
+        "proporcao": 1.8333333333333333,
         "linhaDoChao": 0.93
       },
       "cidadela-de-azrakhul": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-cidadela-de-azrakhul.webp",
+        "proporcao": 1.9353023909985936,
         "linhaDoChao": 0.93
       },
       "fendas-do-vazio": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-fendas-do-vazio.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "vale-das-sombras-eternas": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-vale-das-sombras-eternas.webp",
+        "proporcao": 1.8333333333333333,
         "linhaDoChao": 0.93
       },
       "covil-dos-devoradores": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-covil-dos-devoradores.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "ruinas-do-primeiro-pecado": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-ruinas-do-primeiro-pecado.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "ponte-dos-mil-condenados": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-ponte-dos-mil-condenados.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "cavernas-do-caos": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-cavernas-do-caos.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "dominio-de-belzhar": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-dominio-de-belzhar.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "trono-da-escuridao": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-trono-da-escuridao.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "nucleo-do-abismo": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-nucleo-do-abismo.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "caminho-do-fim-dos-tempos": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-caminho-do-fim-dos-tempos.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       },
       "coracao-do-abismo-demoniaco": {
-        "arquivo": "cenario/ato-placeholder-preto.webp",
-        "proporcao": 0.5625,
+        "arquivo": "cenario/ato-coracao-do-abismo-demoniaco.webp",
+        "proporcao": 1.7916666666666667,
         "linhaDoChao": 0.93
       }
+    },
+    "final": {
+      "fundo": "cenario/final-fundo.webp",
+      "arena": "cenario/final-arena.webp",
+      "proporcao": 1.7916666666666667
     },
     "abismo": {
       "boca-do-abismo": {
@@ -1067,5 +1072,134 @@
       }
     },
     "taberna": "cenario/taberna.webp"
+  },
+  "chefeFinal": {
+    "arquivo": "lutadores/coracao-do-abismo.webp",
+    "quadro": [
+      434,
+      283
+    ],
+    "ancora": [
+      188,
+      280
+    ],
+    "animacoes": {
+      "respiro": [
+        [
+          2,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "dormindo": [
+        [
+          2,
+          2
+        ]
+      ],
+      "acordando": [
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "rugir": [
+        [
+          3,
+          0
+        ]
+      ],
+      "golpe": [
+        [
+          4,
+          0
+        ],
+        [
+          6,
+          0
+        ]
+      ],
+      "pancada": [
+        [
+          3,
+          0
+        ],
+        [
+          5,
+          0
+        ]
+      ],
+      "carregar": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "laser": [
+        [
+          2,
+          1
+        ]
+      ],
+      "ferido": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "caindo": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ]
+    },
+    "coracao": [
+      -9,
+      -126
+    ],
+    "boca": [
+      99,
+      -116
+    ]
   }
 }
