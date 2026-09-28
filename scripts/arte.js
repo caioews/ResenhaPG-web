@@ -137,7 +137,7 @@ const COM_CENARIO_ATRAS = new Set(['troll'])
  * sobre azul-escuro). Aí a inundação precisa de rédea mais curta, senão
  * atravessa o contorno e come o corpo.
  */
-const CONTRASTE_BAIXO = new Set(['wyvern'])
+const CONTRASTE_BAIXO = new Set(['wyvern', 'ladino'])
 
 /**
  * Quantas camadas de fundo desenhado tirar, quando a conta erra. O normal é
@@ -172,6 +172,21 @@ const GRADE_REGULAR = {
  * mas as três linhas foram desenhadas na mesma grade.
  */
 const GRADE_DA_PRIMEIRA = new Set(['troll'])
+
+/** Skins quase da cor do fundo — a mesma régua mais curta de CONTRASTE_BAIXO. */
+const SKINS_CONTRASTE_BAIXO = new Set(['mago:aila-morthaine', 'mago:megumin'])
+
+/**
+ * Skins cuja folha vem com cada faixa partida em duas fileiras (ver
+ * `empilharFileirasLadoALado`), com as bandas Y de cada uma medidas à mão.
+ */
+const SKINS_EM_DUAS_FILEIRAS = {
+  'mago:megumin': [
+    [[293, 607], [662, 987]],
+    [[1189, 1521], [1584, 1905]],
+    [[2097, 2415], [2489, 2808]],
+  ],
+}
 
 /**
  * Quanto cortar do TOPO de um cenário do Abismo.
@@ -1175,6 +1190,28 @@ function pastasDeClasse() {
   return saida
 }
 
+/** Onde ficam as skins compradas na loja: uma subpasta "skins <classe>". */
+const PASTA_DE_SKINS = /^skins/i
+
+/**
+ * As skins de cada classe. Uma imagem por skin, dentro da subpasta "skins
+ * <classe>" \u2014 a chave de arte de cada uma \u00e9 "<classe>:<chave-do-arquivo>":
+ * `sprites ladino/skins ladino/Yuno.jpeg` vira `ladino:yuno`. Classe sem
+ * subpasta de skin simplesmente n\u00e3o tem nenhuma.
+ */
+function folhasDeSkin(classes) {
+  const saida = {}
+  for (const [classe, pasta] of Object.entries(classes)) {
+    const sub = readdirSync(pasta, { withFileTypes: true }).find((e) => e.isDirectory() && PASTA_DE_SKINS.test(e.name))
+    if (!sub) continue
+    const pastaDeSkins = path.join(pasta, sub.name)
+    for (const nome of readdirSync(pastaDeSkins).filter(ehImagem)) {
+      saida[`${classe}:${chaveDeArte(nome)}`] = path.join(pastaDeSkins, nome)
+    }
+  }
+  return saida
+}
+
 const semAcento = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 /**
@@ -1208,8 +1245,9 @@ function folhasDeInimigo() {
     const id = chaves.find((e) => e.pistas.some((pista) => nome.includes(pista)))?.id
     if (entrada.isDirectory()) {
       // Os chefes do Abismo e o chefe final moram em pastas só deles e não
-      // são espécies.
-      if (entrada.name === PASTA_DOS_CHEFES || entrada.name === PASTA_DO_CHEFE_FINAL) continue
+      // são espécies. "chefes raid" também: arte à espera de um chefe de
+      // raid que ainda não existe no jogo.
+      if ([PASTA_DOS_CHEFES, PASTA_DO_CHEFE_FINAL, 'chefes raid'].includes(entrada.name)) continue
       if (!id) throw new Error(`a pasta "${entrada.name}" não bate com nenhuma espécie`)
       saida[id] = achar(path.join(base, entrada.name), ehImagem)
     } else if (ehImagem(entrada.name)) {
@@ -1351,6 +1389,58 @@ function rotular(alpha, W, H) {
   }
 
   return { rotulo, grupos }
+}
+
+/**
+ * Algumas folhas vêm estreitas demais para caber os oito quadros de uma
+ * faixa lado a lado: o gerador quebrou cada faixa em duas fileiras, uma
+ * embaixo da outra (a skin "Megumin" do mago, por exemplo — 1440px de
+ * largura contra os ~2500 das folhas normais). Remonta cada faixa numa
+ * fileira só, colando a segunda à direita da primeira, alinhadas pelo pé
+ * (a fileira mais baixa entra encostada embaixo) — o resto do pipeline
+ * (`lerFolha`, que espera uma fileira por faixa) não precisa saber disso.
+ *
+ * `faixas` é uma lista de pares de bandas Y, uma por faixa da folha:
+ * `[[[y0, y1], [y0, y1]], ...]`, a primeira banda de cada par em cima, a
+ * segunda embaixo. As bandas vêm medidas à mão (como os limiares do chefe
+ * final) — o vão entre uma fileira e a outra é pequeno demais para uma
+ * régua genérica separar do vão dentro da própria fileira sem arriscar
+ * cortar um efeito ao meio.
+ */
+async function empilharFileirasLadoALado(arquivo, faixas) {
+  const { suave, W, H } = await lerRaw(arquivo)
+  const fundo = corDominante(suave, W, H)
+  const GAP = 40
+
+  const alturas = faixas.map(([[a0, a1], [b0, b1]]) => Math.max(a1 - a0 + 1, b1 - b0 + 1))
+  const alturaTotal = alturas.reduce((s, h) => s + h, 0) + GAP * (faixas.length - 1)
+
+  const pedacos = []
+  let topo = 0
+  for (let i = 0; i < faixas.length; i++) {
+    const [[a0, a1], [b0, b1]] = faixas[i]
+    const hA = a1 - a0 + 1
+    const hB = b1 - b0 + 1
+    const hMax = alturas[i]
+    pedacos.push({
+      input: await sharp(arquivo).extract({ left: 0, top: a0, width: W, height: hA }).toBuffer(),
+      left: 0,
+      top: topo + (hMax - hA),
+    })
+    pedacos.push({
+      input: await sharp(arquivo).extract({ left: 0, top: b0, width: W, height: hB }).toBuffer(),
+      left: W,
+      top: topo + (hMax - hB),
+    })
+    topo += hMax + GAP
+  }
+
+  return sharp({
+    create: { width: W * 2, height: alturaTotal, channels: 3, background: { r: fundo[0], g: fundo[1], b: fundo[2] } },
+  })
+    .composite(pedacos)
+    .png()
+    .toBuffer()
 }
 
 /**
@@ -1730,13 +1820,33 @@ async function principal() {
   const classes = pastasDeClasse()
   for (const [classe, pasta] of Object.entries(classes)) {
     const folha = achar(pasta, (n) => ehImagem(n) && !ehSentado(n))
-    const atlas = await montarAtlas(folha, { alturaAlvo: ALTURA_DO_HEROI })
+    const atlas = await montarAtlas(folha, {
+      alturaAlvo: ALTURA_DO_HEROI,
+      tolerancia: CONTRASTE_BAIXO.has(classe) ? 6 : 10,
+    })
     escrever(`lutadores/${classe}.webp`, atlas.buffer)
     manifesto.lutadores[classe] = { arquivo: `lutadores/${classe}.webp`, ...semBuffer(atlas) }
 
     const sentado = achar(pasta, (n) => ehImagem(n) && ehSentado(n))
     escrever(`sentados/${classe}.webp`, await recortarSolto(sentado, { alturaAlvo: ALTURA_SENTADO }))
     manifesto.sentados[classe] = `sentados/${classe}.webp`
+  }
+
+  console.log('\nSkins')
+  // Entram no MESMO mapa dos lutadores comuns, pela chave "<classe>:<skin>":
+  // é a chave que o servidor guarda como skin equipada, e assim o palco
+  // desenha uma igual à outra sem precisar saber que uma é skin.
+  for (const [chave, arquivo] of Object.entries(folhasDeSkin(classes))) {
+    const fonte = SKINS_EM_DUAS_FILEIRAS[chave]
+      ? await empilharFileirasLadoALado(arquivo, SKINS_EM_DUAS_FILEIRAS[chave])
+      : arquivo
+    const atlas = await montarAtlas(fonte, {
+      alturaAlvo: ALTURA_DO_HEROI,
+      tolerancia: SKINS_CONTRASTE_BAIXO.has(chave) ? 6 : 10,
+    })
+    const relativo = `lutadores/skin-${chave.replace(':', '-')}.webp`
+    escrever(relativo, atlas.buffer)
+    manifesto.lutadores[chave] = { arquivo: relativo, ...semBuffer(atlas) }
   }
 
   console.log('\nInimigos')

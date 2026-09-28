@@ -236,6 +236,9 @@ export function verPersonagem(player) {
     linhagem,
     habilidades,
     efeitos: c ? efeitosDaClasse(c) : {},
+    // A chave de arte da skin em uso ("ladino:yuno") ou null para o sprite
+    // padrão da classe — é o que o palco desenha em vez da classe base.
+    skinEquipada: ficha.skins?.equipada ?? null,
 
     nivel: ficha.nivel,
     xp: ficha.xp,

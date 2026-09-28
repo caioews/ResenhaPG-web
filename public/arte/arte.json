@@ -108,12 +108,12 @@
     "ladino": {
       "arquivo": "lutadores/ladino.webp",
       "quadro": [
-        265,
-        188
+        239,
+        174
       ],
       "ancora": [
-        119,
-        184
+        114,
+        170
       ],
       "linhas": [
         "andar",
@@ -135,6 +135,69 @@
       "ancora": [
         99,
         159
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "ladino:yuno": {
+      "arquivo": "lutadores/skin-ladino-yuno.webp",
+      "quadro": [
+        180,
+        177
+      ],
+      "ancora": [
+        68,
+        174
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "mago:aila-morthaine": {
+      "arquivo": "lutadores/skin-mago-aila-morthaine.webp",
+      "quadro": [
+        219,
+        163
+      ],
+      "ancora": [
+        105,
+        159
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "mago:megumin": {
+      "arquivo": "lutadores/skin-mago-megumin.webp",
+      "quadro": [
+        275,
+        160
+      ],
+      "ancora": [
+        125,
+        156
       ],
       "linhas": [
         "andar",

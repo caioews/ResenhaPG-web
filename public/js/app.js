@@ -11,8 +11,8 @@ import {
   avisar,
   avisarBom,
   avisarErro,
-  classeBase,
   comBotao,
+  spriteDoJogador,
   confirmar,
   definirPersonagemAtivo,
   duracao,
@@ -427,7 +427,7 @@ async function abrirOPalco() {
     aoTrocarDeCena(() => {
       if (estado.p) desenharAcoes()
     })
-    await prepararPalco($('#palco'), { classe: classeBase() })
+    await prepararPalco($('#palco'), { classe: spriteDoJogador() })
     await mostrarTaberna({ imediato: true })
     desenharAcoes()
   } catch (e) {
@@ -821,7 +821,7 @@ async function narrarFase(f, { primeira = false, rotaAntes = null } = {}) {
     // O cenário desta fase e o da seguinte entram na memória antes de
     // precisarem: a troca de ato não pode esperar download.
     prepararCenarios([f.cenario, f.proxima?.cenario], 'rota')
-    if (primeira && !palcoNaRota()) await irParaOAto(classeBase(), f.cenario)
+    if (primeira && !palcoNaRota()) await irParaOAto(spriteDoJogador(), f.cenario)
     else seguirViagem(f.cenario)
   })
 
@@ -991,7 +991,7 @@ async function voltarParaTaberna() {
  */
 async function entrarEmCena(encontro) {
   await noPalco(async () => {
-    if (!palcoEmCena()) await irParaOAto(classeBase(), estado.p?.cacada?.cenario)
+    if (!palcoEmCena()) await irParaOAto(spriteDoJogador(), estado.p?.cacada?.cenario)
     else seguirViagem()
     await entrarOMonstro(encontro.monstro.id)
     await esperarEmPosicao()

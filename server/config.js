@@ -207,6 +207,8 @@ export const config = {
     // quanto tempo ela e sorteada de novo (em minutos)
     lojaChanceDeOferta: 0.6,
     lojaOfertaMinutos: 20,
+    // Skins (/loja/skins): cosmético puro, o mesmo preço para qualquer uma.
+    custoDaSkin: 50_000,
     // Expedicoes (/expedicao): rendimento por minuto fora.
     // Fica de proposito abaixo do que se ganha cacando ativamente — a
     // expedicao e para quem vai fechar o WhatsApp, nao um atalho.

@@ -39,6 +39,7 @@ import {
   precoDeCompra,
   raridadesEmVendaAutomatica,
 } from '../rpg/loja.js'
+import { comprarSkin, desequiparSeForaDaClasse, equiparSkin, skinsDoJogador } from '../rpg/skins.js'
 import { custoAteOMaximo, custoDoReforco, motivoParaNaoReforcar, quantasTitanitas, reforcar, TITANITAS } from '../rpg/ferreiro.js'
 import {
   FEITICOS,
@@ -218,6 +219,44 @@ cidade.post(
       vendidos,
       recusados,
       precisaConfirmar: recusados.some((r) => r.motivo?.includes('confirme')),
+    })
+  }),
+)
+
+// ============================================================ S K I N S
+
+cidade.get(
+  '/loja/skins',
+  rota((req, res) => {
+    res.json({ gold: req.player.rpg.gold, skins: skinsDoJogador(req.player) })
+  }),
+)
+
+cidade.post(
+  '/loja/skins/comprar',
+  rota((req, res) => {
+    const player = req.player
+    const feito = comprarSkin(player, String(req.body?.id ?? ''))
+    if (feito.erro) return res.status(409).json({ erro: feito.erro })
+
+    responder(res, player, {
+      texto: `Comprou a skin ${feito.nome}.`,
+      skins: skinsDoJogador(player),
+    })
+  }),
+)
+
+cidade.post(
+  '/loja/skins/equipar',
+  rota((req, res) => {
+    const player = req.player
+    const id = req.body?.id === null || req.body?.id === undefined ? null : String(req.body.id)
+    const feito = equiparSkin(player, id)
+    if (feito.erro) return res.status(409).json({ erro: feito.erro })
+
+    responder(res, player, {
+      texto: id ? 'Skin equipada.' : 'Voltou ao visual padrão.',
+      skins: skinsDoJogador(player),
     })
   }),
 )
@@ -528,6 +567,7 @@ cidade.post(
     const anterior = player.rpg.classe
     player.rpg.classe = alvo
     const tirados = desequiparIncompativeis(player)
+    desequiparSeForaDaClasse(player)
     store.save()
 
     responder(res, player, {

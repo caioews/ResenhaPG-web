@@ -55,6 +55,7 @@ export function jogadoresOnline() {
         classe: c ? { id: p.rpg.classe, nome: c.nome, emoji: c.emoji } : null,
         // A classe de origem: é o sprite que senta na taberna.
         classeBase: p.rpg.classe ? classeRaiz(p.rpg.classe) : null,
+        skin: p.rpg.skins?.equipada ?? null,
         pontosPvp: p.rpg.pvp?.pontos ?? 0,
       }
     })

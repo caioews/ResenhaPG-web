@@ -70,6 +70,7 @@ export function verArena(player = null) {
       classe: verResumo(p.player).classe,
       // A classe de origem é o sprite que fica em pé na arena.
       classeBase: p.player.rpg.classe ? classeRaiz(p.player.rpg.classe) : null,
+      skin: p.player.rpg.skins?.equipada ?? null,
       pronto: p.pronto,
       espera: esperaDoChefeFinal(p.player),
     })),
@@ -231,6 +232,7 @@ export function comecarALuta(player) {
     participantes: luta.participantes.map((r, i) => ({
       ...r,
       classeBase: participantes[i].rpg.classe ? classeRaiz(participantes[i].rpg.classe) : null,
+      skin: participantes[i].rpg.skins?.equipada ?? null,
     })),
     primeiraVez,
   }

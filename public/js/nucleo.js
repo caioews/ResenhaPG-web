@@ -5,7 +5,7 @@
  * Regra que atravessa o arquivo inteiro: nada aqui decide nada do jogo. O
  * cliente pede, o servidor responde com a ficha nova, e a tela redesenha.
  */
-import { palcoEmCena } from './palco.js'
+import { arteDoPalco, palcoEmCena } from './palco.js'
 
 export const estado = {
   usuario: null,
@@ -90,6 +90,15 @@ export const aoMudarFicha = (fn) => estado.ouvintes.add(fn)
  * Ceifador Noturno continua desenhado como o Ladino que ele era.
  */
 export const classeBase = () => estado.p?.linhagem?.[0]?.id ?? estado.p?.classe?.id ?? null
+
+/**
+ * O sprite que o personagem usa em cena: a skin equipada, quando a arte dela
+ * já carregou, senão a classe base de sempre.
+ */
+export const spriteDoJogador = () => {
+  const skin = estado.p?.skinEquipada
+  return skin && arteDoPalco()?.lutadores?.[skin] ? skin : classeBase()
+}
 
 // ------------------------------------------------------------ formatação
 

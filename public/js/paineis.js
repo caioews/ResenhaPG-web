@@ -14,7 +14,6 @@ import {
   avisarBom,
   avisoForaDaTaberna,
   AVISO_FORA_DA_TABERNA,
-  classeBase,
   comBotao,
   confirmar,
   duracao,
@@ -30,6 +29,7 @@ import {
   nomeDoSlot,
   num,
   pegar,
+  spriteDoJogador,
   textoDeBonus,
   vazio,
 } from './nucleo.js'
@@ -348,8 +348,110 @@ export async function abrirBau(aba = 'guardados') {
 
 // ====================================================== L O J A
 
+/** A aba de skins da loja: comprar, trocar, ou voltar ao sprite padrão. */
+async function corpoDeSkins() {
+  const dados = await pegar('/api/loja/skins')
+
+  if (!dados.skins.length) {
+    return vazio('Sua classe ainda não tem nenhuma skin à venda.')
+  }
+
+  const emUso = !dados.skins.some((s) => s.equipada)
+
+  const linhaPadrao = el(
+    'div',
+    { class: 'linha-item' },
+    el('span', { class: 'tecla-item' }, ''),
+    el('div', { class: 'icone' }, '🧍'),
+    el(
+      'div',
+      { class: 'corpo' },
+      el('div', { class: 'nome' }, 'Sprite padrão'),
+      el('div', { class: 'detalhe' }, 'O visual de sempre da sua classe.'),
+    ),
+    el(
+      'div',
+      { class: 'acoes-item' },
+      emUso
+        ? el('span', { style: 'color:var(--ok)' }, 'Em uso')
+        : el(
+            'button',
+            {
+              class: 'btn pequeno',
+              type: 'button',
+              onClick: (ev) =>
+                comBotao(ev.currentTarget, async () => {
+                  await mandar('/api/loja/skins/equipar', { id: null })
+                  abrirLoja('skins')
+                }),
+            },
+            'Usar',
+          ),
+    ),
+  )
+
+  const linhasDeSkin = dados.skins.map((s) => {
+    const acao = s.equipada
+      ? el('span', { style: 'color:var(--ok)' }, 'Em uso')
+      : s.comprada
+        ? el(
+            'button',
+            {
+              class: 'btn pequeno',
+              type: 'button',
+              onClick: (ev) =>
+                comBotao(ev.currentTarget, async () => {
+                  await mandar('/api/loja/skins/equipar', { id: s.id })
+                  abrirLoja('skins')
+                }),
+            },
+            'Usar',
+          )
+        : el(
+            'button',
+            {
+              class: 'btn pequeno primario',
+              type: 'button',
+              disabled: dados.gold < s.custo,
+              onClick: (ev) =>
+                comBotao(ev.currentTarget, async () => {
+                  const r = await mandar('/api/loja/skins/comprar', { id: s.id })
+                  avisarBom(r.texto)
+                  abrirLoja('skins')
+                }),
+            },
+            `${num(s.custo)} 💰`,
+          )
+
+    return el(
+      'div',
+      { class: 'linha-item' },
+      el('span', { class: 'tecla-item' }, ''),
+      el('div', { class: 'icone' }, '🎭'),
+      el(
+        'div',
+        { class: 'corpo' },
+        el('div', { class: 'nome' }, s.nome),
+        el('div', { class: 'detalhe' }, s.comprada ? 'Já é sua.' : 'Substitui o sprite padrão nas lutas.'),
+      ),
+      el('div', { class: 'acoes-item' }, acao),
+    )
+  })
+
+  return el(
+    'div',
+    {},
+    el(
+      'p',
+      { class: 'sussurro', style: 'margin-top:0' },
+      'Cosmético puro: troca só a aparência nas lutas. Dá para voltar ao padrão quando quiser.',
+    ),
+    el('div', { class: 'lista' }, linhaPadrao, ...linhasDeSkin),
+  )
+}
+
 export async function abrirLoja(aba = 'comprar') {
-  const dados = await pegar('/api/loja')
+  const dados = aba === 'skins' ? null : await pegar('/api/loja')
   const p = estado.p
 
   const abas = abasDoModal(
@@ -357,6 +459,7 @@ export async function abrirLoja(aba = 'comprar') {
       { id: 'comprar', nome: 'Comprar' },
       { id: 'vender', nome: 'Vender' },
       { id: 'automatica', nome: 'Venda automática' },
+      { id: 'skins', nome: 'Skins' },
     ],
     aba,
     (id) => abrirLoja(id),
@@ -485,6 +588,8 @@ export async function abrirLoja(aba = 'comprar') {
       vendaveis.length ? lista : vazio('Nada para vender. Itens equipados não entram.'),
       vendaveis.length ? rodape : null,
     )
+  } else if (aba === 'skins') {
+    corpo = await corpoDeSkins()
   } else {
     // A venda automática decide o que fazer com um item ANTES dele existir
     // na mochila: nunca mexe no que já está guardado, só no que ainda vai
@@ -1162,7 +1267,7 @@ async function narrarDescida(descida) {
     // Os andares desta descida já são conhecidos: dá para carregar os
     // cenários todos agora e não engasgar na troca.
     prepararCenarios(descida.andares.map((a) => a.cenario), 'abismo')
-    await irAoAbismo(classeBase(), descida.andares[0]?.cenario)
+    await irAoAbismo(spriteDoJogador(), descida.andares[0]?.cenario)
   })
 
   for (const [i, andar] of descida.andares.entries()) {

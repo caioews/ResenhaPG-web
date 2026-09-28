@@ -39,6 +39,10 @@ import {
 
 // ------------------------------------------------------------ composição
 
+/** A skin equipada, se houver arte pronta para ela — senão, a classe base. */
+const spriteDoParticipante = (p) =>
+  p.skin && arteDoPalco()?.lutadores?.[p.skin] ? p.skin : spriteDaClasse(p.classeBase)
+
 /** Onde a base do chefe fica, em pixels de palco: no meio da arena. */
 const CHEFE = { x: 320, y: 262 }
 /** Do tamanho do atlas para o tamanho em cena. Ele é colossal. */
@@ -128,7 +132,7 @@ async function carregarArena(presentes) {
     tentarCarregar(arte().arquivo),
   ]
   for (const p of presentes) {
-    const chave = spriteDaClasse(p.classeBase)
+    const chave = spriteDoParticipante(p)
     if (chave) pedidos.push(tentarCarregar(arteDoPalco().lutadores[chave].arquivo))
   }
   await Promise.all(pedidos)
@@ -191,7 +195,7 @@ export function atualizarPresentes(presentes, euId = f.euId, { imediato = false 
   }
 
   presentes.forEach((p, indice) => {
-    const chave = spriteDaClasse(p.classeBase)
+    const chave = spriteDoParticipante(p)
     if (!chave || !arteDoPalco()?.lutadores?.[chave]) return
     tentarCarregar(arteDoPalco().lutadores[chave].arquivo)
 

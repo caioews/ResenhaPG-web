@@ -116,6 +116,10 @@ export function fichaNova() {
     // comprados somam ao que config.rpg.bau.espacos ja da de graca.
     bau: { itens: [], espacosComprados: 0 },
     equipado: { arma: null, secundario: null, elmo: null, armadura: null, anel: null },
+    // Skins (server/rpg/skins.js): cosmético comprado na loja. `equipada` é a
+    // chave de arte em uso ("ladino:yuno") ou null para o sprite padrão da
+    // classe; `compradas` é a lista dessas chaves já pagas.
+    skins: { compradas: [], equipada: null },
     lojaOferta: { item: null, expiraEm: 0 },
     expedicao: { tipo: null, terminaEm: 0 },
     raid: { vitorias: 0, derrotas: 0, ultimaRaid: 0 },
@@ -204,6 +208,7 @@ function migrar(rpg = {}) {
     pvp: { ...base.pvp, ...rpg.pvp },
     missoes: { ...base.missoes, ...rpg.missoes },
     masmorra: { ...base.masmorra, ...rpg.masmorra },
+    skins: { ...base.skins, ...rpg.skins },
   }
 }
 
