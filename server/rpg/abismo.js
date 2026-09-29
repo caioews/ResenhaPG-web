@@ -18,8 +18,8 @@ import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { darFeitico, sortearFeitico } from './feiticos.js'
 import { RARIDADES, criarItem, tiposDaClasse } from './itens.js'
 import { atributos, darGold, ganharXp, guardarLoot } from './jogador.js'
-import { prestigioDe, xpComPrestigio } from './prestigio.js'
-import { atributosDeMonstro, escalaDeNivel } from './monstros.js'
+import { xpComPrestigio } from './prestigio.js'
+import { atributosDeMonstro } from './monstros.js'
 import { chaveDeArte } from './arte.js'
 
 const ORDEM_RARIDADE = ['comum', 'incomum', 'raro', 'epico', 'lendario']
@@ -63,7 +63,7 @@ export const nomeDaProfundidade = (andar) => PROFUNDIDADES.find((p) => andar <= 
 export const cenarioDaProfundidade = (andar) => chaveDeArte(nomeDaProfundidade(andar))
 
 /** O chefe de um andar, para um jogador de determinado nivel. */
-export function criarHabitante(nivelJogador, andar, prestigio = 0) {
+export function criarHabitante(nivelJogador, andar) {
   const a = config.rpg.abismo
   const habitante = HABITANTES[(andar - 1) % HABITANTES.length]
   // O nivel do andar e uma fracao do nivel do jogador, nao um degrau fixo:
@@ -93,7 +93,7 @@ export function criarHabitante(nivelJogador, andar, prestigio = 0) {
     emoji: habitante.emoji,
     nivel,
     andar,
-    ...atributosDeMonstro(nivel, mult, escalaDeNivel(nivel), prestigio),
+    ...atributosDeMonstro(nivel, mult),
   }
 }
 
@@ -178,9 +178,8 @@ export function descer(player, sorte = Math.random) {
   const andares = []
   let vencidos = 0
 
-  const prestigio = prestigioDe(player)
   for (let andar = 1; andar <= a.maxAndares; andar++) {
-    const inimigo = criarHabitante(player.rpg.nivel, andar, prestigio)
+    const inimigo = criarHabitante(player.rpg.nivel, andar)
     const luta = lutar(
       { ...eu, hp: eu.hp, hpMax: maximo },
       { nome: `${inimigo.emoji} ${inimigo.nome}`, nivel: inimigo.nivel, atq: inimigo.atq, def: inimigo.def, agi: inimigo.agi, hp: inimigo.hp },

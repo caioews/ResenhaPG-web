@@ -372,7 +372,7 @@ export const config = {
       nivelMinimo: 250,
       bonusAtributos: 0.12,
       bonusXp: 0.3,
-      inimigoPorPrestigio: 0.35,
+      inimigoPorPrestigio: 0.90,
     },
 
     // Missoes diarias (server/missoes.js): sorteadas por personagem, trocam a
