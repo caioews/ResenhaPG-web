@@ -50,10 +50,12 @@ import {
   fimDaLuta,
   golpe,
   irAoAbismo,
+  mostrarTaberna,
   palcoEmCena,
   prepararCenarios,
   seguirViagem,
 } from './palco.js'
+import { arenaPvpDisponivel, fimDaLutaPvp, golpePvp, irParaArenaPvp, sairDaArenaPvp } from './palcoPvp.js'
 
 const porcento = (v) => `${Math.round(v * 1000) / 10}%`
 
@@ -1699,6 +1701,8 @@ export async function abrirPvp(aba = 'desafiar') {
   })
 }
 
+const pausa = (ms) => new Promise((r) => setTimeout(r, ms))
+
 export async function narrarDuelo(duelo) {
   limparNarrativa()
   definirCena('Arena dos Campeões')
@@ -1710,6 +1714,11 @@ export async function narrarDuelo(duelo) {
   const euSouA = duelo.lados.a.id === estado.p?.id
   const euSouB = duelo.lados.b.id === estado.p?.id
 
+  // Os dois são levados para a arena, com a skin que cada um tem equipada.
+  // Sem a arte (ou se ela ainda não carregou), o duelo segue só em texto.
+  const naArena = arenaPvpDisponivel()
+  if (naArena) await irParaArenaPvp(duelo.lados)
+
   await narrarLuta({
     nomeA: duelo.lados.a.nome,
     hpA: duelo.lados.a.hpMax,
@@ -1718,10 +1727,12 @@ export async function narrarDuelo(duelo) {
     hpB: duelo.lados.b.hpMax,
     hpMaxB: duelo.lados.b.hpMax,
     log: duelo.log,
+    aoEntrada: naArena ? golpePvp : undefined,
     aoVida: euSouA ? mostrarVidaEmCena : undefined,
     aoVidaB: euSouB ? mostrarVidaEmCena : undefined,
   })
   limparVidaEmCena()
+  if (naArena) fimDaLutaPvp({ venceu: duelo.vencedor.id === duelo.lados.a.id })
 
   rico(
     forte(duelo.vencedor.nome, 'cura'),
@@ -1731,6 +1742,12 @@ export async function narrarDuelo(duelo) {
   )
   if (duelo.aposta > 0) rico(forte(`+${num(duelo.aposta)} de gold`), ' para o vencedor.')
   if (duelo.sequencia > 1) sussurro(`${duelo.vencedor.nome} está em uma sequência de ${duelo.sequencia} vitórias.`)
+
+  if (naArena) {
+    await pausa(2200)
+    sairDaArenaPvp()
+    await mostrarTaberna()
+  }
 }
 
 // ==================================================== R A N K I N G S

@@ -10,6 +10,7 @@ import {
   ARMAS_DE_TODOS,
   CLASSES,
   classe,
+  classeRaiz,
   especialidadesDe,
   linhagemDe,
   nivelDoProximoDegrau,
@@ -428,6 +429,9 @@ export function verResumo(player) {
     nivel: player.rpg.nivel,
     prestigio: player.rpg.prestigio ?? 0,
     classe: c ? { id: player.rpg.classe, nome: c.nome, emoji: c.emoji, tier: c.tier } : null,
+    // O sprite que o palco desenha: a classe de origem e a skin em uso.
+    classeBase: player.rpg.classe ? classeRaiz(player.rpg.classe) : null,
+    skinEquipada: player.rpg.skins?.equipada ?? null,
     gold: player.rpg.gold,
     hp: vidaAtual(player),
     hpMax: atributos(player).hp,

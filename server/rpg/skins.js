@@ -4,22 +4,48 @@
  * skins <classe>/` — `scripts/arte.js` já embutiu cada uma no manifesto de
  * arte que o palco lê, na mesma chave usada aqui: "<classe base>:<id>".
  *
+ * O catálogo sai direto desse manifesto: uma skin nova só precisa da pasta
+ * certa em Assets e de rodar `npm run arte` de novo — não há lista para
+ * manter à mão aqui.
+ *
  * Skin é da CLASSE BASE (a raiz da árvore, a que tem sprite — rpg/classes.js,
  * `classeRaiz`): quem evolui continua com a skin, porque continua com o
  * mesmo desenho por baixo da armadura.
  */
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import { config } from '../config.js'
+import { raizDoProjeto } from '../db.js'
 import * as store from '../store.js'
 import { classeRaiz } from './classes.js'
 import { darGold } from './jogador.js'
 
-/** Uma entrada por classe base que tem skin; vazio para quem não tem. */
-export const CATALOGO_DE_SKINS = {
-  ladino: [{ id: 'yuno', nome: 'Yuno' }],
-  mago: [
-    { id: 'aila-morthaine', nome: 'Aila Morthaine' },
-    { id: 'megumin', nome: 'Megumin' },
-  ],
+const ARQUIVO_DA_ARTE = path.join(raizDoProjeto, 'public', 'arte', 'arte.json')
+
+/** "janna-star-guardian" -> "Janna Star Guardian"; "2b" -> "2B". */
+const nomeDaSkin = (id) =>
+  id
+    .split('-')
+    .map((p) => (/^\d/.test(p) ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1)))
+    .join(' ')
+
+/** classe base -> [{ id, nome }], lido uma vez do manifesto de arte. */
+let catalogo = null
+function catalogoCompleto() {
+  if (catalogo) return catalogo
+  catalogo = {}
+  if (!existsSync(ARQUIVO_DA_ARTE)) return catalogo
+
+  const manifesto = JSON.parse(readFileSync(ARQUIVO_DA_ARTE, 'utf8'))
+  for (const chave of Object.keys(manifesto.lutadores)) {
+    const separador = chave.indexOf(':')
+    if (separador < 0) continue
+    const classe = chave.slice(0, separador)
+    const id = chave.slice(separador + 1)
+    ;(catalogo[classe] ??= []).push({ id, nome: nomeDaSkin(id) })
+  }
+  for (const lista of Object.values(catalogo)) lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  return catalogo
 }
 
 const chaveDaSkin = (classeBase, id) => `${classeBase}:${id}`
@@ -27,7 +53,7 @@ const chaveDaSkin = (classeBase, id) => `${classeBase}:${id}`
 /** As skins da classe do jogador, com preço, posse e qual está em uso. */
 export function skinsDoJogador(player) {
   const base = classeRaiz(player.rpg.classe)
-  return (CATALOGO_DE_SKINS[base] ?? []).map((s) => {
+  return (catalogoCompleto()[base] ?? []).map((s) => {
     const chave = chaveDaSkin(base, s.id)
     return {
       id: s.id,
@@ -42,7 +68,7 @@ export function skinsDoJogador(player) {
 
 const encontrar = (player, id) => {
   const base = classeRaiz(player.rpg.classe)
-  const skin = (CATALOGO_DE_SKINS[base] ?? []).find((s) => s.id === id)
+  const skin = (catalogoCompleto()[base] ?? []).find((s) => s.id === id)
   return skin ? { skin, chave: chaveDaSkin(base, skin.id) } : null
 }
 

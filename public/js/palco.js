@@ -168,14 +168,18 @@ export const palcoPreparado = () => Boolean(estado.arte)
 export const palcoNaRota = () => estado.cena === 'rota'
 
 /**
- * Se o palco está fora da taberna — na rota, no Abismo ou na arena do chefe
- * final. É o que barra Rito, raid e masmorra: para aceitar, volta para a
- * taberna.
+ * Se o palco está fora da taberna — na rota, no Abismo, na arena do chefe
+ * final ou num duelo de PvP. É o que barra Rito, raid e masmorra: para
+ * aceitar, volta para a taberna.
  */
-export const palcoEmCena = () => estado.cena === 'rota' || estado.cena === 'abismo' || estado.cena === 'final'
+export const palcoEmCena = () =>
+  estado.cena === 'rota' || estado.cena === 'abismo' || estado.cena === 'final' || estado.cena === 'pvp'
 
 /** Se o palco está na arena do Coração do Abismo (public/js/palcoFinal.js). */
 export const palcoNoFinal = () => estado.cena === 'final'
+
+/** Se o palco está na Arena dos Campeões, vendo um duelo (public/js/palcoPvp.js). */
+export const palcoNoPvp = () => estado.cena === 'pvp'
 
 /**
  * Cenas que moram em outro arquivo. Cada uma entrega a função que a desenha;

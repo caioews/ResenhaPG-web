@@ -174,7 +174,15 @@ const GRADE_REGULAR = {
 const GRADE_DA_PRIMEIRA = new Set(['troll'])
 
 /** Skins quase da cor do fundo — a mesma régua mais curta de CONTRASTE_BAIXO. */
-const SKINS_CONTRASTE_BAIXO = new Set(['mago:aila-morthaine', 'mago:megumin'])
+const SKINS_CONTRASTE_BAIXO = new Set([
+  'mago:aila-morthaine',
+  'mago:megumin',
+  'arqueiro:exterminador-do-futuro',
+  'ladino:2b',
+  'ladino:cat-woman',
+  'ladino:bayonetta',
+  'bardo:gotica',
+])
 
 /**
  * Skins cuja folha vem com cada faixa partida em duas fileiras (ver
@@ -185,6 +193,23 @@ const SKINS_EM_DUAS_FILEIRAS = {
     [[293, 607], [662, 987]],
     [[1189, 1521], [1584, 1905]],
     [[2097, 2415], [2489, 2808]],
+  ],
+  'clerigo:malygos-fordragon': [
+    [[106, 227], [232, 353]],
+    [[380, 534], [540, 666]],
+    [[727, 866], [868, 985]],
+  ],
+  'ladino:2b': [
+    [[135, 291], [309, 471]],
+    [[541, 711], [729, 905]],
+    [[978, 1162], [1189, 1360]],
+  ],
+  // Só o ataque (chicote) veio partido em duas fileiras; andar e defender
+  // couberam numa só.
+  'ladino:cat-woman': [
+    [173, 329],
+    [[430, 571], [580, 751]],
+    [849, 986],
   ],
 }
 
@@ -1393,50 +1418,68 @@ function rotular(alpha, W, H) {
 
 /**
  * Algumas folhas vêm estreitas demais para caber os oito quadros de uma
- * faixa lado a lado: o gerador quebrou cada faixa em duas fileiras, uma
- * embaixo da outra (a skin "Megumin" do mago, por exemplo — 1440px de
- * largura contra os ~2500 das folhas normais). Remonta cada faixa numa
- * fileira só, colando a segunda à direita da primeira, alinhadas pelo pé
- * (a fileira mais baixa entra encostada embaixo) — o resto do pipeline
- * (`lerFolha`, que espera uma fileira por faixa) não precisa saber disso.
+ * faixa lado a lado: o gerador quebrou a faixa em duas fileiras, uma embaixo
+ * da outra (a skin "Megumin" do mago, por exemplo — 1440px de largura contra
+ * os ~2500 das folhas normais). Remonta cada faixa numa fileira só, colando
+ * a segunda à direita da primeira, alinhadas pelo pé (a fileira mais baixa
+ * entra encostada embaixo) — o resto do pipeline (`lerFolha`, que espera uma
+ * fileira por faixa) não precisa saber disso.
  *
- * `faixas` é uma lista de pares de bandas Y, uma por faixa da folha:
- * `[[[y0, y1], [y0, y1]], ...]`, a primeira banda de cada par em cima, a
- * segunda embaixo. As bandas vêm medidas à mão (como os limiares do chefe
- * final) — o vão entre uma fileira e a outra é pequeno demais para uma
- * régua genérica separar do vão dentro da própria fileira sem arriscar
- * cortar um efeito ao meio.
+ * `faixas` é uma lista de 3 entradas, uma por faixa da folha. Cada entrada é
+ * `[y0, y1]` quando a faixa já vem numa fileira só (entra sem mexer), ou
+ * `[[y0, y1], [y0, y1]]` quando vem partida em duas (a de cima, a de baixo,
+ * coladas lado a lado). Algumas folhas partem só UMA faixa e deixam as
+ * outras duas inteiras (a "Catwoman" do ladino: só o ataque de chicote não
+ * coube numa fileira) — daí a mistura ser permitida.
+ *
+ * As bandas vêm medidas à mão (como os limiares do chefe final) — o vão
+ * entre uma fileira e a outra é pequeno demais para uma régua genérica
+ * separar do vão dentro da própria fileira sem arriscar cortar um efeito ao
+ * meio.
  */
 async function empilharFileirasLadoALado(arquivo, faixas) {
   const { suave, W, H } = await lerRaw(arquivo)
   const fundo = corDominante(suave, W, H)
   const GAP = 40
 
-  const alturas = faixas.map(([[a0, a1], [b0, b1]]) => Math.max(a1 - a0 + 1, b1 - b0 + 1))
+  const ehDupla = (f) => Array.isArray(f[0])
+  const alturaDe = (f) => (ehDupla(f) ? Math.max(f[0][1] - f[0][0] + 1, f[1][1] - f[1][0] + 1) : f[1] - f[0] + 1)
+  const alturas = faixas.map(alturaDe)
   const alturaTotal = alturas.reduce((s, h) => s + h, 0) + GAP * (faixas.length - 1)
+  const largura = faixas.some(ehDupla) ? W * 2 : W
 
   const pedacos = []
   let topo = 0
   for (let i = 0; i < faixas.length; i++) {
-    const [[a0, a1], [b0, b1]] = faixas[i]
-    const hA = a1 - a0 + 1
-    const hB = b1 - b0 + 1
+    const f = faixas[i]
     const hMax = alturas[i]
-    pedacos.push({
-      input: await sharp(arquivo).extract({ left: 0, top: a0, width: W, height: hA }).toBuffer(),
-      left: 0,
-      top: topo + (hMax - hA),
-    })
-    pedacos.push({
-      input: await sharp(arquivo).extract({ left: 0, top: b0, width: W, height: hB }).toBuffer(),
-      left: W,
-      top: topo + (hMax - hB),
-    })
+    if (ehDupla(f)) {
+      const [[a0, a1], [b0, b1]] = f
+      const hA = a1 - a0 + 1
+      const hB = b1 - b0 + 1
+      pedacos.push({
+        input: await sharp(arquivo).extract({ left: 0, top: a0, width: W, height: hA }).toBuffer(),
+        left: 0,
+        top: topo + (hMax - hA),
+      })
+      pedacos.push({
+        input: await sharp(arquivo).extract({ left: 0, top: b0, width: W, height: hB }).toBuffer(),
+        left: W,
+        top: topo + (hMax - hB),
+      })
+    } else {
+      const [y0, y1] = f
+      pedacos.push({
+        input: await sharp(arquivo).extract({ left: 0, top: y0, width: W, height: y1 - y0 + 1 }).toBuffer(),
+        left: 0,
+        top: topo,
+      })
+    }
     topo += hMax + GAP
   }
 
   return sharp({
-    create: { width: W * 2, height: alturaTotal, channels: 3, background: { r: fundo[0], g: fundo[1], b: fundo[2] } },
+    create: { width: largura, height: alturaTotal, channels: 3, background: { r: fundo[0], g: fundo[1], b: fundo[2] } },
   })
     .composite(pedacos)
     .png()
@@ -1957,6 +2000,17 @@ async function principal() {
   const salao = path.join(ENTRADA, 'CENARIOS', 'cenário taberna')
   escrever('cenario/taberna.webp', await taberna(achar(salao, ehImagem), { largura: 1280 }))
   manifesto.cenario.taberna = 'cenario/taberna.webp'
+
+  // A arena de PVP: uma cena só, parada (ninguém anda nela) — como a
+  // taberna, mas sem gente sentada.
+  const pastaDaArenaPvp = path.join(ENTRADA, 'CENARIOS', 'ARENA PVP')
+  if (existsSync(pastaDaArenaPvp)) {
+    const feito = await cenaInteira(achar(pastaDaArenaPvp, ehImagem), { largura: 1600 })
+    escrever('cenario/arena-pvp.webp', feito.buffer)
+    manifesto.cenario.pvp = { arquivo: 'cenario/arena-pvp.webp', proporcao: feito.proporcao }
+  } else {
+    console.log('  (sem arena de pvp)')
+  }
 
   writeFileSync(path.join(SAIDA, 'arte.json'), `${JSON.stringify(manifesto, null, 2)}\n`)
   console.log(`\nPronto: ${SAIDA}\n`)

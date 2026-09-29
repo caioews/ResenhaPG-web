@@ -263,18 +263,18 @@ export const config = {
     // por simulacao e e de onde saem os numeros abaixo. Nao ha escala por
     // nivel de quem entra: quem chega abaixo disso apanha, e e o que se quer.
     coracao: {
-      minJogadores: 5,
+      minJogadores: 3,
       maxJogadores: 10,
       // Espera de cada jogador entre uma tentativa e a proxima, em minutos.
       cooldownMinutos: 3,
       nivel: 300,
       // A vida cresce com o numero de jogadores elevado a `escalaPorJogador`
       // (1 = linear, como nas raids).
-      hpPorJogador: 66_000,
+      hpPorJogador: 50_000,
       escalaPorJogador: 1,
-      atq: 3500,
+      atq: 2850,
       // Quanto o ataque sobe por jogador acima do minimo.
-      atqPorJogadorExtra: 0.15,
+      atqPorJogadorExtra: 0.24,
       def: 3200,
       agi: 1500,
       // Golpe em area a cada N rodadas; areaMultiplicador e o quanto do golpe
