@@ -13,13 +13,17 @@ import { lutarEmGrupo } from './rpg/combate.js'
 import { comoLutador } from './rpg/encontro.js'
 import { atributos, darGold, ganharXp, guardarLoot } from './rpg/jogador.js'
 import { droparMateriais, droparRecompensas } from './rpg/raid.js'
-import { xpComPrestigio } from './rpg/prestigio.js'
+import { prestigioDe, xpComPrestigio } from './rpg/prestigio.js'
 import { FEITICOS } from './rpg/feiticos.js'
 import { TITANITAS } from './rpg/ferreiro.js'
 import { verItem, verResumo } from './visao.js'
 
 export const nivelMedioDe = (participantes) =>
   Math.max(1, Math.round(participantes.reduce((s, p) => s + p.rpg.nivel, 0) / participantes.length))
+
+/** A média de prestígio do grupo — quanto o chefe endurece por quem já voltou. */
+export const prestigioMedioDe = (participantes) =>
+  participantes.reduce((s, p) => s + prestigioDe(p), 0) / participantes.length
 
 /**
  * @param participantes  personagens (objetos do store), já validados

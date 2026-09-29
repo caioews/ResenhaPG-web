@@ -17,14 +17,14 @@
 import { randomUUID } from 'node:crypto'
 import { config } from './config.js'
 import * as store from './store.js'
-import { escalaDeNivel, sortearMonstro } from './rpg/monstros.js'
+import { escalaDeNivel, escalaDePrestigioDoInimigo, sortearMonstro } from './rpg/monstros.js'
 import { resolver } from './rpg/encontro.js'
 import { darGold, ganharXp, vidaAtual } from './rpg/jogador.js'
 import { emExpedicao } from './rpg/expedicao.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
-import { nivelMedioDe, resolverLutaDeGrupo } from './grupo.js'
-import { xpComPrestigio } from './rpg/prestigio.js'
+import { nivelMedioDe, prestigioMedioDe, resolverLutaDeGrupo } from './grupo.js'
+import { prestigioDe, xpComPrestigio } from './rpg/prestigio.js'
 import { verEncontro, verResumo } from './visao.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from './realtime.js'
 import { horaLocal } from './tempo.js'
@@ -184,11 +184,12 @@ const REGRAS = {
 }
 
 /** O inimigo de um evento de grupo, na mesma conta do chefe de raid. */
-export function inimigoDoEvento(chave, nivelMedio, jogadores) {
+export function inimigoDoEvento(chave, nivelMedio, jogadores, prestigioMedio = 0) {
   const def = EVENTOS[chave]
   const r = config.rpg.raid
   const escala = Math.max(1, jogadores) ** r.escalaPorJogador
   const fim = escalaDeNivel(nivelMedio)
+  const p = escalaDePrestigioDoInimigo(prestigioMedio)
   const { mult, areaCada, areaMultiplicador } = def.inimigo
 
   return {
@@ -198,8 +199,8 @@ export function inimigoDoEvento(chave, nivelMedio, jogadores) {
     descricao: def.descricao,
     duro: def.dificuldade === 'raid',
     nivel: nivelMedio,
-    hp: Math.round((r.hpBase + nivelMedio * r.hpPorNivel) * mult.hp * escala * fim.hp),
-    atq: Math.round((r.atqBase + nivelMedio * r.atqPorNivel) * mult.atq * fim.atq),
+    hp: Math.round((r.hpBase + nivelMedio * r.hpPorNivel) * mult.hp * escala * fim.hp * p),
+    atq: Math.round((r.atqBase + nivelMedio * r.atqPorNivel) * mult.atq * fim.atq * p),
     def: Math.round((r.defBase + nivelMedio * r.defPorNivel) * mult.def * fim.def),
     agi: Math.round((r.agiBase + nivelMedio * r.agiPorNivel) * mult.agi * fim.agi),
     areaCada: Math.max(3, areaCada - Math.floor(jogadores / 6)),
@@ -441,7 +442,7 @@ const nomes = (lista) =>
   lista.length <= 1 ? lista.join('') : `${lista.slice(0, -1).join(', ')} e ${lista.at(-1)}`
 
 function resolverGrupo(evento, def, presentes, visto, ausentes) {
-  const chefe = inimigoDoEvento(evento.chave, nivelMedioDe(presentes), presentes.length)
+  const chefe = inimigoDoEvento(evento.chave, nivelMedioDe(presentes), presentes.length, prestigioMedioDe(presentes))
   const raid = resolverLutaDeGrupo(presentes, chefe, {
     recompensa: def.recompensa,
     materiais: def.materiais,
@@ -459,7 +460,7 @@ function resolverIndividual(evento, def, presentes, visto, ausentes) {
   let venceram = 0
 
   for (const p of presentes) {
-    const monstro = sortearMonstro(p.rpg.nivel, 1)
+    const monstro = sortearMonstro(p.rpg.nivel, 1, Math.random, { prestigio: prestigioDe(p) })
     monstro.nome = `${monstro.nome} da Fenda`
     const hpInicial = vidaAtual(p)
     const saida = resolver(p, monstro)

@@ -20,6 +20,7 @@ import * as store from '../store.js'
 import { lutar } from './combate.js'
 import { comoInimigo, comoLutador, premiar } from './encontro.js'
 import { atributos } from './jogador.js'
+import { prestigioDe } from './prestigio.js'
 import {
   ARCOS,
   arcoDoAto,
@@ -98,7 +99,7 @@ export function avancar(player) {
 export function enfrentar(player, sorte = Math.random) {
   const c = player.rpg.cacada
   const onde = posicao(player)
-  const fase = montarFase(onde.ato, onde.fase, sorte)
+  const fase = montarFase(onde.ato, onde.fase, sorte, prestigioDe(player))
 
   const lutas = []
   const total = {

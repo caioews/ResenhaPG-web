@@ -21,6 +21,7 @@ import * as store from './store.js'
 import { classeRaiz } from './rpg/classes.js'
 import { criarCoracao, CORACAO } from './rpg/coracao.js'
 import { emExpedicao } from './rpg/expedicao.js'
+import { atributos } from './rpg/jogador.js'
 import { prestigiar, prestigioDe } from './rpg/prestigio.js'
 import { posicao } from './rpg/cacada.js'
 import { ehFaseDoChefeFinal, TOTAL_DE_ATOS, fasesPorAto } from './rpg/rota.js'
@@ -181,7 +182,7 @@ export function comecarALuta(player) {
 
   // Quem chegou primeiro entra; sobrando gente, ela espera a próxima.
   const participantes = prontos.slice(0, c().maxJogadores)
-  const chefe = criarCoracao(participantes.length)
+  const chefe = criarCoracao(participantes.map((p) => atributos(p)))
 
   const luta = resolverLutaDeGrupo(participantes, chefe, {
     recompensa: c().recompensa,

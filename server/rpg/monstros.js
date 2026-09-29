@@ -376,8 +376,24 @@ export function escalaDeNivel(nivel) {
 const SEM_ESCALA = { hp: 1, atq: 1, def: 1, agi: 1 }
 
 /**
+ * Quanto vida e ataque de inimigo sobem por prestigio de quem esta
+ * enfrentando.
+ *
+ * O prestigio (rpg/prestigio.js) devolve o personagem ao nivel 1, mas ele
+ * nao volta pobre: o equipamento, o reforco do ferreiro e os feiticos
+ * continuam todos ali, e so a classe fica uns 12% mais forte por volta
+ * (config.rpg.prestigio.bonusAtributos). Sem esta escala, o ato 1 depois da
+ * primeira volta vira passeio — o mundo continua medido para quem esta
+ * comecando do zero. So mexe em vida e ataque: defesa e agilidade ficam
+ * como a fase manda, senao esquiva e critico saturam.
+ */
+export const escalaDePrestigioDoInimigo = (prestigio) =>
+  1 + Math.max(0, prestigio) * config.rpg.prestigio.inimigoPorPrestigio
+
+/**
  * Os atributos de um monstro. `escala` e o termo de fim de jogo (8.4); quem
- * passa SEM_ESCALA fica com a conta crua.
+ * passa SEM_ESCALA fica com a conta crua. `prestigio` e o de quem vai
+ * enfrentar este monstro (0 = sem mudanca).
  *
  * Quem faz isso e a rota (rpg/rota.js), e por um motivo: escalaDeNivel foi
  * escrita para o caso em que o monstro nasce NO NIVEL DO JOGADOR, e serve
@@ -387,12 +403,14 @@ const SEM_ESCALA = { hp: 1, atq: 1, def: 1, agi: 1 }
  * multiplicaria uma compensacao que ali nao existe, e a dificuldade deixaria
  * de ser linear na fase. Quem compensa o crescimento do jogador na rota e a
  * propria rampa dela (`forcaPorFase`), que e o que o botao de dificuldade
- * mexe.
+ * mexe. O prestigio e um terceiro termo, independente dos outros dois: mede
+ * quanto ESTE jogador especificamente ja voltou, nao a fase nem o nivel.
  */
-export function atributosDeMonstro(nivel, mult, escala = escalaDeNivel(nivel)) {
+export function atributosDeMonstro(nivel, mult, escala = escalaDeNivel(nivel), prestigio = 0) {
+  const p = escalaDePrestigioDoInimigo(prestigio)
   return {
-    hp: Math.round((56 + nivel * 20.8) * mult.hp * escala.hp),
-    atq: Math.round((8.8 + nivel * 4.16) * mult.atq * escala.atq),
+    hp: Math.round((56 + nivel * 20.8) * mult.hp * escala.hp * p),
+    atq: Math.round((8.8 + nivel * 4.16) * mult.atq * escala.atq * p),
     def: Math.round((4 + nivel * 1.92) * mult.def * escala.def),
     agi: Math.round((5 + nivel * 1.4) * mult.agi * escala.agi),
   }
@@ -425,7 +443,12 @@ const escalaPara = (nivel, daRota) => (daRota ? SEM_ESCALA : escalaDeNivel(nivel
  * aparece um elite, tres niveis acima e bem mais perigoso. `forca` e a rampa
  * da fase em que ele aparece — 1 na fase 1, e crescendo dali em diante.
  */
-export function sortearMonstro(nivel, chanceElite = 0.12, sorte = Math.random, { forca = 1, daRota = false } = {}) {
+export function sortearMonstro(
+  nivel,
+  chanceElite = 0.12,
+  sorte = Math.random,
+  { forca = 1, daRota = false, prestigio = 0 } = {},
+) {
   const pool = especiesPara(nivel)
   const especie = pool[Math.floor(sorte() * pool.length)]
   const variacao = Math.floor(sorte() * 3) - 1 // -1, 0 ou +1
@@ -447,7 +470,7 @@ export function sortearMonstro(nivel, chanceElite = 0.12, sorte = Math.random, {
     nivel: nivelDele,
     elite,
     boss: false,
-    ...atributosDeMonstro(nivelDele, aplicarForca(mult, forca), escalaPara(nivelDele, daRota)),
+    ...atributosDeMonstro(nivelDele, aplicarForca(mult, forca), escalaPara(nivelDele, daRota), prestigio),
   }
 }
 
@@ -455,7 +478,7 @@ export function sortearMonstro(nivel, chanceElite = 0.12, sorte = Math.random, {
  * Monta um chefe a partir da ficha de tabela (nome, emoji, multiplicadores).
  * Quem escolhe QUAL chefe e a rota; aqui so se da corpo a ele.
  */
-export function criarChefe(chefe, nivel, { forca = 1, daRota = false } = {}) {
+export function criarChefe(chefe, nivel, { forca = 1, daRota = false, prestigio = 0 } = {}) {
   return {
     nome: chefe.nome,
     emoji: chefe.emoji,
@@ -467,7 +490,7 @@ export function criarChefe(chefe, nivel, { forca = 1, daRota = false } = {}) {
     // combate le (o mesmo campo que as habilidades de classe usam).
     especial: chefe.especial ?? null,
     hab: habDoChefe(chefe.especial),
-    ...atributosDeMonstro(nivel, aplicarForca(chefe.mult, forca), escalaPara(nivel, daRota)),
+    ...atributosDeMonstro(nivel, aplicarForca(chefe.mult, forca), escalaPara(nivel, daRota), prestigio),
   }
 }
 

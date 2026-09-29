@@ -258,10 +258,12 @@ export const config = {
     // final da rota. E uma raid — so cai em grupo — mas nao tem sala: quem
     // chega a ultima fase da rota e levado para a arena, e la se junta.
     //
-    // O chefe e feito para um grupo de nivel 300 com equipamento lendario, e
-    // e para ser sofrido MESMO ASSIM: ver `npm run coracao`, que joga a luta
-    // por simulacao e e de onde saem os numeros abaixo. Nao ha escala por
-    // nivel de quem entra: quem chega abaixo disso apanha, e e o que se quer.
+    // Ele NAO tem numero fixo: nasce dos atributos de quem entrou (rpg/
+    // coracao.js, `criarCoracao`) — um grupo mais forte encontra um chefe
+    // mais forte, na mesma medida. Calibrado (`npm run coracao`, que joga a
+    // luta por simulacao) para um grupo de nivel 300 com equipamento
+    // lendario continuar SOFRIDO mesmo assim; quem chega mais fraco encontra
+    // um chefe proporcionalmente mais fraco, mas a luta pesa do mesmo jeito.
     coracao: {
       minJogadores: 3,
       maxJogadores: 10,
@@ -269,10 +271,13 @@ export const config = {
       cooldownMinutos: 3,
       nivel: 300,
       // A vida cresce com o numero de jogadores elevado a `escalaPorJogador`
-      // (1 = linear, como nas raids).
-      hpPorJogador: 50_000,
+      // (1 = linear, como nas raids) — E com o ATAQUE medio de quem entrou:
+      // hp = atqMedioDoGrupo * hpPorAtaqueDoGrupo * escala.
       escalaPorJogador: 1,
-      atq: 2850,
+      hpPorAtaqueDoGrupo: 13.9,
+      // O ataque dele responde a VIDA media do grupo, pelo mesmo motivo ao
+      // contrario: atq = hpMedioDoGrupo * atqPorVidaDoGrupo * (1 + extras...).
+      atqPorVidaDoGrupo: 0.242,
       // Quanto o ataque sobe por jogador acima do minimo.
       atqPorJogadorExtra: 0.24,
       def: 3200,
@@ -351,10 +356,19 @@ export const config = {
     //   bonusAtributos  fracao somada aos atributos que a CLASSE da (nao ao
     //                   equipamento) — 0.12 = +12% por prestigio
     //   bonusXp         fracao somada a todo XP ganho — 0.3 = +30% por prestigio
+    //   inimigoPorPrestigio  fracao somada a VIDA e ATAQUE de todo inimigo que
+    //                   este jogador enfrenta (rpg/monstros.js,
+    //                   escalaDePrestigioDoInimigo) — sem isso o prestigio so
+    //                   deixa o personagem mais forte, nunca o jogo mais
+    //                   dificil, e quem volta do ato 250+ com equipamento bom
+    //                   passeia pelo ato 1. Calibrado por `npm run prestigio`
+    //                   para o alvo valer o mesmo contra quem prestigiou e
+    //                   contra quem esta na primeira volta.
     prestigio: {
       nivelMinimo: 250,
       bonusAtributos: 0.12,
       bonusXp: 0.3,
+      inimigoPorPrestigio: 0.8,
     },
 
     // Missoes diarias (server/missoes.js): sorteadas por personagem, trocam a

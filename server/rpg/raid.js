@@ -13,7 +13,7 @@ import { config } from '../config.js'
 import { darTitanita, sortearTitanita } from './ferreiro.js'
 import { darFeitico, sortearFeitico } from './feiticos.js'
 import { criarItem, tiposDaClasse } from './itens.js'
-import { escalaDeNivel } from './monstros.js'
+import { escalaDeNivel, escalaDePrestigioDoInimigo } from './monstros.js'
 
 /** Os chefes de raid. Todos com muita vida — sozinho nao se vence nenhum. */
 export const CHEFES = {
@@ -160,7 +160,7 @@ export function sortearRaridadeDeRaid(sorte = Math.random, pesos = PESOS_DO_DROP
  * Monta o chefe para um grupo.
  * A vida cresce com o numero de jogadores elevado a config.rpg.raid.escalaPorJogador.
  */
-export function criarChefeDeRaid(id, nivelMedio, jogadores) {
+export function criarChefeDeRaid(id, nivelMedio, jogadores, prestigioMedio = 0) {
   const chefe = TODOS_OS_CHEFES[id]
   if (!chefe) return null
 
@@ -171,6 +171,7 @@ export function criarChefeDeRaid(id, nivelMedio, jogadores) {
   // A mesma escala de fim de jogo dos monstros: sem ela um grupo de nivel 60
   // com habilidade de especialidade passa por cima de qualquer chefe.
   const fim = escalaDeNivel(nivelMedio)
+  const p = escalaDePrestigioDoInimigo(prestigioMedio)
 
   return {
     id: chefe.id,
@@ -179,8 +180,8 @@ export function criarChefeDeRaid(id, nivelMedio, jogadores) {
     descricao: chefe.descricao,
     duro: Boolean(chefe.duro),
     nivel: nivelMedio,
-    hp: Math.round((hpBase + nivelMedio * hpPorNivel) * chefe.mult.hp * escala * fim.hp),
-    atq: Math.round((atqBase + nivelMedio * atqPorNivel) * chefe.mult.atq * fim.atq),
+    hp: Math.round((hpBase + nivelMedio * hpPorNivel) * chefe.mult.hp * escala * fim.hp * p),
+    atq: Math.round((atqBase + nivelMedio * atqPorNivel) * chefe.mult.atq * fim.atq * p),
     def: Math.round((defBase + nivelMedio * defPorNivel) * chefe.mult.def * fim.def),
     agi: Math.round((agiBase + nivelMedio * agiPorNivel) * chefe.mult.agi * fim.agi),
     // Grupo grande leva golpe em area com mais frequencia: sem isso, o dano

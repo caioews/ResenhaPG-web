@@ -279,7 +279,7 @@ export function chefeDoAto(numeroDoAto) {
  * .chefe` e o quanto TODOS os chefes pesam a mais por cima disso — e o botao
  * que se mexe para chefe ficar mais facil ou mais duro sem tocar em cada um.
  */
-export function criarChefeDoAto(numeroDoAto, indice) {
+export function criarChefeDoAto(numeroDoAto, indice, prestigio = 0) {
   const chefe = chefeDoAto(numeroDoAto)
   const nivel = nivelDaFase(indice) + config.rpg.cacada.chefeNiveisAcima
   const peso = config.rpg.cacada.chefe
@@ -291,7 +291,7 @@ export function criarChefeDoAto(numeroDoAto, indice) {
   }
 
   return {
-    ...criarChefe({ ...chefe, mult }, nivel, { forca: forcaDaFase(indice), daRota: true }),
+    ...criarChefe({ ...chefe, mult }, nivel, { forca: forcaDaFase(indice), daRota: true, prestigio }),
     // O sprite sai do nome, como os chefes do Abismo: pôr a folha em
     // `Assets/inimigos/chefes` com o nome do chefe basta para ele entrar em
     // cena desenhado (ver scripts/arte.js).
@@ -309,7 +309,7 @@ export function criarChefeDoAto(numeroDoAto, indice) {
  * abre uma fresta, se alguem quiser): e o desgaste acumulado que faz a fase
  * ser uma prova, e nao tres lutas soltas.
  */
-export function montarFase(numeroDoAto, numeroDaFase, sorte = Math.random) {
+export function montarFase(numeroDoAto, numeroDaFase, sorte = Math.random, prestigio = 0) {
   const indice = indiceDaFase(numeroDoAto, numeroDaFase)
   const nivel = nivelDaFase(indice)
   const forca = forcaDaFase(indice)
@@ -317,9 +317,9 @@ export function montarFase(numeroDoAto, numeroDaFase, sorte = Math.random) {
   const oAto = ato(numeroDoAto)
 
   const inimigos = chefe
-    ? [criarChefeDoAto(numeroDoAto, indice)]
+    ? [criarChefeDoAto(numeroDoAto, indice, prestigio)]
     : Array.from({ length: quantosInimigos(numeroDoAto, numeroDaFase) }, () =>
-        sortearMonstro(nivel, config.rpg.chanceElite, sorte, { forca, daRota: true }),
+        sortearMonstro(nivel, config.rpg.chanceElite, sorte, { forca, daRota: true, prestigio }),
       )
 
   return {

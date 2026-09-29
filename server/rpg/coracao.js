@@ -16,9 +16,17 @@
  *   a furia     abaixo de 40% de vida ele enfurece: bate mais forte e atira
  *               com mais frequencia
  *
- * Ele nao escala com o nivel de quem entra. E calibrado para um grupo de
- * nivel 300 com equipamento lendario e ainda assim ser sofrido (npm run
- * coracao); quem chega mais fraco vai apanhar, e voltar depois.
+ * Ele NAO tem um numero fixo: nasce dos atributos de quem entrou. Um grupo
+ * de nivel 300 legendario e um grupo cheio de prestigio (que carrega
+ * equipamento e reforco de sobra) chegam com forcas bem diferentes, e o
+ * chefe responde a qual delas aparecer — e um espelho, nao uma regua fixa:
+ * a vida dele cresce com o ATAQUE medio do grupo (quanto mais elas batem,
+ * mais ele precisa aguentar) e o ataque dele cresce com a VIDA media do
+ * grupo (quanto mais elas aguentam, mais forte ele bate de volta). Um
+ * jogador muito forte que entre sozinho nao encontra um chefe fraco:
+ * encontra um mais forte que ele. Calibrado por `npm run coracao`, que joga
+ * a luta por simulacao contra um grupo de nivel 300 legendario e mira nela
+ * continuar sofrida MESMO ASSIM.
  */
 import { config } from '../config.js'
 
@@ -31,12 +39,25 @@ export const CORACAO = {
     'quem quiser passar tem de encará-lo, e em grupo.',
 }
 
-/** O chefe pronto para lutar, para um grupo deste tamanho. */
-export function criarCoracao(jogadores) {
+/** A média de um atributo entre quem entrou. */
+const mediaDe = (atributosDoGrupo, chave) =>
+  atributosDoGrupo.reduce((s, a) => s + a[chave], 0) / atributosDoGrupo.length
+
+/**
+ * O chefe pronto para lutar. `atributosDoGrupo` e uma lista de
+ * `{ hp, atq, def, agi }` — os atributos JA PRONTOS (classe + nivel +
+ * prestigio + equipamento, rpg/jogador.js `atributos`) de cada participante,
+ * na ordem em que entraram na arena.
+ */
+export function criarCoracao(atributosDoGrupo) {
   const c = config.rpg.coracao
+  const jogadores = atributosDoGrupo.length
   const escala = Math.pow(Math.max(1, jogadores), c.escalaPorJogador)
 
-  // Cada jogador acima do minimo endurece o chefe: ataque maior. So a vida
+  const atqMedio = mediaDe(atributosDoGrupo, 'atq')
+  const hpMedio = mediaDe(atributosDoGrupo, 'hp')
+
+  // Cada jogador acima do minimo endurece o chefe um pouco mais: so a vida
   // cresce linear com o grupo, mas o dano dele nao — e com dez jogadores a
   // luta viraria passeio.
   const extras = Math.max(0, jogadores - c.minJogadores)
@@ -48,8 +69,8 @@ export function criarCoracao(jogadores) {
     descricao: CORACAO.descricao,
     duro: true,
     nivel: c.nivel,
-    hp: Math.round(c.hpPorJogador * escala),
-    atq: Math.round(c.atq * (1 + extras * c.atqPorJogadorExtra)),
+    hp: Math.round(atqMedio * c.hpPorAtaqueDoGrupo * escala),
+    atq: Math.round(hpMedio * c.atqPorVidaDoGrupo * (1 + extras * c.atqPorJogadorExtra)),
     def: c.def,
     agi: c.agi,
     areaCada: c.areaCada,

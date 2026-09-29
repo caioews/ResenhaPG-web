@@ -28,7 +28,7 @@ import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
 import { xpComPrestigio } from './rpg/prestigio.js'
 import { guardarOuEntregar } from './entregas.js'
-import { nivelMedioDe } from './grupo.js'
+import { nivelMedioDe, prestigioMedioDe } from './grupo.js'
 
 const cfg = () => config.rpg.masmorra
 
@@ -106,8 +106,8 @@ export const fecharSala = (id) => salas.delete(id)
 // ================================================================ descida
 
 /** O habitante de um andar, com a vida escalada pelo tamanho do grupo. */
-function inimigoDoAndar(nivelMedio, andar, jogadores) {
-  const h = criarHabitante(nivelMedio, andar)
+function inimigoDoAndar(nivelMedio, andar, jogadores, prestigioMedio) {
+  const h = criarHabitante(nivelMedio, andar, prestigioMedio)
   return {
     nome: `${h.emoji} ${h.nome}`,
     emoji: h.emoji,
@@ -140,6 +140,7 @@ export function nivelDoGrupo(participantes) {
 export function descer(participantes) {
   const media = nivelDoGrupo(participantes)
   const n = participantes.length
+  const prestigioMedio = prestigioMedioDe(participantes)
 
   // Cada um entra inteiro; daqui em diante a vida é carregada andar a andar.
   const estado = participantes.map((p) => {
@@ -155,7 +156,7 @@ export function descer(participantes) {
     const dePe = estado.filter((e) => !e.caido)
     if (!dePe.length) break
 
-    const inimigo = inimigoDoAndar(media, andar, n)
+    const inimigo = inimigoDoAndar(media, andar, n, prestigioMedio)
     const entraram = dePe.map((e) => ({ nome: e.player.name, hp: e.lutador.hp, hpMax: e.lutador.hpMax }))
     const luta = lutarEmGrupo(
       dePe.map((e) => e.lutador),

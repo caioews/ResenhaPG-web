@@ -23,10 +23,18 @@ import { criarChefeDoAto, faseDoIndice, faseDoNivel, forcaDaFase } from '../serv
 
 const RODADAS = Number(process.env.RODADAS ?? 1500)
 
-/** Um jogador de referencia: classe, nivel e equipamento cheio numa raridade. */
-export function referencia(classeId, nivel, raridade) {
+/**
+ * Um jogador de referencia: classe, nivel e equipamento cheio numa raridade.
+ *
+ * `prestigio` aplica o mesmo bonus que rpg/jogador.js da a um personagem que
+ * ja voltou: soma so ao que a CLASSE da (a mesma conta de escalaDePrestigio),
+ * nunca ao equipamento — e o que deixa medir "prestigio N, de volta ao ato 1,
+ * mas com o equipamento que ja tinha" sem duplicar o bonus.
+ */
+export function referencia(classeId, nivel, raridade, prestigio = 0) {
   const info = CLASSES[classeId]
   const base = atributosBase(classeId, nivel)
+  const escalaPrestigio = 1 + Math.max(0, prestigio) * config.rpg.prestigio.bonusAtributos
   const soma = { hp: 0, atq: 0, def: 0, agi: 0 }
 
   // Uma peca por slot. Quando a classe usa mais de uma arma, vale a melhor:
@@ -46,10 +54,10 @@ export function referencia(classeId, nivel, raridade) {
   return {
     nome: info.nome,
     nivel,
-    hp: base.hp + soma.hp,
-    atq: base.atq + soma.atq,
-    def: base.def + soma.def,
-    agi: base.agi + soma.agi,
+    hp: Math.round(base.hp * escalaPrestigio) + soma.hp,
+    atq: Math.round(base.atq * escalaPrestigio) + soma.atq,
+    def: Math.round(base.def * escalaPrestigio) + soma.def,
+    agi: Math.round(base.agi * escalaPrestigio) + soma.agi,
     hab: efeitosDaClasse(info),
   }
 }

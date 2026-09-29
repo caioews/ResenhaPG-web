@@ -14,6 +14,7 @@
     "rota": "node scripts/rota.js",
     "chefes": "node scripts/chefes.js",
     "coracao": "node scripts/coracao.js",
+    "prestigio": "node scripts/prestigio.js",
     "classes": "node scripts/classes.js",
     "conformidade": "node scripts/conformidade.js",
     "arte": "node scripts/arte.js",
