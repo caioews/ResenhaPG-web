@@ -360,15 +360,19 @@ export const config = {
     //                   este jogador enfrenta (rpg/monstros.js,
     //                   escalaDePrestigioDoInimigo) — sem isso o prestigio so
     //                   deixa o personagem mais forte, nunca o jogo mais
-    //                   dificil, e quem volta do ato 250+ com equipamento bom
-    //                   passeia pelo ato 1. Calibrado por `npm run prestigio`
-    //                   para o alvo valer o mesmo contra quem prestigiou e
-    //                   contra quem esta na primeira volta.
+    //                   dificil. CUIDADO com o valor: testado contra
+    //                   personagens REAIS do banco (equipamento comum/
+    //                   incomum de verdade, nao lendario guardado) — um
+    //                   fator alto demais (0.8 chegou a testar) derruba a
+    //                   vitoria a zero ja no prestigio 3, mesmo no andar 1
+    //                   do Abismo. Recalibrar com `npm run prestigio`
+    //                   sempre olhando gente de verdade, nao so a regua
+    //                   sintetica do script.
     prestigio: {
       nivelMinimo: 250,
       bonusAtributos: 0.12,
       bonusXp: 0.3,
-      inimigoPorPrestigio: 0.8,
+      inimigoPorPrestigio: 0.35,
     },
 
     // Missoes diarias (server/missoes.js): sorteadas por personagem, trocam a
