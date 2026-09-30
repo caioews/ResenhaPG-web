@@ -59,6 +59,7 @@ import {
   abrirPvp,
   abrirRaid,
   abrirRanking,
+  abrirRunas,
   narrarDuelo,
   narrarRaidCompleta,
 } from './paineis.js'
@@ -1157,6 +1158,7 @@ function montarMenuDeLugares() {
     ),
     lugar('⚒️', 'Ferreiro', abrirFerreiro),
     lugar('🔮', 'Feiticeiro', () => abrirFeiticeiro()),
+    lugar('🔷', 'Runas', () => abrirRunas()),
     lugar('✨', 'O Rito', () => abrirEvolucao()),
     lugar('🏆', 'Ranking', () => abrirRanking()),
     el(

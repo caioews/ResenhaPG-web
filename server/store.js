@@ -144,6 +144,9 @@ export function fichaNova() {
     missoes: { dia: '', lista: [], bauResgatado: false },
     // Masmorra em grupo (server/masmorra.js)
     masmorra: { ultimaDescida: 0, melhorAndar: 0, descidas: 0 },
+    // Runas (server/rpg/runas.js): ids comprados em cada árvore. A raiz de
+    // cada uma (custo 0) não entra na lista — já nasce liberada.
+    runas: { ouro: [], dano: [], xp: [] },
     // Quando a foto foi enviada (server/fotos.js); 0 = sem foto. Entra no
     // endereço da imagem para o navegador saber que ela mudou.
     foto: 0,
@@ -209,6 +212,7 @@ function migrar(rpg = {}) {
     missoes: { ...base.missoes, ...rpg.missoes },
     masmorra: { ...base.masmorra, ...rpg.masmorra },
     skins: { ...base.skins, ...rpg.skins },
+    runas: { ...base.runas, ...rpg.runas },
   }
 }
 

@@ -1602,6 +1602,139 @@ select:focus {
   padding: 26px 12px;
 }
 
+/* --------------------------------------------------------- runas
+
+   Três árvores de talento (Ouro, Dano, XP), desenhadas em SVG: nós numa
+   grade, ligados por linhas que acendem quando a runa de origem já foi
+   comprada. A cor de "comprada" muda por árvore (.arvore-ouro/-dano/-xp),
+   emprestada das variáveis que já existem pro resto da tela. */
+
+.runas-corpo {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.runas-arvore-rolagem {
+  flex: 1 1 480px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.arvore-de-runas {
+  display: block;
+  width: 100%;
+  min-width: 620px;
+  height: auto;
+}
+
+.runa-linha {
+  stroke: #2a2432;
+  stroke-width: 3;
+  transition: stroke 0.15s;
+}
+.runa-linha.ativa {
+  stroke: var(--ouro-fraco);
+}
+.arvore-dano .runa-linha.ativa {
+  stroke: #7a2f2a;
+}
+.arvore-xp .runa-linha.ativa {
+  stroke: #26507e;
+}
+
+.runa-no circle {
+  fill: #100e16;
+  stroke: #3d3427;
+  stroke-width: 2;
+  transition: all 0.15s;
+}
+.runa-no text {
+  font-size: 15px;
+  pointer-events: none;
+}
+.runa-no.grande text {
+  font-size: 19px;
+}
+
+.runa-no.bloqueada {
+  opacity: 0.4;
+}
+.runa-no.bloqueada circle {
+  stroke-dasharray: 3 3;
+}
+
+.runa-no.disponivel {
+  cursor: pointer;
+}
+.runa-no.disponivel circle {
+  stroke: var(--ouro-claro);
+  stroke-width: 2.5;
+}
+.runa-no.disponivel:hover circle {
+  fill: #1c1710;
+  filter: drop-shadow(0 0 5px rgba(230, 199, 102, 0.5));
+}
+
+.runa-no.comprada {
+  cursor: pointer;
+}
+.runa-no.comprada circle {
+  fill: var(--ouro-fraco);
+  stroke: var(--ouro-claro);
+}
+.arvore-dano .runa-no.comprada circle {
+  fill: #6e2a25;
+  stroke: var(--vida-clara);
+}
+.arvore-xp .runa-no.comprada circle {
+  fill: #204066;
+  stroke: var(--mana);
+}
+
+.runa-no.selecionada circle {
+  stroke: var(--pergaminho);
+  stroke-width: 3.5;
+}
+
+.runas-detalhe {
+  flex: 1 1 220px;
+  min-width: 200px;
+  background: #100e16;
+  border: 1px solid var(--borda);
+  border-radius: 2px;
+  padding: 14px 16px;
+  align-self: stretch;
+}
+.runas-detalhe.vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--texto-fraco);
+  font-style: italic;
+  text-align: center;
+}
+.runas-detalhe-titulo {
+  font-family: var(--titulo);
+  color: var(--pergaminho);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.runas-detalhe-efeito {
+  color: #8fbf8f;
+  font-family: var(--mono);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.runas-rodape {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
 .grade-dois {
   display: grid;
   grid-template-columns: 1fr 1fr;

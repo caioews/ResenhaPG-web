@@ -16,6 +16,7 @@ import { efeitosDaClasse } from './habilidades.js'
 import { sortearDrop } from './itens.js'
 import { recompensas } from './monstros.js'
 import { xpComPrestigio } from './prestigio.js'
+import { efeitosDeRunas } from './runas.js'
 import { atributos, darGold, itemEquipado, ganharXp, guardarLoot } from './jogador.js'
 
 /**
@@ -23,12 +24,15 @@ import { atributos, darGold, itemEquipado, ganharXp, guardarLoot } from './jogad
  * classe mais os feiticos gravados na arma e no secundario equipados.
  *
  * Todos usam o mesmo vocabulario de efeitos, entao combinam em vez de
- * competir — um Pistoleiro com arma de Relampago perfura mais ainda.
+ * competir — um Pistoleiro com arma de Relampago perfura mais ainda. As
+ * runas de Ouro e Dano (rpg/runas.js) falam o mesmo vocabulario e entram
+ * aqui tambem, permanentes e sem depender de equipamento.
  */
 export function efeitosDe(player) {
   const daClasse = efeitosDaClasse(classe(player.rpg.classe))
   const dosFeiticos = efeitosDosFeiticos(SLOTS_COM_FEITICO.map((slot) => itemEquipado(player, slot)))
-  return juntarEfeitos(daClasse, dosFeiticos)
+  const dasRunas = efeitosDeRunas(player)
+  return juntarEfeitos(juntarEfeitos(daClasse, dosFeiticos), dasRunas)
 }
 
 /**

@@ -40,6 +40,7 @@ import {
   raridadesEmVendaAutomatica,
 } from '../rpg/loja.js'
 import { comprarSkin, desequiparSeForaDaClasse, equiparSkin, skinsDoJogador } from '../rpg/skins.js'
+import { catalogoPara as catalogoDeRunas, comprarRuna, resetarArvore } from '../rpg/runas.js'
 import { custoAteOMaximo, custoDoReforco, motivoParaNaoReforcar, quantasTitanitas, reforcar, TITANITAS } from '../rpg/ferreiro.js'
 import {
   FEITICOS,
@@ -257,6 +258,46 @@ cidade.post(
     responder(res, player, {
       texto: id ? 'Skin equipada.' : 'Voltou ao visual padrão.',
       skins: skinsDoJogador(player),
+    })
+  }),
+)
+
+// ============================================================ R U N A S
+
+cidade.get(
+  '/runas',
+  rota((req, res) => {
+    res.json({ gold: req.player.rpg.gold, arvores: catalogoDeRunas(req.player) })
+  }),
+)
+
+cidade.post(
+  '/runas/comprar',
+  rota((req, res) => {
+    const player = req.player
+    const arvore = String(req.body?.arvore ?? '')
+    const id = String(req.body?.id ?? '')
+    const feito = comprarRuna(player, arvore, id)
+    if (feito.erro) return res.status(409).json({ erro: feito.erro })
+
+    responder(res, player, {
+      texto: `Comprou a runa ${feito.nome}.`,
+      arvores: catalogoDeRunas(player),
+    })
+  }),
+)
+
+cidade.post(
+  '/runas/resetar',
+  rota((req, res) => {
+    const player = req.player
+    const arvore = String(req.body?.arvore ?? '')
+    const feito = resetarArvore(player, arvore)
+    if (feito.erro) return res.status(409).json({ erro: feito.erro })
+
+    responder(res, player, {
+      texto: 'Árvore reiniciada — o gold investido não volta.',
+      arvores: catalogoDeRunas(player),
     })
   }),
 )

@@ -638,6 +638,198 @@ export async function abrirLoja(aba = 'comprar') {
   abrirModal('Loja de Arkan', corpo, { abas, nome: 'loja', aoRecarregar: () => abrirLoja(aba) })
 }
 
+// ====================================================== R U N A S
+
+const ARVORES_DE_RUNAS = {
+  ouro: { nome: 'Ouro', emoji: '🪙' },
+  dano: { nome: 'Dano', emoji: '⚔️' },
+  xp: { nome: 'XP', emoji: '📖' },
+}
+
+const NOME_DO_EFEITO_DE_RUNA = {
+  saqueGold: 'gold ganho',
+  saqueDrop: 'chance de item cair',
+  danoExtra: 'dano causado',
+  critico: 'chance de crítico',
+  perfuracao: 'perfuração (ignora parte da defesa do alvo)',
+  xp: 'XP ganho',
+}
+
+const descricaoDaRuna = (efeito) => `+${porcento(efeito.valor)} de ${NOME_DO_EFEITO_DE_RUNA[efeito.chave] ?? efeito.chave}`
+
+/** Como el(), só que no namespace de SVG — é o único jeito de montar <svg> na mão. */
+function elSvg(tag, propriedades = {}, ...filhos) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag)
+
+  for (const [chave, valor] of Object.entries(propriedades)) {
+    if (valor === null || valor === undefined || valor === false) continue
+    if (chave.startsWith('on') && typeof valor === 'function') node.addEventListener(chave.slice(2).toLowerCase(), valor)
+    else node.setAttribute(chave, valor)
+  }
+
+  for (const filho of filhos.flat(9)) {
+    if (filho === null || filho === undefined || filho === false) continue
+    node.append(filho instanceof Node ? filho : document.createTextNode(filho))
+  }
+
+  return node
+}
+
+/**
+ * A árvore desenhada: cada runa é um nó numa grade (no.x = coluna, no.y =
+ * linha), ligado por uma linha a cada runa que a libera. A linha acende
+ * quando a runa de origem já foi comprada — é o que dá a sensação de
+ * "caminho aceso" conforme se avança.
+ */
+function svgDaArvore(nos, arvore, { selecionado, aoClicar }) {
+  const COL = 92
+  const LINHA = 78
+  const MARGEM_X = 46
+  const MARGEM_Y = 50
+  const px = (no) => MARGEM_X + no.x * COL
+  const py = (no) => MARGEM_Y + (no.y + 1) * LINHA
+  const porId = new Map(nos.map((n) => [n.id, n]))
+  const largura = MARGEM_X * 2 + Math.max(...nos.map((n) => n.x)) * COL
+  const altura = MARGEM_Y * 2 + 2 * LINHA
+
+  const linhas = nos.flatMap((no) =>
+    no.requer.map((idOrigem) => {
+      const origem = porId.get(idOrigem)
+      return elSvg('line', {
+        x1: px(origem),
+        y1: py(origem),
+        x2: px(no),
+        y2: py(no),
+        class: `runa-linha${origem.comprada ? ' ativa' : ''}`,
+      })
+    }),
+  )
+
+  const circulos = nos.map((no) => {
+    const grande = no.custo === 0 || no.requer.length > 1
+    const estado = no.comprada ? 'comprada' : no.disponivel ? 'disponivel' : 'bloqueada'
+    return elSvg(
+      'g',
+      {
+        class: `runa-no ${estado}${grande ? ' grande' : ''}${selecionado === no.id ? ' selecionada' : ''}`,
+        onClick: () => aoClicar(no),
+      },
+      elSvg('circle', { cx: px(no), cy: py(no), r: grande ? 21 : 16 }),
+      elSvg('text', { x: px(no), y: py(no), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, no.emoji),
+    )
+  })
+
+  const svg = elSvg(
+    'svg',
+    { viewBox: `0 0 ${largura} ${altura}`, class: `arvore-de-runas arvore-${arvore}` },
+    ...linhas,
+    ...circulos,
+  )
+
+  // Em telas estreitas a árvore não encolhe até virar ilegível: rola de
+  // lado, do mesmo jeito que uma tabela larga demais para o celular.
+  return el('div', { class: 'runas-arvore-rolagem' }, svg)
+}
+
+/** O cartão com o que a runa selecionada faz, e o botão de comprar quando dá. */
+function detalheDaRuna(no, { gold, aoComprar }) {
+  if (!no) return el('div', { class: 'runas-detalhe vazio' }, 'Toque numa runa para ver o que ela faz.')
+
+  let acao
+  if (no.comprada) {
+    acao = el('span', { style: 'color:var(--ok)' }, 'Comprada ✅')
+  } else if (!no.disponivel) {
+    acao = el('span', { class: 'sussurro' }, 'Compre uma runa vizinha antes dessa.')
+  } else {
+    acao = el(
+      'button',
+      {
+        class: 'btn pequeno primario',
+        type: 'button',
+        disabled: gold < no.custo,
+        onClick: (ev) => comBotao(ev.currentTarget, () => aoComprar(no)),
+      },
+      `Comprar · ${num(no.custo)} 💰`,
+    )
+  }
+
+  return el(
+    'div',
+    { class: 'runas-detalhe' },
+    el('div', { class: 'runas-detalhe-titulo' }, `${no.emoji} ${no.nome}`),
+    el('div', { class: 'runas-detalhe-efeito' }, descricaoDaRuna(no.efeito)),
+    el('div', { class: 'runas-detalhe-acao' }, acao),
+  )
+}
+
+export async function abrirRunas(arvore = 'ouro', selecionadoId = null) {
+  const dados = await pegar('/api/runas')
+  const nos = dados.arvores[arvore]
+  const selecionado = nos.find((n) => n.id === selecionadoId) ?? null
+
+  const svg = svgDaArvore(nos, arvore, {
+    selecionado: selecionadoId,
+    aoClicar: (no) => abrirRunas(arvore, no.id === selecionadoId ? null : no.id),
+  })
+
+  const detalhe = detalheDaRuna(selecionado, {
+    gold: dados.gold,
+    aoComprar: async (no) => {
+      const r = await mandar('/api/runas/comprar', { arvore, id: no.id })
+      avisarBom(r.texto)
+      await abrirRunas(arvore, no.id)
+    },
+  })
+
+  const rodape = el(
+    'div',
+    { class: 'runas-rodape' },
+    el('span', { style: 'color:var(--ouro-claro)' }, `${num(dados.gold)} 💰 disponível`),
+    el(
+      'button',
+      {
+        class: 'btn pequeno perigo',
+        type: 'button',
+        onClick: () =>
+          confirmar(
+            'Reiniciar árvore',
+            `Todas as runas da árvore de ${ARVORES_DE_RUNAS[arvore].nome} voltam a ficar disponíveis para comprar de novo — mas o gold já gasto não volta. Continuar?`,
+            async () => {
+              const r = await mandar('/api/runas/resetar', { arvore })
+              avisarBom(r.texto)
+              await abrirRunas(arvore)
+            },
+            'Reiniciar',
+          ),
+      },
+      'Reiniciar árvore',
+    ),
+  )
+
+  const corpo = el(
+    'div',
+    {},
+    el(
+      'p',
+      { class: 'sussurro', style: 'margin-top:0' },
+      'Upgrades permanentes comprados com gold. Cada runa só libera depois de comprar uma runa vizinha a ela.',
+    ),
+    el('div', { class: 'runas-corpo' }, svg, detalhe),
+    rodape,
+  )
+
+  abrirModal('Runas', corpo, {
+    largura: 'amplo',
+    nome: 'runas',
+    aoRecarregar: () => abrirRunas(arvore, selecionadoId),
+    abas: abasDoModal(
+      Object.entries(ARVORES_DE_RUNAS).map(([id, info]) => ({ id, nome: `${info.emoji} ${info.nome}` })),
+      arvore,
+      (id) => abrirRunas(id),
+    ),
+  })
+}
+
 // ================================================== F E R R E I R O
 
 export async function abrirFerreiro() {

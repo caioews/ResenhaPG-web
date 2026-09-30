@@ -20,6 +20,7 @@ import * as store from '../store.js'
 import { classeRaiz } from './classes.js'
 import { desequiparIncompativeis } from './jogador.js'
 import { emExpedicao } from './expedicao.js'
+import { bonusXpDeRunas } from './runas.js'
 
 export const prestigioDe = (player) => player.rpg.prestigio ?? 0
 
@@ -34,9 +35,12 @@ export const escalaDeXp = (n) => 1 + Math.max(0, n) * config.rpg.prestigio.bonus
  *
  * Fica aqui, e não dentro de ganharXp, porque quem chama precisa do número
  * final para mostrar na tela: a linha "+320 de XP" tem de bater com o que
- * entrou na ficha.
+ * entrou na ficha. É também o único cano por onde toda recompensa de XP do
+ * jogo passa, então é aqui — e só aqui — que a árvore de runas de XP
+ * (rpg/runas.js) precisa somar seu bônus para valer em todo lugar.
  */
-export const xpComPrestigio = (player, xp) => Math.round(xp * escalaDeXp(prestigioDe(player)))
+export const xpComPrestigio = (player, xp) =>
+  Math.round(xp * escalaDeXp(prestigioDe(player)) * (1 + bonusXpDeRunas(player)))
 
 /** Por que este personagem não pode prestigiar agora. null = pode. */
 export function motivoParaNaoPrestigiar(player) {
