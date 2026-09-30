@@ -31,7 +31,7 @@ import { criarItem, tiposDaClasse } from './rpg/itens.js'
 import { precoDeCompra } from './rpg/loja.js'
 import { TITANITAS, darTitanita, sortearTitanita } from './rpg/ferreiro.js'
 import { FEITICOS, darFeitico, sortearFeitico } from './rpg/feiticos.js'
-import { prestigioDe, xpComPrestigio } from './rpg/prestigio.js'
+import { xpComPrestigio } from './rpg/prestigio.js'
 import { guardarOuEntregar } from './entregas.js'
 import { registrar } from './missoes.js'
 import { anunciar, emitirPara, emitirParaTodos } from './realtime.js'
@@ -94,14 +94,8 @@ const ativo = () => atual?.estado === 'ativo'
 
 // ------------------------------------------------------------------ contas
 
-/**
- * Vida de um monstro comum do nível: a régua das "unidades". Leva o
- * prestígio de quem ataca — senão quem já voltou converteria o mesmo golpe
- * em mais unidades que alguém na primeira volta, e a régua deixaria de ser
- * a mesma para todo mundo.
- */
-const vidaDeReferencia = (nivel, prestigio = 0) =>
-  atributosDeMonstro(nivel, { hp: 1, atq: 1, def: 1, agi: 1 }, undefined, prestigio).hp
+/** Vida de um monstro comum do nível: a régua das "unidades", igual para todo mundo que ataca. */
+const vidaDeReferencia = (nivel) => atributosDeMonstro(nivel, { hp: 1, atq: 1, def: 1, agi: 1 }).hp
 
 /** Contas (não personagens) que jogaram nos últimos dias. */
 function contasAtivas() {
@@ -210,7 +204,6 @@ export function atacar(player) {
 
   const def = CHEFES_MUNDIAIS[atual.chave]
   const nivel = player.rpg.nivel
-  const prestigio = prestigioDe(player)
   const p = cfg().projecao
 
   // Entra inteiro e sai como entrou: a investida não mexe na vida da ficha.
@@ -221,11 +214,11 @@ export function atacar(player) {
   const projecao = {
     nome: `${def.emoji} ${def.nome}`,
     nivel,
-    ...atributosDeMonstro(nivel, { hp: p.escudo, atq: p.atq, def: p.def, agi: p.agi }, undefined, prestigio),
+    ...atributosDeMonstro(nivel, { hp: p.escudo, atq: p.atq, def: p.def, agi: p.agi }),
   }
   const luta = lutar(eu, projecao)
   const dano = projecao.hp - Math.max(0, luta.hpB)
-  const unidades = Math.round((dano / vidaDeReferencia(nivel, prestigio)) * 100) / 100
+  const unidades = Math.round((dano / vidaDeReferencia(nivel)) * 100) / 100
 
   const c = (atual.contribuicoes[player.id] ??= { nome: player.name, unidades: 0, ataques: 0, ultimoAtaque: 0 })
   c.nome = player.name

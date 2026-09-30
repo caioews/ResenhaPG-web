@@ -17,7 +17,7 @@ import { ranking as rankingPrestigio } from '../rpg/prestigio.js'
 import { ranking as rankingMasmorra } from '../masmorra.js'
 import { verPerfil, verResumo } from '../visao.js'
 import * as salas from '../salas.js'
-import { nivelMedioDe, prestigioMedioDe, resolverLutaDeGrupo } from '../grupo.js'
+import { nivelMedioDe, resolverLutaDeGrupo } from '../grupo.js'
 import { anunciar, emitirPara, emitirParaTodos, jogadoresOnline } from '../realtime.js'
 import { registrar } from '../missoes.js'
 
@@ -157,12 +157,7 @@ social.post(
     }
 
     const participantes = sala.participantes.map((id) => store.buscarPersonagem(id)).filter(Boolean)
-    const chefe = criarChefeDeRaid(
-      sala.chefeId,
-      nivelMedioDe(participantes),
-      participantes.length,
-      prestigioMedioDe(participantes),
-    )
+    const chefe = criarChefeDeRaid(sala.chefeId, nivelMedioDe(participantes), participantes.length)
     salas.fecharSala(sala.id)
     avisarSala(null)
 
