@@ -147,6 +147,27 @@
         8
       ]
     },
+    "arqueiro:ellie-arqueiro": {
+      "arquivo": "lutadores/skin-arqueiro-ellie-arqueiro.webp",
+      "quadro": [
+        143,
+        172
+      ],
+      "ancora": [
+        52,
+        169
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
     "arqueiro:exterminador-do-futuro": {
       "arquivo": "lutadores/skin-arqueiro-exterminador-do-futuro.webp",
       "quadro": [
@@ -168,162 +189,15 @@
         8
       ]
     },
-    "bardo:ahri-kda": {
-      "arquivo": "lutadores/skin-bardo-ahri-kda.webp",
+    "arqueiro:vayne-arco-celeste-arqueiro": {
+      "arquivo": "lutadores/skin-arqueiro-vayne-arco-celeste-arqueiro.webp",
       "quadro": [
-        210,
-        170
+        180,
+        172
       ],
       "ancora": [
-        115,
-        167
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:ahri": {
-      "arquivo": "lutadores/skin-bardo-ahri.webp",
-      "quadro": [
-        187,
-        164
-      ],
-      "ancora": [
-        102,
-        160
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:alternativa-1": {
-      "arquivo": "lutadores/skin-bardo-alternativa-1.webp",
-      "quadro": [
-        210,
-        168
-      ],
-      "ancora": [
-        116,
-        164
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:alternativa-2": {
-      "arquivo": "lutadores/skin-bardo-alternativa-2.webp",
-      "quadro": [
-        211,
-        185
-      ],
-      "ancora": [
-        110,
-        181
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:cyntia": {
-      "arquivo": "lutadores/skin-bardo-cyntia.webp",
-      "quadro": [
-        226,
+        69,
         169
-      ],
-      "ancora": [
-        110,
-        165
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:fiora": {
-      "arquivo": "lutadores/skin-bardo-fiora.webp",
-      "quadro": [
-        216,
-        163
-      ],
-      "ancora": [
-        111,
-        159
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:garota-lobo": {
-      "arquivo": "lutadores/skin-bardo-garota-lobo.webp",
-      "quadro": [
-        243,
-        169
-      ],
-      "ancora": [
-        134,
-        166
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:gotica": {
-      "arquivo": "lutadores/skin-bardo-gotica.webp",
-      "quadro": [
-        203,
-        170
-      ],
-      "ancora": [
-        117,
-        167
       ],
       "linhas": [
         "andar",
@@ -366,174 +240,6 @@
       "ancora": [
         150,
         168
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:martina": {
-      "arquivo": "lutadores/skin-bardo-martina.webp",
-      "quadro": [
-        228,
-        176
-      ],
-      "ancora": [
-        126,
-        172
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:musa": {
-      "arquivo": "lutadores/skin-bardo-musa.webp",
-      "quadro": [
-        228,
-        198
-      ],
-      "ancora": [
-        120,
-        195
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:nami": {
-      "arquivo": "lutadores/skin-bardo-nami.webp",
-      "quadro": [
-        222,
-        169
-      ],
-      "ancora": [
-        114,
-        166
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:sam": {
-      "arquivo": "lutadores/skin-bardo-sam.webp",
-      "quadro": [
-        237,
-        166
-      ],
-      "ancora": [
-        133,
-        162
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:seraphine": {
-      "arquivo": "lutadores/skin-bardo-seraphine.webp",
-      "quadro": [
-        223,
-        171
-      ],
-      "ancora": [
-        114,
-        168
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:sona-pentakill": {
-      "arquivo": "lutadores/skin-bardo-sona-pentakill.webp",
-      "quadro": [
-        230,
-        180
-      ],
-      "ancora": [
-        128,
-        177
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:tecna": {
-      "arquivo": "lutadores/skin-bardo-tecna.webp",
-      "quadro": [
-        232,
-        157
-      ],
-      "ancora": [
-        127,
-        154
-      ],
-      "linhas": [
-        "andar",
-        "atacar",
-        "defender"
-      ],
-      "quadros": [
-        8,
-        8,
-        8
-      ]
-    },
-    "bardo:vayne-projeto": {
-      "arquivo": "lutadores/skin-bardo-vayne-projeto.webp",
-      "quadro": [
-        223,
-        183
-      ],
-      "ancora": [
-        122,
-        179
       ],
       "linhas": [
         "andar",
@@ -756,6 +462,27 @@
         8
       ]
     },
+    "ladino:evelynn-kda-ladino": {
+      "arquivo": "lutadores/skin-ladino-evelynn-kda-ladino.webp",
+      "quadro": [
+        241,
+        174
+      ],
+      "ancora": [
+        108,
+        171
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
     "ladino:mikasa": {
       "arquivo": "lutadores/skin-ladino-mikasa.webp",
       "quadro": [
@@ -840,6 +567,27 @@
         8
       ]
     },
+    "mago:ahri-congregacao-das-bruxas": {
+      "arquivo": "lutadores/skin-mago-ahri-congregacao-das-bruxas.webp",
+      "quadro": [
+        222,
+        158
+      ],
+      "ancora": [
+        120,
+        154
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
     "mago:aila-morthaine": {
       "arquivo": "lutadores/skin-mago-aila-morthaine.webp",
       "quadro": [
@@ -882,6 +630,48 @@
         8
       ]
     },
+    "mago:goku-ss2-mago": {
+      "arquivo": "lutadores/skin-mago-goku-ss2-mago.webp",
+      "quadro": [
+        166,
+        238
+      ],
+      "ancora": [
+        84,
+        235
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "mago:lux-cosmos-negros": {
+      "arquivo": "lutadores/skin-mago-lux-cosmos-negros.webp",
+      "quadro": [
+        159,
+        156
+      ],
+      "ancora": [
+        69,
+        153
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        5,
+        5,
+        5
+      ]
+    },
     "mago:megumin": {
       "arquivo": "lutadores/skin-mago-megumin.webp",
       "quadro": [
@@ -891,6 +681,48 @@
       "ancora": [
         125,
         156
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "mago:merlyn": {
+      "arquivo": "lutadores/skin-mago-merlyn.webp",
+      "quadro": [
+        229,
+        173
+      ],
+      "ancora": [
+        111,
+        170
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ]
+    },
+    "mago:sukuna": {
+      "arquivo": "lutadores/skin-mago-sukuna.webp",
+      "quadro": [
+        261,
+        169
+      ],
+      "ancora": [
+        127,
+        166
       ],
       "linhas": [
         "andar",
@@ -1494,6 +1326,402 @@
         7,
         7,
         7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "arauto-da-ruina": {
+      "arquivo": "lutadores/arauto-da-ruina.webp",
+      "quadro": [
+        282,
+        220
+      ],
+      "ancora": [
+        147,
+        216
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "avatar-da-ruina": {
+      "arquivo": "lutadores/avatar-da-ruina.webp",
+      "quadro": [
+        226,
+        186
+      ],
+      "ancora": [
+        89,
+        183
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "cavaleiro-caido": {
+      "arquivo": "lutadores/cavaleiro-caido.webp",
+      "quadro": [
+        259,
+        209
+      ],
+      "ancora": [
+        139,
+        205
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "ceifador": {
+      "arquivo": "lutadores/ceifador.webp",
+      "quadro": [
+        226,
+        189
+      ],
+      "ancora": [
+        108,
+        186
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "devorador-de-almas": {
+      "arquivo": "lutadores/devorador-de-almas.webp",
+      "quadro": [
+        265,
+        215
+      ],
+      "ancora": [
+        134,
+        212
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "dragao-anciao": {
+      "arquivo": "lutadores/dragao-anciao.webp",
+      "quadro": [
+        301,
+        264
+      ],
+      "ancora": [
+        158,
+        261
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "dragao-jovem": {
+      "arquivo": "lutadores/dragao-jovem.webp",
+      "quadro": [
+        300,
+        189
+      ],
+      "ancora": [
+        182,
+        185
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "guardiao-do-tempo": {
+      "arquivo": "lutadores/guardiao-do-tempo.webp",
+      "quadro": [
+        191,
+        179
+      ],
+      "ancora": [
+        86,
+        175
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "hidra-das-brumas": {
+      "arquivo": "lutadores/hidra-das-brumas.webp",
+      "quadro": [
+        237,
+        204
+      ],
+      "ancora": [
+        132,
+        200
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "leviata-terrestre": {
+      "arquivo": "lutadores/leviata-terrestre.webp",
+      "quadro": [
+        271,
+        225
+      ],
+      "ancora": [
+        115,
+        221
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "necromante": {
+      "arquivo": "lutadores/necromante.webp",
+      "quadro": [
+        260,
+        183
+      ],
+      "ancora": [
+        137,
+        180
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "o-primordial": {
+      "arquivo": "lutadores/o-primordial.webp",
+      "quadro": [
+        252,
+        243
+      ],
+      "ancora": [
+        93,
+        240
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "rainha-das-cinzas": {
+      "arquivo": "lutadores/rainha-das-cinzas.webp",
+      "quadro": [
+        294,
+        204
+      ],
+      "ancora": [
+        160,
+        200
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "rei-esquecido": {
+      "arquivo": "lutadores/rei-esquecido.webp",
+      "quadro": [
+        266,
+        179
+      ],
+      "ancora": [
+        129,
+        175
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        7
+      ],
+      "viradoParaEsquerda": false
+    },
+    "rei-goblin": {
+      "arquivo": "lutadores/rei-goblin.webp",
+      "quadro": [
+        250,
+        198
+      ],
+      "ancora": [
+        127,
+        195
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "senhor-da-tempestade": {
+      "arquivo": "lutadores/senhor-da-tempestade.webp",
+      "quadro": [
+        244,
+        191
+      ],
+      "ancora": [
+        91,
+        188
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "senhor-do-abismo": {
+      "arquivo": "lutadores/senhor-do-abismo.webp",
+      "quadro": [
+        219,
+        196
+      ],
+      "ancora": [
+        112,
+        192
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
+      ],
+      "viradoParaEsquerda": false
+    },
+    "tita-esquecido": {
+      "arquivo": "lutadores/tita-esquecido.webp",
+      "quadro": [
+        272,
+        212
+      ],
+      "ancora": [
+        139,
+        209
+      ],
+      "linhas": [
+        "andar",
+        "atacar",
+        "defender"
+      ],
+      "quadros": [
+        8,
+        8,
+        8
       ],
       "viradoParaEsquerda": false
     }

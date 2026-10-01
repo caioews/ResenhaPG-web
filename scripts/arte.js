@@ -1269,10 +1269,10 @@ function folhasDeInimigo() {
     const nome = semAcento(entrada.name)
     const id = chaves.find((e) => e.pistas.some((pista) => nome.includes(pista)))?.id
     if (entrada.isDirectory()) {
-      // Os chefes do Abismo e o chefe final moram em pastas só deles e não
-      // são espécies. "chefes raid" também: arte à espera de um chefe de
-      // raid que ainda não existe no jogo.
-      if ([PASTA_DOS_CHEFES, PASTA_DO_CHEFE_FINAL, 'chefes raid'].includes(entrada.name)) continue
+      // Os chefes do Abismo, os chefes da caçada e o chefe final moram em
+      // pastas só deles e não são espécies. "chefes raid" também: arte à
+      // espera de um chefe de raid que ainda não existe no jogo.
+      if ([PASTA_DOS_CHEFES, PASTA_DOS_CHEFES_DA_CACADA, PASTA_DO_CHEFE_FINAL, 'chefes raid'].includes(entrada.name)) continue
       if (!id) throw new Error(`a pasta "${entrada.name}" não bate com nenhuma espécie`)
       saida[id] = achar(path.join(base, entrada.name), ehImagem)
     } else if (ehImagem(entrada.name)) {
@@ -1289,6 +1289,8 @@ function folhasDeInimigo() {
 
 /** Onde ficam as folhas dos chefes do Abismo, dentro de `inimigos`. */
 const PASTA_DOS_CHEFES = 'chefes abismo'
+/** Onde ficam os chefes da caçada (os chefes de ato da rota, rpg/rota.js). */
+const PASTA_DOS_CHEFES_DA_CACADA = 'chefes caçada'
 /** A folha do chefe final: uma só, com um formato que não é o das outras. */
 const PASTA_DO_CHEFE_FINAL = 'chefe final'
 
@@ -1300,6 +1302,23 @@ const PASTA_DO_CHEFE_FINAL = 'chefe final'
  */
 function folhasDeChefeDoAbismo() {
   const base = path.join(ENTRADA, 'inimigos', PASTA_DOS_CHEFES)
+  if (!existsSync(base)) return {}
+
+  const saida = {}
+  for (const nome of readdirSync(base)) {
+    if (ehImagem(nome)) saida[chaveDeArte(nome)] = path.join(base, nome)
+  }
+  return saida
+}
+
+/**
+ * As folhas dos chefes da caçada. Mesma ideia dos chefes do Abismo: a
+ * ligação é pelo NOME do arquivo, que vira a chave do manifesto — renomear
+ * um chefe em rpg/monstros.js (BOSSES) pede renomear o arquivo, senão ele
+ * entra em cena com o sprite de reserva (o goblin).
+ */
+function folhasDeChefeDaCacada() {
+  const base = path.join(ENTRADA, 'inimigos', PASTA_DOS_CHEFES_DA_CACADA)
   if (!existsSync(base)) return {}
 
   const saida = {}
@@ -1924,6 +1943,31 @@ async function principal() {
       // fundo. A volta seguinte então ia atrás do preto do capuz e vazava o
       // corpo inteiro — sobravam o machado e o contorno.
       camadas: CAMADAS_A_MAO[chave] ?? 0,
+      gradeUnica: GRADE_DA_PRIMEIRA.has(chave),
+      tolerancia: CONTRASTE_BAIXO.has(chave) ? 6 : 10,
+    })
+    escrever(`lutadores/${chave}.webp`, atlas.buffer)
+    manifesto.lutadores[chave] = {
+      arquivo: `lutadores/${chave}.webp`,
+      ...semBuffer(atlas),
+      viradoParaEsquerda: OLHA_PARA_ESQUERDA.has(chave),
+    }
+  }
+
+  console.log('\nChefes da caçada')
+  // Mesmo molde das espécies comuns (três faixas rotuladas, painel atrás de
+  // cada uma) — só que exportado com transparência em vez de fundo branco.
+  // Não muda nada aqui: o fundo "fora" é um branco chapado por baixo do
+  // alpha (RGB 255,255,255 sob alpha 0), e alphaDaFolha só olha a cor —
+  // a inundação a partir da borda encontra o mesmo branco de sempre.
+  for (const [chave, arquivo] of Object.entries(folhasDeChefeDaCacada())) {
+    const atlas = await montarAtlas(arquivo, {
+      alturaAlvo: Math.round(ALTURA_DO_HEROI * (ALTURA_RELATIVA[chave] ?? 1.15)),
+      quadros: QUADROS_A_MAO[chave] ?? null,
+      regular: GRADE_REGULAR[chave] ?? null,
+      ate: ATE_O_QUADRO[chave] ?? null,
+      bolsoes: COM_CENARIO_ATRAS.has(chave) ? BOLSAO_FROUXO : BOLSAO_APERTADO,
+      camadas: CAMADAS_A_MAO[chave] ?? 3,
       gradeUnica: GRADE_DA_PRIMEIRA.has(chave),
       tolerancia: CONTRASTE_BAIXO.has(chave) ? 6 : 10,
     })
