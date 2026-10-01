@@ -190,7 +190,7 @@ export function comecarALuta(player) {
   })
 
   const agora = Date.now()
-  const primeiraVez = []
+  const derrubaram = []
 
   for (const p of participantes) {
     const fim = p.rpg.fim
@@ -203,12 +203,14 @@ export function comecarALuta(player) {
       p.rpg.cacada.maiorAto = TOTAL_DE_ATOS
       p.rpg.cacada.maiorFase = fasesPorAto()
 
-      if (!fim.zerou) {
-        fim.zerou = true
-        fim.pendente = true
-        fim.em = agora
-        primeiraVez.push(p.id)
-      }
+      // Créditos e a escolha (continuar/prestigiar) valem a CADA queda do
+      // Coração, não só na primeira — é o convite para prestigiar nascendo
+      // de novo a cada volta completa. `zerou` continua um marco permanente
+      // (mostrado na ficha), só não serve mais de trava para isso.
+      fim.zerou = true
+      fim.pendente = true
+      fim.em = agora
+      derrubaram.push(p.id)
     } else {
       fim.derrotas++
     }
@@ -235,7 +237,7 @@ export function comecarALuta(player) {
       classeBase: participantes[i].rpg.classe ? classeRaiz(participantes[i].rpg.classe) : null,
       skin: participantes[i].rpg.skins?.equipada ?? null,
     })),
-    primeiraVez,
+    derrubaram,
   }
 
   // O chat só fala do resultado quando a luta acaba nas telas: um "o Coração
@@ -256,7 +258,8 @@ export function comecarALuta(player) {
 // ----------------------------------------------------- depois do chefe
 
 /**
- * O que o personagem faz depois de derrubar o Coração pela primeira vez:
+ * O que o personagem faz depois de derrubar o Coração — a cada queda, não só
+ * na primeira:
  *
  *   continuar   fica no último ato, num laço eterno: a rota o deixa repetindo
  *               a última fase antes do chefe, e ele pode voltar a enfrentá-lo

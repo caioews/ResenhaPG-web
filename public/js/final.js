@@ -218,13 +218,14 @@ async function sairParaATaberna() {
 // ------------------------------------------------------------ a luta
 
 /**
- * Conta a luta: o log vira texto e cena ao mesmo tempo. Se foi a primeira vez
- * do personagem, termina no fim do jogo.
+ * Conta a luta: o log vira texto e cena ao mesmo tempo. Se o personagem
+ * ajudou a derrubar o Coração, termina no fim do jogo — vale a cada queda,
+ * não só na primeira.
  */
 async function narrarFinal(luta) {
   const eu = estado.p
   const lutei = luta.participantes.some((p) => p.id === eu?.id)
-  const primeiraVez = Boolean(luta.venceu && lutei && luta.primeiraVez?.includes(eu?.id))
+  const derrubou = Boolean(luta.venceu && lutei && luta.derrubaram?.includes(eu?.id))
 
   comecarLuta({
     participantes: luta.participantes.map((p) => ({ nome: p.nome, hpMax: p.hpMax })),
@@ -240,7 +241,7 @@ async function narrarFinal(luta) {
   terminarLuta({ venceu: luta.venceu })
   await dormir(luta.venceu ? 3600 : 2400)
 
-  if (primeiraVez) {
+  if (derrubou) {
     await conduzirOFim()
     return
   }
